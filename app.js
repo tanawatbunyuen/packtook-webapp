@@ -131,3 +131,12 @@ $('runCleanup').addEventListener('click',()=>runRetention(true));
 
 // Cleanup is best-effort while this web page is open; browsers cannot run local folder deletion while closed.
 setInterval(()=>{if(sessionStorage.getItem('packtook-demo-session')==='yes'&&!document.hidden)void runRetention(false)},60*60*1000);
+
+// Live camera display preferences do not change the recording resolution.
+const cameraWrap=$('cameraPreviewWrap');
+const cameraSize=$('cameraViewSize');
+cameraSize.value=['normal','large','xlarge'].includes(store.cameraViewSize)?store.cameraViewSize:'normal';
+function applyCameraViewSize(){cameraWrap.classList.toggle('camera-large',cameraSize.value==='large');cameraWrap.classList.toggle('camera-xlarge',cameraSize.value==='xlarge');store.cameraViewSize=cameraSize.value;persist()}
+cameraSize.addEventListener('change',applyCameraViewSize);applyCameraViewSize();
+$('cameraFullscreen').addEventListener('click',async()=>{try{if(document.fullscreenElement===cameraWrap)await document.exitFullscreen();else await cameraWrap.requestFullscreen()}catch(e){toast('เปิดเต็มหน้าจอไม่สำเร็จ: '+e.message)}});
+document.addEventListener('fullscreenchange',()=>{$('cameraFullscreen').textContent=document.fullscreenElement===cameraWrap?'⤡ ออกจากเต็มหน้าจอ':'⛶ เต็มหน้าจอ'});
