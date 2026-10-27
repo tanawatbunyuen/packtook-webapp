@@ -99,3 +99,16 @@
 #loginPage .hero h1,#loginPage .hero-copy>p,#loginPage .hero-feature b{color:#fff}
 #loginPage .hero-feature small{color:#e2eefa}
 @media(max-width:900px){#loginPage .hero{background-position:62% center!important}}
+
+/* V3.4.5 logo/readability fixes */
+#loginPage .hero-brand{display:flex;align-items:center;flex-wrap:wrap;gap:14px}
+#loginPage .brand-lockup{display:flex;align-items:center;gap:14px;padding:10px 15px;background:rgba(3,15,38,.60);border:1px solid rgba(255,255,255,.15);border-radius:15px;backdrop-filter:blur(4px)}
+#loginPage .brand-lockup img{width:70px;height:70px;object-fit:contain}
+#loginPage .brand-lockup strong{font-size:clamp(30px,3vw,44px);color:#fff;line-height:1}
+#loginPage .brand-lockup strong span{color:#0eb4fc}
+#loginPage .brand-lockup small{font-size:11px;letter-spacing:2px;color:#e8efff;margin-top:8px}
+#loginPage .hero-product-visual{display:none!important}
+#loginPage .hero{background-image:linear-gradient(90deg,rgba(3,15,38,.92),rgba(3,18,44,.69) 36%,rgba(3,18,44,.10) 100%),url('login-background.svg')!important;background-size:cover!important;background-position:60% center!important}
+#loginPage .hero:after{display:none!important}
+#loginPage .auth-icon img{width:74px;height:74px;object-fit:contain}
+@media(max-width:1000px){#loginPage .brand-lockup strong{font-size:29px}}
