@@ -89,3 +89,6 @@ $('videoQuality').addEventListener('change',async()=>{if(activeBarcode||ending){
 $('retentionDays').value=String(store.retentionDays||0);
 $('retentionDays').addEventListener('change',()=>{const v=Number($('retentionDays').value);if(v!==0&&!confirm('เปิดลบวิดีโออัตโนมัติเมื่อเกิน '+v+' วัน? ไฟล์จะถูกลบถาวรเมื่อเปิดหน้า Dashboard และ Browser ได้รับสิทธิ์โฟลเดอร์')){$('retentionDays').value=String(store.retentionDays||0);return}store.retentionDays=v;persist();void runRetention(false)});
 $('runCleanup').addEventListener('click',()=>runRetention(true));
+
+// Cleanup is best-effort while this web page is open; browsers cannot run local folder deletion while closed.
+setInterval(()=>{if(sessionStorage.getItem('packtook-demo-session')==='yes'&&!document.hidden)void runRetention(false)},60*60*1000);
