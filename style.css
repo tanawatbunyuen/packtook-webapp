@@ -88,3 +88,14 @@
 #help .faq-grid .panel p{font-size:16px;line-height:1.85;color:#455b76}
 @media(max-width:850px){#help .infographic-steps{grid-template-columns:1fr}}
 @media(max-width:550px){#help .step-illustration{height:180px}#help .step-card h3{font-size:19px}#help .step-card p{font-size:15px}}
+
+/* PACKTOOK V3.4.4 photorealistic login backdrop */
+#loginPage .hero{background:linear-gradient(90deg,rgba(3,18,48,.96) 0%,rgba(4,27,67,.88) 29%,rgba(6,37,85,.60) 52%,rgba(7,42,95,.12) 100%),url('login-background.svg') center center/cover no-repeat!important}
+#loginPage .hero:after{display:none!important}
+#loginPage .hero-product-visual{display:none!important}
+#loginPage .hero-ambient{display:none!important}
+#loginPage .hero-copy,#loginPage .hero>.brand,#loginPage .hero-bottom{z-index:3}
+#loginPage .hero-copy{max-width:520px}
+#loginPage .hero h1,#loginPage .hero-copy>p,#loginPage .hero-feature b{color:#fff}
+#loginPage .hero-feature small{color:#e2eefa}
+@media(max-width:900px){#loginPage .hero{background-position:62% center!important}}
