@@ -23,3 +23,6 @@ This is a static frontend-only demo with localStorage-based login and quota. **N
 3. Disconnect/reconnect USB camera mid-recording and observe status and resulting video.
 4. Test repeated scans, invalid folder permissions, full disk, quota reached, camera used by another app.
 5. Test 2–4 hours uninterrupted on actual packing hardware before deploying for business use.
+
+
+Updated in V3.4.4 to use a realistic generated login hero background image.
