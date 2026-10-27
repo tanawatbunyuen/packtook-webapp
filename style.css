@@ -133,3 +133,15 @@
 .recording-options label,.retention-settings label{margin:0!important;font-weight:700;font-size:14px}
 .recording-options select,.retention-settings select{padding:10px 12px;border:1px solid #b9cce5;border-radius:10px;background:white;color:#152e51;min-height:43px;font:inherit}
 .retention-settings{margin-top:16px}.retention-settings #retentionStatus{flex-basis:100%}.video-delete{margin-left:7px!important;background:#fff0f0!important;color:#b82740!important}
+
+/* PACKTOOK 3.5.0: independent live camera display scaling */
+.camera-display-controls{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-top:16px}
+.camera-display-controls label{font-weight:700;font-size:13px;color:#253958}
+.camera-display-controls select{padding:10px;border-radius:9px;border:1px solid #cbd6e6;background:#fff;color:#193356;font:inherit}
+#cameraPreviewWrap{height:auto!important;aspect-ratio:16/9;min-height:260px}
+#cameraPreviewWrap.camera-large{aspect-ratio:auto;height:480px!important}
+#cameraPreviewWrap.camera-xlarge{aspect-ratio:auto;height:620px!important}
+#cameraPreviewWrap:fullscreen{width:100vw!important;height:100vh!important;aspect-ratio:auto!important;border:0;border-radius:0;background:#000}
+#cameraPreviewWrap:fullscreen video{object-fit:contain}
+#cameraPreviewWrap:fullscreen .timer{top:25px;left:25px}
+@media(max-width:700px){#cameraPreviewWrap{min-height:180px}#cameraPreviewWrap.camera-large{height:340px!important}#cameraPreviewWrap.camera-xlarge{height:450px!important}}
