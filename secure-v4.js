@@ -15,7 +15,7 @@ async function setup(){
  try {
   if(!packtookConfig.supabaseUrl||!packtookConfig.publishableKey||!packtookConfig.functionUrl)throw Error('กรอกค่าใน v4-config.js ก่อน');
   client=createClient(packtookConfig.supabaseUrl,packtookConfig.publishableKey,{auth:{flowType:'pkce'}});
-  client.auth.onAuthStateChange((_event,s)=>{session=s;show(!!s);if(s)setTimeout(()=>quota().catch(e=>message(e.message)),0)});
+  client.auth.onAuthStateChange((event,s)=>{session=s;show(!!s);if(event==='PASSWORD_RECOVERY'){$('recovery').style.display='block';show(false);message('กรุณาตั้งรหัสผ่านใหม่')}else if(s)setTimeout(()=>quota().catch(e=>message(e.message)),0)});
   session=(await client.auth.getSession()).data.session;show(!!session);if(session)await quota();else message('พร้อมรับบัญชีจริงจาก Supabase Auth');
  }catch(e){message('Configuration error: '+e.message)}
 }
@@ -26,5 +26,6 @@ run('reset',async()=>{const {error}=await client.auth.resetPasswordForEmail($('e
 run('reserve',async()=>{latest=await call('reserve',{barcode:$('barcode').value,operation_id:crypto.randomUUID()});message(latest);await quota()});
 run('fail',async()=>{if(!latest?.recording_id)throw Error('ยังไม่มี reservation');await call('fail',{recording_id:latest.recording_id});latest=null;await quota()});
 run('refresh',quota);
+run('changePassword',async()=>{const pwd=$('newPassword').value;if(pwd.length<12)throw Error('รหัสผ่านใหม่ต้องมีอย่างน้อย 12 ตัวอักษร');const {error}=await client.auth.updateUser({password:pwd});if(error)throw error;$('recovery').style.display='none';message('เปลี่ยนรหัสผ่านแล้ว');await client.auth.signOut()});
 run('logout',async()=>{const {error}=await client.auth.signOut();if(error)throw error;show(false);message('ออกจากระบบแล้ว')});
 setup();
