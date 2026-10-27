@@ -145,3 +145,22 @@
 #cameraPreviewWrap:fullscreen video{object-fit:contain}
 #cameraPreviewWrap:fullscreen .timer{top:25px;left:25px}
 @media(max-width:700px){#cameraPreviewWrap{min-height:180px}#cameraPreviewWrap.camera-large{height:340px!important}#cameraPreviewWrap.camera-xlarge{height:450px!important}}
+
+/* PACKTOOK 3.5.1 Eagle mascot system */
+.eagle-tip{display:flex;align-items:center;gap:14px;min-width:0;border-radius:18px;background:linear-gradient(110deg,#edf6ff,#fff);border:1px solid #d8e9fc;padding:9px 18px;color:#102c57}
+.eagle-tip img{width:69px;height:74px;object-fit:contain;flex-shrink:0}
+.eagle-tip strong{display:block;font-weight:800;font-size:15px;line-height:1.4}
+.eagle-tip small{display:block;color:#536b8e;font-size:12px;line-height:1.6;margin-top:2px}
+.eagle-page{margin:0 0 21px;max-width:100%}
+.eagle-login{margin:0 0 9px;padding:4px 10px;background:#f0f7ff}
+.eagle-login img{width:58px;height:67px}
+.eagle-login strong{font-size:14px}
+.eagle-login small{font-size:11px}
+.eagle-hero{background:rgba(4,24,54,.66);border-color:rgba(105,190,255,.35);color:white;align-self:flex-start;max-width:380px;margin:22px 0 0;padding:7px 16px}
+.eagle-hero strong{color:#fff}.eagle-hero small{color:#d6eeff}.eagle-hero img{width:75px;height:80px}
+.eagle-sidebar{margin-top:auto;flex-direction:column;gap:2px;text-align:center;background:#122b4e;border:1px solid #27517c;color:#fff;padding:9px 6px}
+.eagle-sidebar img{width:85px;height:90px}
+.eagle-sidebar strong{font-size:12px;color:#fff}.eagle-sidebar small{font-size:10px;color:#c5d8f5}
+.eagle-sidebar + .sidebarbottom{margin-top:0}
+@media(max-width:1000px){.eagle-hero{max-width:320px}.eagle-hero img{width:56px;height:62px}}
+@media(max-width:700px){.eagle-sidebar{display:none}.eagle-page img{width:54px;height:59px}.eagle-page{padding:7px 12px}}
