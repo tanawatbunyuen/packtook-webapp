@@ -95,3 +95,35 @@
 @media (max-width:700px){
   .auth-logo-full img{width:min(240px,82%)}
 }
+
+/* PACKTOOK V3.4.6 — consistent vector brand and framed login */
+#loginPage.auth-layout{display:grid;grid-template-columns:minmax(0,1.72fr) minmax(430px,.8fr);min-height:100vh;background:#061a37;overflow:hidden}
+#loginPage .hero{min-height:850px;padding:38px clamp(30px,4vw,76px) 28px;background:linear-gradient(90deg,rgba(3,16,40,.93),rgba(4,21,51,.81) 38%,rgba(4,25,56,.17) 100%),url('login-background.png') center center/cover no-repeat!important}
+#loginPage .hero:before,#loginPage .hero:after{display:none!important}
+#loginPage .hero-ambient,#loginPage .hero-product-visual{display:none!important}
+#loginPage .hero-copy{position:relative;z-index:2;max-width:510px}
+#loginPage .hero .brand,#loginPage .hero-bottom{position:relative;z-index:3}
+#loginPage .auth-right{background:#061a37!important;padding:34px clamp(20px,2.3vw,45px)!important;display:flex;align-items:center;justify-content:center}
+#loginPage .login-card{background:#fff!important;width:100%;max-width:470px;min-height:690px;border-radius:26px;box-shadow:0 28px 70px #0006;padding:35px clamp(24px,2.6vw,42px);box-sizing:border-box}
+#loginPage .auth-logo-full{margin:0 auto 18px;display:flex;justify-content:center;align-items:center}
+.packtook-lockup{display:inline-flex;align-items:center;gap:12px;line-height:1;max-width:100%;white-space:nowrap}
+.packtook-lockup .packtook-mark{width:75px!important;height:75px!important;object-fit:contain;border-radius:0!important;flex:none;filter:none!important}
+.packtook-type{display:flex;flex-direction:column;gap:8px}
+.packtook-type strong{display:block;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:clamp(28px,3vw,48px);font-weight:900;letter-spacing:-1.7px;line-height:1;color:#fff}
+.packtook-type strong span{color:#17b5f9}
+.packtook-type small{display:block;font-size:clamp(8px,.9vw,12px);font-weight:700;letter-spacing:2.15px;line-height:1.1;color:#d9e6fb}
+.packtook-lockup-dark .packtook-type strong{color:#0b1d45}
+.packtook-lockup-dark .packtook-type small{color:#7085a9}
+#loginPage .auth-logo-full .packtook-mark{width:72px!important;height:72px!important}
+#loginPage .auth-logo-full .packtook-type strong{font-size:32px}
+#loginPage .auth-logo-full .packtook-type small{font-size:8px;letter-spacing:1.65px}
+#loginPage .hero-brand{display:flex;flex-wrap:wrap;gap:15px;align-items:center}
+#loginPage .hero-brand .saas-pill{margin:0}
+#loginPage .login-card h2{margin-top:23px}
+#appPage .sidebrand{justify-content:flex-start;margin:8px 6px 32px}
+#appPage .sidebrand .packtook-mark{width:44px!important;height:44px!important}
+#appPage .sidebrand .packtook-type strong{font-size:20px;letter-spacing:-.6px}
+#appPage .sidebrand .packtook-type small{font-size:6px;letter-spacing:.8px}
+@media(max-width:1120px){#loginPage.auth-layout{grid-template-columns:minmax(0,1.1fr) 420px}#loginPage .hero{padding:30px 24px}#loginPage .hero-brand .packtook-mark{width:55px!important;height:55px!important}#loginPage .hero-brand .packtook-type strong{font-size:31px}#loginPage .hero-brand .packtook-type small{font-size:8px}}
+@media(max-width:850px){#loginPage.auth-layout{grid-template-columns:1fr}#loginPage .hero{min-height:630px}#loginPage .auth-right{padding:35px 18px!important}#loginPage .login-card{min-height:0}}
+@media(max-width:700px){#loginPage .hero{display:none!important}#loginPage .auth-right{min-height:100vh}}
