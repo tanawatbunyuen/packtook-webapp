@@ -38,7 +38,7 @@ async function deleteRecordedVideo(log,ask=true){
  try{await folder.removeEntry(log.filename)}
  catch(e){toast('ลบไฟล์ไม่สำเร็จ: '+e.message);return false}
  if(!$('videoPanel').hidden)closePlayback();
- store.logs=store.logs.filter(x=>x!==log);persist();renderHistory();updateQuota();
+ log.deleted=true;log.deletedAt=Date.now();persist();renderHistory();updateQuota();
  toast('ลบไฟล์แล้ว (ไม่คืนโควตา)');return true
 }
 let cleanupRunning=false;
@@ -48,7 +48,7 @@ async function runRetention(force=false){
  $('retentionStatus').textContent=days?('ตั้งค่าลบอัตโนมัติเมื่อเกิน '+days+' วัน; ทำงานเมื่อเปิดหน้า Dashboard และมีสิทธิ์โฟลเดอร์'):'ไม่ลบอัตโนมัติ';
  if(!days)return;
  const cutoff=Date.now()-days*86400000;
- const expired=store.logs.filter(x=>Number(x.timestamp)<cutoff);
+ const expired=store.logs.filter(x=>!x.deleted&&Number(x.timestamp)<cutoff);
  if(!expired.length){if(force)toast('ไม่พบวิดีโอหมดอายุ');return}
  if(!folder)await restoreFolder(false);
  if(!folder){toast('ต้องเชื่อมโฟลเดอร์เก็บวิดีโอเพื่อทำความสะอาด');return}
@@ -56,11 +56,11 @@ async function runRetention(force=false){
  cleanupRunning=true;let removed=0;
  try{let perm=await folder.queryPermission({mode:'readwrite'});if(perm!=='granted'){if(force)perm=await folder.requestPermission({mode:'readwrite'});else{toast('กรุณากดเชื่อมโฟลเดอร์ เพื่ออนุญาตลบอัตโนมัติ');return}}
  if(perm!=='granted')return;
- for(const log of expired){try{await folder.removeEntry(log.filename);store.logs=store.logs.filter(x=>x!==log);removed++}catch(e){console.warn('Cleanup skipped',log.filename,e)}}
+ for(const log of expired){try{await folder.removeEntry(log.filename);log.deleted=true;log.deletedAt=Date.now();removed++}catch(e){console.warn('Cleanup skipped',log.filename,e)}}
  persist();renderHistory();if(removed)toast('ลบวิดีโอหมดอายุแล้ว '+removed+' ไฟล์')
  }finally{cleanupRunning=false}
 }
-function renderHistory(){const date=$('dateFilter').value;const barcode=($('barcodeFilter').value||'').trim().toLowerCase();$('allVideos').textContent=store.logs.length.toLocaleString();$('monthVideos').textContent=used().toLocaleString();const rows=store.logs.filter(x=>(!date||x.day===date)&&(!barcode||x.barcode.toLowerCase().includes(barcode))).sort((a,b)=>b.timestamp-a.timestamp);$('historyRows').replaceChildren();if(!rows.length){const tr=document.createElement('tr');const td=document.createElement('td');td.colSpan=5;td.textContent='ยังไม่มีวิดีโอที่ตรงกับเงื่อนไข';tr.append(td);$('historyRows').append(tr);return}rows.forEach(r=>{const tr=document.createElement('tr');[new Date(r.timestamp).toLocaleString('th-TH'),r.barcode,r.worker,`${r.seconds} วินาที`].forEach(t=>{const td=document.createElement('td');td.textContent=t;tr.append(td)});const td=document.createElement('td');const b=document.createElement('button');b.className='video-action';b.type='button';b.textContent='▶ เปิดวิดีโอ';b.title=r.filename;b.addEventListener('click',()=>playHistory(r));td.append(b);const del=document.createElement('button');del.type='button';del.className='video-delete';del.textContent='ลบไฟล์';del.addEventListener('click',()=>deleteRecordedVideo(r));td.append(' ',del);tr.append(td);$('historyRows').append(tr)})}
+function renderHistory(){const date=$('dateFilter').value;const barcode=($('barcodeFilter').value||'').trim().toLowerCase();$('allVideos').textContent=store.logs.filter(x=>!x.deleted).length.toLocaleString();$('monthVideos').textContent=used().toLocaleString();const rows=store.logs.filter(x=>!x.deleted&&(!date||x.day===date)&&(!barcode||x.barcode.toLowerCase().includes(barcode))).sort((a,b)=>b.timestamp-a.timestamp);$('historyRows').replaceChildren();if(!rows.length){const tr=document.createElement('tr');const td=document.createElement('td');td.colSpan=5;td.textContent='ยังไม่มีวิดีโอที่ตรงกับเงื่อนไข';tr.append(td);$('historyRows').append(tr);return}rows.forEach(r=>{const tr=document.createElement('tr');[new Date(r.timestamp).toLocaleString('th-TH'),r.barcode,r.worker,`${r.seconds} วินาที`].forEach(t=>{const td=document.createElement('td');td.textContent=t;tr.append(td)});const td=document.createElement('td');const b=document.createElement('button');b.className='video-action';b.type='button';b.textContent='▶ เปิดวิดีโอ';b.title=r.filename;b.addEventListener('click',()=>playHistory(r));td.append(b);const del=document.createElement('button');del.type='button';del.className='video-delete';del.textContent='ลบไฟล์';del.addEventListener('click',()=>deleteRecordedVideo(r));td.append(' ',del);tr.append(td);$('historyRows').append(tr)})}
 function safeFilename(s){return (s||'order').replace(/[^\w\-ก-๙]/g,'_').slice(0,70)}
 function fmtSec(s){return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
 function cameraState(on){$('noCam').hidden=on;$('cameraBtn').textContent=on?'ปิดกล้อง':'เปิดกล้อง';if(!activeBarcode)$('recBadge').textContent=on?'● CAMERA ON':'● CAMERA OFF'}
