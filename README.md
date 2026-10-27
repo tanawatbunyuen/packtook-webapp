@@ -1,32 +1,23 @@
-# PACKTOOK GitHub Pages Demo
+# PACKTOOK Premium GitHub Pages Demo v3.3
 
-Static demo: HTML/CSS/JS. No Node.js, database, or server required. This repository is **not** the commercial SaaS backend.
+Static web app for GitHub Pages. No Node.js or server installation required for customers.
 
-## Deploy on GitHub Pages
+## Publish
+1. Extract the ZIP.
+2. Upload the **files inside** to the ROOT of a new or existing GitHub repository. Required in root: `index.html`, `app.js`, `style.css`, `logo.svg`, `.nojekyll`.
+3. Commit. Go to Settings > Pages > Deploy from a branch > main > /(root) > Save.
+4. Allow time for deployment. Hard refresh with Ctrl+Shift+R or open a private browser window.
 
-1. Create a new public GitHub repository named `packtook-webapp` (separate from the legacy `packing-video-recorder`).
-2. Upload `index.html`, `style.css`, `app.js`, `logo.svg`, `.nojekyll` to the repository root.
-3. Repository > **Settings > Pages > Build and deployment > Deploy from a branch**. Select **main** and **/(root)**, Save.
-4. Visit `https://<github-user>.github.io/packtook-webapp/` after deployment is complete. URL is an example until published.
-
-## Demo login
+## Demo credentials
 - Email: `demo@packtook.test`
 - Password: `DemoPacktook2026!`
-- Client-side only. These are public sample credentials **NOT** authentication; anyone can inspect the code.
 
-## Features
-- Responsive PACKTOOK premium login, navigation, pricing preview, quota display.
-- Camera preview, Barcode scan via keyboard+Enter; same barcode stops and saves WebM to a user-authorized local directory.
-- Basic history stored in this browser's localStorage.
-- Quota = one successfully written video, including repeated barcode; monthly counted by local device date. Local quotas and plan changes are **not secure** and cannot be enforced across devices.
-- Password demo and pricing simulation are for UX testing only. No payments are charged.
+## Included
+- Premium PACKTOOK login and app branding, responsive layout
+- Packing video recorder with camera + folder selection, barcode first scan starts, second scan stops
+- Dashboard with date and barcode filter, monthly and total counts
+- Pricing simulation: Free 20, Starter THB199/50, Basic THB299/300, Growth THB599/1500, Business THB1290/5000, Pro THB1990/15000, Enterprise THB3990/30000 videos per month
+- Infographic 6-step how-to page
 
-## Requirements and limitations
-- Latest desktop Chrome or Edge; HTTPS (GitHub Pages provides it), camera access and directory access granted by user.
-- Works only while page is open; avoid screen sleeping and browser tab suspension. No crash-proof guarantees.
-- Local file writing is not supported in all browsers. iOS Safari cannot use the required desktop directory picker.
-- Dashboard lists filenames but doesn't automatically reopen saved videos because browser folder permissions aren't persisted by this demo. Open actual recordings from the local folder.
-- Video is **not** uploaded to GitHub or Cloud.
-- Monthly limits are locally simulated only. For commercial subscriptions implement server-authenticated account, signed entitlements, atomic quota reservation/commit, secure storage and payments.
-- Do not store real secrets in repo. This repo is intentionally static and public.
-- No promises of long-duration camera reliability: carry out endurance, disconnection, disk-full and power-loss testing prior to production.
+## IMPORTANT limitations
+**Demo only.** Authentication is hard-coded and quota is simulated with browser localStorage. All users can alter client-side data; this is NOT suitable for collecting payments, real user accounts, or enforcing paid quotas. Recordings are stored in the folder selected by the user, on their own device. Local history is per-browser and contains metadata, not cloud video. Chrome/Edge desktop and secure origin (HTTPS) required for key APIs. Recorder persistence, long-running reliability, video file recovery, and multi-machine licenses require further implementation and physical testing before production.
