@@ -70,3 +70,21 @@
 @media(max-width:1280px){#loginPage.auth-layout{grid-template-columns:minmax(0,1.2fr) 420px}#loginPage .hero{padding-left:36px}#loginPage .hero-product-visual{left:55%;opacity:.65}#loginPage .hero h1{font-size:37px}#loginPage .hero-copy{max-width:410px}}
 @media(max-width:900px){#loginPage.auth-layout{grid-template-columns:1fr}#loginPage .hero{min-height:660px;padding-bottom:94px}#loginPage .hero-product-visual{left:48%;top:27%;bottom:10%;opacity:.5}#loginPage .auth-right{padding:24px}#loginPage .login-card{min-height:unset}#loginPage .hero-bottom{display:flex}}
 @media(max-width:650px){#loginPage .hero{display:none}#loginPage .auth-right{min-height:100vh;background:linear-gradient(145deg,#061c3d,#1d5ca0)}#loginPage .login-card{padding:28px 22px;border-radius:20px}}
+
+/* V3.4.3: visual step-by-step guide */
+#help .page-intro h3{font-size:clamp(29px,3vw,38px)}
+#help .page-intro p{font-size:17px;line-height:1.85}
+#help .infographic-steps{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}
+#help .step-card{padding:23px;min-height:0}
+#help .step-illustration{height:205px;margin:-6px -6px 16px;overflow:hidden;border-radius:15px;background:#eaf4ff;border:1px solid #d7e9fe;display:grid;place-items:center}
+#help .step-illustration img{width:100%;height:100%;object-fit:contain;display:block}
+#help .step-card h3{font-size:21px;line-height:1.5;margin-top:15px}
+#help .step-card p{font-size:16px;line-height:1.85;color:#415a7b}
+#help .step-num{font-size:37px;color:#9cbae6}
+#help .step-tag{font-size:12px;padding:9px 13px}
+#help .workflow-panel h3{font-size:25px}
+#help .workflow-panel>p,#help .workflow span{font-size:15px;line-height:1.6}
+#help .faq-grid .panel h3{font-size:21px}
+#help .faq-grid .panel p{font-size:16px;line-height:1.85;color:#455b76}
+@media(max-width:850px){#help .infographic-steps{grid-template-columns:1fr}}
+@media(max-width:550px){#help .step-illustration{height:180px}#help .step-card h3{font-size:19px}#help .step-card p{font-size:15px}}
