@@ -64,3 +64,12 @@ exports.finalizeCredit=onCall(options,async req=>{
   return {status:next};
  })
 });
+
+exports.recordingStatus=onCall(options,async req=>{
+ const id=uid(req),op=data(req).operationId;
+ if(!validOp(op))throw new HttpsError("invalid-argument","Invalid operation ID");
+ const snap=await own(id).collection("recordings").doc(op).get();
+ if(!snap.exists)throw new HttpsError("not-found","Recording reservation not found");
+ const r=snap.data();
+ return {recordingId:op,status:r.status,barcode:r.barcode,period:r.period,file:r.file||null};
+});
