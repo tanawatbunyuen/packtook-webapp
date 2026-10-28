@@ -1,6 +1,5 @@
 "use strict";
 const {onCall,HttpsError}=require("firebase-functions/v2/https");
-const {onUserCreated}=require("firebase-functions/v2/identity");
 const admin=require("firebase-admin");
 admin.initializeApp();
 const db=admin.firestore();
@@ -13,15 +12,14 @@ function data(req){return req.data&&typeof req.data==="object"?req.data:{}}
 function validOp(id){return typeof id==="string"&&/^[a-zA-Z0-9_-]{16,100}$/.test(id)}
 function own(uid){return db.collection("accounts").doc(uid)}
 function periodId(at){return new Date(at).toISOString().slice(0,7)}
-async function accountTx(tx,ref,id){const snap=await tx.get(ref);if(!snap.exists)throw new HttpsError("failed-precondition","Account missing");const acc=snap.data();if(!Object.prototype.hasOwnProperty.call(limits,acc.plan))throw new HttpsError("failed-precondition","Unknown plan");if(acc.period!==id){ // reset monthly counter; do not unlock old reservations
- tx.update(ref,{period:id,used:0,reserved:0,updatedAt:FieldValue.serverTimestamp()});return {...acc,period:id,used:0,reserved:0}
-}return acc}
-exports.provisionAccount=onUserCreated({region},async(event)=>{
- const id=event.data?.uid;if(!id)return;
- const ref=own(id);await ref.create({plan:"Free",period:periodId(Date.now()),used:0,reserved:0,createdAt:FieldValue.serverTimestamp()}).catch(err=>{if(err.code!==6&&err.code!=="already-exists")throw err});
-});
+async function ensureAccount(id){
+ const ref=own(id);
+ try{await ref.create({plan:"Free",period:periodId(Date.now()),used:0,reserved:0,createdAt:FieldValue.serverTimestamp()})}
+ catch(e){if(e.code!==6&&e.code!=="already-exists")throw e}
+ return ref;
+}
 exports.usageStatus=onCall(options,async req=>{
- const id=uid(req),snap=await own(id).get();
+ const id=uid(req),ref=await ensureAccount(id),snap=await ref.get();
  if(!snap.exists)throw new HttpsError("failed-precondition","Account not provisioned");
  const a=snap.data(),limit=limits[a.plan];if(limit===undefined)throw new HttpsError("failed-precondition","Invalid plan");
  const current=periodId(Date.now()),used=a.period===current?a.used||0:0,reserved=a.period===current?a.reserved||0:0;
@@ -30,7 +28,7 @@ exports.usageStatus=onCall(options,async req=>{
 exports.reserveCredit=onCall(options,async req=>{
  const id=uid(req),body=data(req),op=body.operationId,barcode=body.barcode;
  if(!validOp(op)||typeof barcode!=="string"||!barcode.trim()||barcode.length>160)throw new HttpsError("invalid-argument","Invalid operation or barcode");
- const ref=own(id),rec=ref.collection("recordings").doc(op),period=periodId(Date.now());
+ const ref=await ensureAccount(id),rec=ref.collection("recordings").doc(op),period=periodId(Date.now());
  return db.runTransaction(async tx=>{
   // All reads before any transaction writes.
   const [aSnap,rSnap]=await Promise.all([tx.get(ref),tx.get(rec)]);
