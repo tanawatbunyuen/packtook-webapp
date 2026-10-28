@@ -103,7 +103,7 @@ function plan(){return plans.find(p=>p[0]===store.plan)||plans[0]}
 function updateQuota(){const q=remoteQuota;const p=q?plans.find(x=>x[0]===q.plan)||plans[0]:plans[0];const u=q?.used??0,unlimited=q?.limit===null;const left=q?.remaining??0;$('planName').textContent=p[0].toUpperCase();$('usedCount').textContent=u.toLocaleString();$('remainingCount').textContent=unlimited?'∞':left.toLocaleString();$('limitLabel').textContent=unlimited?'ไม่จำกัดวิดีโอ':`จาก ${(q?.limit??20).toLocaleString()} วิดีโอ`;$('quotaText').textContent=unlimited?`${u.toLocaleString()} / ไม่จำกัด`:`${u.toLocaleString()} / ${(q?.limit??20).toLocaleString()}`;$('quotaProgress').style.width=unlimited?'0%':`${Math.min(100,u/(q?.limit||20)*100)}%`}
 
 function showTab(tab){document.querySelectorAll('.tabcontent').forEach(e=>e.hidden=e.id!==tab);document.querySelectorAll('.nav').forEach(e=>e.classList.toggle('active',e.dataset.tab===tab));$('crumb').textContent=tab.toUpperCase();$('pageTitle').textContent={packing:'บันทึกวิดีโอการแพ็กสินค้า',dashboard:'ค้นหาประวัติวิดีโอ',plans:'แพ็กเกจและโควตาวิดีโอ',help:'คู่มือการใช้งาน',users:'จัดการผู้ใช้และอุปกรณ์'}[tab];if(tab==='dashboard'){renderHistory();void runRetention(false)}if(tab==='plans')renderPlans();if(tab==='users'){updateUsersSummary();void refreshRemoteQuota().catch(e=>toast(e.message));void renderDeviceManager()}}
-async function startOmiseUI(id,method){
+async function startOmiseUI(id,method,amountTHB){
  if(!confirm('ชำระผ่าน Omise TEST MODE เท่านั้น ไม่มีการเก็บเงินจริง ต้องการดำเนินการต่อ?'))return;
  try{
   let token=null;
@@ -112,7 +112,7 @@ async function startOmiseUI(id,method){
    if(!window.OmiseCard)throw Error('โหลด Omise.js ไม่สำเร็จ');
    window.OmiseCard.configure({publicKey:settings.publicKey,frameLabel:'PACKTOOK',submitLabel:'Pay (TEST)',currency:'thb'});
    token=await new Promise((resolve,reject)=>{
-    window.OmiseCard.open({amount:100,currency:'thb',defaultPaymentMethod:'credit_card',
+    window.OmiseCard.open({amount:amountTHB*100,currency:'thb',defaultPaymentMethod:'credit_card',
      onCreateTokenSuccess:nonce=>resolve(nonce),
      onFormClosed:()=>reject(Error('ยกเลิกหน้าชำระเงิน'))});
    });
@@ -145,9 +145,9 @@ async function renderSubscriptionRequests(){
  const controls=document.createElement('div');controls.style.marginTop='8px';
  if(x.status==='pending_payment_setup'){
   const qr=document.createElement('button');qr.type='button';qr.className='secondary';qr.textContent='PromptPay QR (Test)';
-  qr.onclick=()=>startOmiseUI(x.id,'promptpay');controls.append(qr);
+  qr.onclick=()=>startOmiseUI(x.id,'promptpay',x.amountTHB);controls.append(qr);
   const card=document.createElement('button');card.type='button';card.className='secondary';card.style.marginLeft='8px';card.textContent='บัตรเครดิต (Test)';
-  card.onclick=()=>startOmiseUI(x.id,'card');controls.append(card);
+  card.onclick=()=>startOmiseUI(x.id,'card',x.amountTHB);controls.append(card);
  }else{
   const check=document.createElement('button');check.type='button';check.className='secondary';check.textContent='ตรวจสอบสถานะจาก Omise';
   check.onclick=async()=>{try{const st=await credit().omisePaymentStatus(x.id);toast('สถานะ: '+st.status);await refreshRemoteQuota();await renderSubscriptionRequests()}catch(e){toast(e.message)}};controls.append(check);
