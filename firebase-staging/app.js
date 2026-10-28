@@ -72,7 +72,7 @@ function updateUsersSummary(){
  $('userPlanName').textContent=q?.plan||'—';
  const expiry=q?.planExpiresAt;
  $('userPlanExpiry').textContent=expiry?new Date(expiry).toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'}):'ยังไม่ได้กำหนด';
- $('userPlanExpiryNote').textContent=expiry?'วันที่กำหนดในระบบสมาชิก':'ระบบชำระเงินและวันหมดอายุยังไม่เปิดใช้';
+ $('userPlanExpiryNote').textContent=expiry?'วันที่กำหนดในระบบสมาชิก':(q?.subscriptionStatus==='expired'?'แพ็กเกจหมดอายุ — ไม่สามารถจองเครดิตใหม่':q?.subscriptionStatus==='active'?'แพ็กเกจยังมีผลใช้งาน':q?.subscriptionStatus==='invalid'?'ข้อมูลวันหมดอายุไม่ถูกต้อง':q?.subscriptionStatus==='free'?'Free Plan — ไม่มีวันหมดอายุ':'ยังไม่มีข้อมูลวันหมดอายุที่ยืนยันจากระบบ');
  $('userQuotaRemaining').textContent=q?(q.limit===null?'ไม่จำกัด':Number(q.remaining||0).toLocaleString('th-TH')):'—';
  $('userQuotaDetail').textContent=q?'ใช้แล้ว '+(q.used||0)+' • จองอยู่ '+(q.reserved||0)+' / เดือน '+q.period:'ไม่พบข้อมูลเครดิต';
 }
