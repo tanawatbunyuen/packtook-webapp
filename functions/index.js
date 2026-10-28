@@ -36,17 +36,21 @@ exports.reserveCredit=onCall(options,async req=>{
  const ref=await ensureAccount(id),rec=ref.collection("recordings").doc(op),period=periodId(Date.now()),code=barcode.trim(),key=ref.collection("barcodeLocks").doc(barcodeKey(code));
  return db.runTransaction(async tx=>{
   // All reads before any transaction writes.
-  const [aSnap,rSnap,kSnap]=await Promise.all([tx.get(ref),tx.get(rec),tx.get(key)]);
+  const approvalId=body.approvalId;const approvalRef=typeof approvalId==="string"&&validOp(approvalId)?ref.collection("duplicateApprovals").doc(approvalId):null;
+  const [aSnap,rSnap,kSnap,approvalSnap]=await Promise.all([tx.get(ref),tx.get(rec),tx.get(key),approvalRef?tx.get(approvalRef):Promise.resolve(null)]);
   if(!aSnap.exists)throw new HttpsError("failed-precondition","Account not provisioned");
   const a=aSnap.data(),limit=limits[a.plan];if(limit===undefined)throw new HttpsError("failed-precondition","Invalid plan");
   if(!(a.devices||[]).some(d=>d.id===body.deviceId))throw new HttpsError("permission-denied","Device not registered");
   const sub=subscriptionState(a);if(sub==="expired"||sub==="invalid")throw new HttpsError("permission-denied","Subscription expired or invalid");
   if(rSnap.exists){const old=rSnap.data();if(old.barcode!==barcode.trim())throw new HttpsError("already-exists","Operation ID previously used");return {recordingId:op,status:old.status,idempotent:true}}
-  if(kSnap.exists&&kSnap.data().operationId!==op)throw new HttpsError("already-exists","Barcode already scanned or recorded");
+  const override=kSnap.exists&&kSnap.data().operationId!==op;
+  if(override){const approved=approvalSnap?.exists?approvalSnap.data():null;if(!approved||approved.barcode!==code||approved.status!=="approved"||approved.expiresAtMs<=Date.now())throw new HttpsError("already-exists","Barcode already scanned or recorded");if(kSnap.data().status!=="completed")throw new HttpsError("failed-precondition","Previous recording is not completed")}
+  if(!override&&approvalId)throw new HttpsError("failed-precondition","Override is not required");
   const samePeriod=a.period===period,used=samePeriod?(a.used||0):0,reserved=samePeriod?(a.reserved||0):0;
   if(limit!==null&&used+reserved>=limit)throw new HttpsError("resource-exhausted","Monthly video quota exceeded");
-  tx.set(rec,{barcode:code,status:"reserved",period,createdAt:FieldValue.serverTimestamp(),file:null});
-  tx.set(key,{operationId:op,barcode:code,status:"reserved",createdAt:FieldValue.serverTimestamp()});
+  tx.set(rec,{barcode:code,status:"reserved",period,createdAt:FieldValue.serverTimestamp(),file:null,overrideOf:override?kSnap.data().operationId:null,approvalId:override?approvalId:null});
+  if(override)tx.update(approvalRef,{status:"consumed",consumedBy:op,consumedAt:FieldValue.serverTimestamp()});
+  tx.set(key,{operationId:op,barcode:code,status:"reserved",previousOperationId:override?kSnap.data().operationId:null,createdAt:FieldValue.serverTimestamp()});
   tx.update(ref,{period,used,reserved:reserved+1,updatedAt:FieldValue.serverTimestamp()});
   tx.create(ref.collection("audit").doc(),{action:"reserve",recordingId:op,createdAt:FieldValue.serverTimestamp()});
   return {recordingId:op,status:"reserved",remaining:limit===null?null:Math.max(0,limit-used-reserved-1)};
@@ -68,7 +72,7 @@ exports.finalizeCredit=onCall(options,async req=>{
   }
   const next=success?"completed":"failed";
   tx.update(rec,{status:next,finalizedAt:FieldValue.serverTimestamp(),file:success?{filename:d.filename,bytes:d.bytes}:null});
-  if(kSnap.exists&&kSnap.data().operationId===op){if(success)tx.update(key,{status:"completed",finalizedAt:FieldValue.serverTimestamp()});else tx.delete(key)}
+  if(kSnap.exists&&kSnap.data().operationId===op){if(success)tx.update(key,{status:"completed",finalizedAt:FieldValue.serverTimestamp()});else if(r.overrideOf)tx.set(key,{operationId:r.overrideOf,barcode:r.barcode,status:"completed",restoredAt:FieldValue.serverTimestamp()});else tx.delete(key)}
   // Credit count of a previous period stays in its own period; never deduct it from the current month.
   if(a.period===r.period)tx.update(acc,{reserved:FieldValue.increment(-1),...(success?{used:FieldValue.increment(1)}:{}),updatedAt:FieldValue.serverTimestamp()});
   tx.create(acc.collection("audit").doc(),{action:next,recordingId:op,createdAt:FieldValue.serverTimestamp()});
@@ -117,5 +121,23 @@ exports.removeDevice=onCall(options,async req=>{
   if(!devices.some(x=>x.id===d.targetId))throw new HttpsError("not-found","Device not found");
   tx.update(ref,{devices:devices.filter(x=>x.id!==d.targetId),updatedAt:FieldValue.serverTimestamp()});
   return {removed:true};
+ });
+});
+
+exports.authorizeDuplicate=onCall(options,async req=>{
+ const accountId=uid(req),d=data(req),barcode=typeof d.barcode==="string"?d.barcode.trim():"",reason=typeof d.reason==="string"?d.reason.trim():"";
+ if(!barcode||barcode.length>160||reason.length<10||reason.length>500)throw new HttpsError("invalid-argument","Barcode and reason (10-500 characters) required");
+ const acc=await ensureAccount(accountId),lock=acc.collection("barcodeLocks").doc(barcodeKey(barcode));
+ const approval=acc.collection("duplicateApprovals").doc(),now=Date.now();
+ return db.runTransaction(async tx=>{
+  const [aSnap,lSnap]=await Promise.all([tx.get(acc),tx.get(lock)]);
+  if(!lSnap.exists||lSnap.data().status!=="completed")throw new HttpsError("failed-precondition","No completed video for barcode");
+  const a=aSnap.data();
+  // Account currently has a single Firebase user; separate employee roles are not yet implemented.
+  if(a.ownerUid&&a.ownerUid!==accountId)throw new HttpsError("permission-denied","Owner approval required");
+  if(!a.ownerUid)tx.update(acc,{ownerUid:accountId});
+  tx.create(approval,{barcode,reason,status:"approved",approvedBy:accountId,approvedAt:FieldValue.serverTimestamp(),expiresAtMs:now+5*60*1000,originalOperationId:lSnap.data().operationId});
+  tx.create(acc.collection("audit").doc(),{action:"duplicate_approved",barcode,reason,approvalId:approval.id,approvedBy:accountId,createdAt:FieldValue.serverTimestamp()});
+  return {approvalId:approval.id,expiresAtMs:now+5*60*1000};
  });
 });
