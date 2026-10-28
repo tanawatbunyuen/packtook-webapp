@@ -4,6 +4,7 @@ const {onRequest}=require("firebase-functions/v2/https");
 const {defineSecret}=require("firebase-functions/params");
 const omiseKey=defineSecret("OMISE_SECRET_KEY");
 const omisePublicKey=defineSecret("OMISE_PUBLIC_KEY");
+const omiseWebhookKey=defineSecret("OMISE_WEBHOOK_SECRET");
 const admin=require("firebase-admin");
 const crypto=require("node:crypto");
 admin.initializeApp();
@@ -249,8 +250,16 @@ exports.omisePaymentStatus=onCall(paymentSecrets,async req=>{
  if(!snap.data().omiseChargeId)return {status:snap.data().status};
  return reconcileCharge(user,id,snap.data().omiseChargeId);
 });
-exports.omisePaymentWebhook=onRequest({region,secrets:[omiseKey],invoker:"public"},async(req,res)=>{
+exports.omisePaymentWebhook=onRequest({region,secrets:[omiseKey,omiseWebhookKey],invoker:"public"},async(req,res)=>{
  if(req.method!=="POST"){res.status(405).send("Method not allowed");return}
+ const ts=String(req.headers["omise-signature-timestamp"]||"");
+ const sigs=String(req.headers["omise-signature"]||"").split(",");
+ if(!req.rawBody||!/^\d{10}$/.test(ts)||Math.abs(Date.now()/1000-Number(ts))>300){res.status(401).send("Invalid timestamp");return}
+ const secret=omiseWebhookKey.value();
+ if(!secret){res.status(503).send("Webhook secret missing");return}
+ const expected=crypto.createHmac("sha256",Buffer.from(secret,"base64")).update(ts+"."+req.rawBody.toString("utf8")).digest();
+ const valid=sigs.some(sig=>{if(!/^[a-f0-9]{64}$/i.test(sig.trim()))return false;return crypto.timingSafeEqual(Buffer.from(sig.trim(),"hex"),expected)});
+ if(!valid){res.status(401).send("Invalid signature");return}
  const event=req.body;
  if(event?.key!=="charge.complete"||!/^chrg_test_[a-zA-Z0-9]+$/.test(event?.data?.id||"")){res.status(200).send("ignored");return}
  const id=event.data.metadata?.requestId,user=event.data.metadata?.uid;
