@@ -159,7 +159,7 @@ async function renderSubscriptionRequests(){
 function renderPlans(){
  $('planGrid').innerHTML=plans.map(p=>`<article class="plan ${remoteQuota?.plan===p[0]?'selected':''}"><h4>${p[0]}</h4><div class="price">฿${p[1].toLocaleString()}<small>/เดือน</small></div><p>${Number.isFinite(p[2])?p[2].toLocaleString():'ไม่จำกัด'} วิดีโอ / เดือน</p><p>${p[3]} เครื่อง</p><button type="button" class="secondary" data-plan-request="${p[0]}" ${p[0]==='Free'||remoteQuota?.plan===p[0]?'disabled':''}>${remoteQuota?.plan===p[0]?'แพ็กเกจปัจจุบัน':p[0]==='Free'?'แผนใช้ฟรี':'ส่งคำขอแพ็กเกจ'}</button></article>`).join('');
  document.querySelectorAll('[data-plan-request]').forEach(button=>button.addEventListener('click',async()=>{
-  const p=button.dataset.planRequest;if(!confirm('สร้างคำขอแพ็กเกจ '+p+'? จะยังไม่เก็บเงินจนกว่าจะยืนยันชำระบน Stripe Checkout'))return;
+  const p=button.dataset.planRequest;if(!confirm('สร้างคำขอแพ็กเกจ '+p+'? จะยังไม่เก็บเงินจนกว่าจะยืนยันชำระผ่าน Omise (Test Mode)'))return;
   button.disabled=true;
   try{const result=await credit().requestPlanChange(p);toast('บันทึกคำขอ '+result.plan+' แล้ว โปรดเลือกชำระเงินในประวัติคำขอ');await renderSubscriptionRequests()}catch(e){toast('ส่งคำขอไม่สำเร็จ: '+e.message)}finally{button.disabled=false}
  }));
