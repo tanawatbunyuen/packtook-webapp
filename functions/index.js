@@ -5,6 +5,7 @@ admin.initializeApp();
 const db=admin.firestore();
 const {FieldValue}=admin.firestore;
 const limits={Free:20,Starter:50,Basic:300,Growth:1500,Business:5000,Pro:null};
+const deviceLimits={Free:1,Starter:1,Basic:1,Growth:3,Business:5,Pro:10};
 const region="asia-southeast1";
 const options={region,maxInstances:20,timeoutSeconds:30}; // Enable enforceAppCheck:true after configuring web App Check.
 function uid(req){if(!req.auth)throw new HttpsError("unauthenticated","Please sign in");if(req.auth.token.email_verified!==true)throw new HttpsError("permission-denied","Verify your email");return req.auth.uid}
@@ -27,6 +28,7 @@ exports.usageStatus=onCall(options,async req=>{
 });
 exports.reserveCredit=onCall(options,async req=>{
  const id=uid(req),body=data(req),op=body.operationId,barcode=body.barcode;
+ if(!validDevice(body.deviceId))throw new HttpsError("permission-denied","Device registration required");
  if(!validOp(op)||typeof barcode!=="string"||!barcode.trim()||barcode.length>160)throw new HttpsError("invalid-argument","Invalid operation or barcode");
  const ref=await ensureAccount(id),rec=ref.collection("recordings").doc(op),period=periodId(Date.now());
  return db.runTransaction(async tx=>{
@@ -34,6 +36,7 @@ exports.reserveCredit=onCall(options,async req=>{
   const [aSnap,rSnap]=await Promise.all([tx.get(ref),tx.get(rec)]);
   if(!aSnap.exists)throw new HttpsError("failed-precondition","Account not provisioned");
   const a=aSnap.data(),limit=limits[a.plan];if(limit===undefined)throw new HttpsError("failed-precondition","Invalid plan");
+  if(!(a.devices||[]).some(d=>d.id===body.deviceId))throw new HttpsError("permission-denied","Device not registered");
   if(rSnap.exists){const old=rSnap.data();if(old.barcode!==barcode.trim())throw new HttpsError("already-exists","Operation ID previously used");return {recordingId:op,status:old.status,idempotent:true}}
   const samePeriod=a.period===period,used=samePeriod?(a.used||0):0,reserved=samePeriod?(a.reserved||0):0;
   if(limit!==null&&used+reserved>=limit)throw new HttpsError("resource-exhausted","Monthly video quota exceeded");
@@ -72,4 +75,39 @@ exports.recordingStatus=onCall(options,async req=>{
  if(!snap.exists)throw new HttpsError("not-found","Recording reservation not found");
  const r=snap.data();
  return {recordingId:op,status:r.status,barcode:r.barcode,period:r.period,file:r.file||null};
+});
+
+function validDevice(id){return typeof id==="string"&&/^[a-zA-Z0-9_-]{16,100}$/.test(id)}
+exports.registerDevice=onCall(options,async req=>{
+ const user=uid(req),d=data(req),id=d.deviceId;
+ if(!validDevice(id))throw new HttpsError("invalid-argument","Invalid device identifier");
+ const name=typeof d.name==="string"?d.name.trim().slice(0,60):"Browser device";
+ const ref=await ensureAccount(user);
+ return db.runTransaction(async tx=>{
+  const snap=await tx.get(ref),a=snap.data(),max=deviceLimits[a.plan];
+  if(!max)throw new HttpsError("failed-precondition","Invalid plan");
+  const devices=Array.isArray(a.devices)?a.devices:[];
+  if(devices.some(x=>x.id===id))return {registered:true,devices:devices.map(x=>({name:x.name,isCurrent:x.id===id})),limit:max};
+  if(devices.length>=max)throw new HttpsError("resource-exhausted","Device limit reached");
+  const next=[...devices,{id,name,addedAt:new Date().toISOString()}];
+  tx.update(ref,{devices:next,updatedAt:FieldValue.serverTimestamp()});
+  return {registered:true,devices:next.map(x=>({name:x.name,isCurrent:x.id===id})),limit:max};
+ });
+});
+exports.deviceStatus=onCall(options,async req=>{
+ const user=uid(req),d=data(req),ref=await ensureAccount(user),snap=await ref.get(),a=snap.data();
+ const devices=Array.isArray(a.devices)?a.devices:[];
+ return {limit:deviceLimits[a.plan],registered:devices.some(x=>x.id===d.deviceId),devices:devices.map(x=>({name:x.name,isCurrent:x.id===d.deviceId,addedAt:x.addedAt}))};
+});
+exports.removeDevice=onCall(options,async req=>{
+ const user=uid(req),d=data(req);if(!validDevice(d.deviceId)||!validDevice(d.targetId))throw new HttpsError("invalid-argument","Invalid device");
+ const ref=own(user);
+ return db.runTransaction(async tx=>{
+  const snap=await tx.get(ref);if(!snap.exists)throw new HttpsError("not-found","Account missing");
+  const a=snap.data(),devices=Array.isArray(a.devices)?a.devices:[];
+  if(!devices.some(x=>x.id===d.deviceId))throw new HttpsError("permission-denied","Device not registered");
+  if(!devices.some(x=>x.id===d.targetId))throw new HttpsError("not-found","Device not found");
+  tx.update(ref,{devices:devices.filter(x=>x.id!==d.targetId),updatedAt:FieldValue.serverTimestamp()});
+  return {removed:true};
+ });
 });
