@@ -24,7 +24,7 @@ exports.usageStatus=onCall(options,async req=>{
  if(!snap.exists)throw new HttpsError("failed-precondition","Account not provisioned");
  const a=snap.data(),limit=limits[a.plan];if(limit===undefined)throw new HttpsError("failed-precondition","Invalid plan");
  const current=periodId(Date.now()),used=a.period===current?a.used||0:0,reserved=a.period===current?a.reserved||0:0;
- return {plan:a.plan,limit,used,reserved,remaining:limit===null?null:Math.max(0,limit-used-reserved),period:current};
+ return {plan:a.plan,limit,used,reserved,remaining:limit===null?null:Math.max(0,limit-used-reserved),period:current,planExpiresAt:typeof a.planExpiresAt==="string"?a.planExpiresAt:null};
 });
 exports.reserveCredit=onCall(options,async req=>{
  const id=uid(req),body=data(req),op=body.operationId,barcode=body.barcode;
