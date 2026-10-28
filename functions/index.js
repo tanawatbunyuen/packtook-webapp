@@ -97,7 +97,7 @@ exports.registerDevice=onCall(options,async req=>{
 exports.deviceStatus=onCall(options,async req=>{
  const user=uid(req),d=data(req),ref=await ensureAccount(user),snap=await ref.get(),a=snap.data();
  const devices=Array.isArray(a.devices)?a.devices:[];
- return {limit:deviceLimits[a.plan],registered:devices.some(x=>x.id===d.deviceId),devices:devices.map(x=>({name:x.name,isCurrent:x.id===d.deviceId,addedAt:x.addedAt}))};
+ return {limit:deviceLimits[a.plan],registered:devices.some(x=>x.id===d.deviceId),devices:devices.map(x=>({id:x.id,name:x.name,isCurrent:x.id===d.deviceId,addedAt:x.addedAt}))};
 });
 exports.removeDevice=onCall(options,async req=>{
  const user=uid(req),d=data(req);if(!validDevice(d.deviceId)||!validDevice(d.targetId))throw new HttpsError("invalid-argument","Invalid device");
@@ -105,7 +105,7 @@ exports.removeDevice=onCall(options,async req=>{
  return db.runTransaction(async tx=>{
   const snap=await tx.get(ref);if(!snap.exists)throw new HttpsError("not-found","Account missing");
   const a=snap.data(),devices=Array.isArray(a.devices)?a.devices:[];
-  if(!devices.some(x=>x.id===d.deviceId))throw new HttpsError("permission-denied","Device not registered");
+  // Verified account owner may retire a lost device from a new browser.
   if(!devices.some(x=>x.id===d.targetId))throw new HttpsError("not-found","Device not found");
   tx.update(ref,{devices:devices.filter(x=>x.id!==d.targetId),updatedAt:FieldValue.serverTimestamp()});
   return {removed:true};
