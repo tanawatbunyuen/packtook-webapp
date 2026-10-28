@@ -1,0 +1,17 @@
+import {initializeApp} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+import {getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,sendEmailVerification,sendPasswordResetEmail,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+import {getFunctions,httpsCallable} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-functions.js";
+import {firebaseConfig} from "./firebase-v4-config.js";
+const $=id=>document.getElementById(id);
+const app=initializeApp(firebaseConfig),auth=getAuth(app),fn=getFunctions(app,"asia-southeast1");
+const call=(name,value)=>httpsCallable(fn,name)(value).then(x=>x.data);
+const status=m=>$("status").textContent=typeof m==="string"?m:JSON.stringify(m,null,2);
+const handle=(id,action)=>$(id).addEventListener("click",async()=>{try{status("กำลังดำเนินการ...");await action()}catch(e){status("Error: "+(e?.message||e))}});
+handle("signup",async()=>{const x=await createUserWithEmailAndPassword(auth,$("email").value.trim(),$("password").value);await sendEmailVerification(x.user);await signOut(auth);status("สร้างบัญชีแล้ว กรุณายืนยันอีเมลก่อน Login")});
+handle("login",async()=>{await signInWithEmailAndPassword(auth,$("email").value.trim(),$("password").value);if(!auth.currentUser?.emailVerified){await signOut(auth);throw Error("กรุณายืนยันอีเมลก่อนเข้าใช้งาน")};status("Login สำเร็จ")});
+handle("reset",async()=>{await sendPasswordResetEmail(auth,$("email").value.trim());status("หากมีบัญชีนี้ ระบบจะส่งอีเมลรีเซ็ตรหัสผ่าน")});
+handle("logout",async()=>{await signOut(auth);status("ออกจากระบบแล้ว")});
+handle("usage",async()=>status(await call("usageStatus",{})));
+handle("reserve",async()=>{const operationId=crypto.randomUUID();const d=await call("reserveCredit",{operationId,barcode:$("barcode").value.trim()});$("operation").value=operationId;status(d)});
+handle("fail",async()=>status(await call("finalizeCredit",{operationId:$("operation").value,success:false})));
+onAuthStateChanged(auth,user=>{$("authPanel").hidden=!!user?.emailVerified;$("usagePanel").hidden=!user?.emailVerified;if(user?.emailVerified)status("เข้าสู่ระบบแล้ว: "+user.email)});
