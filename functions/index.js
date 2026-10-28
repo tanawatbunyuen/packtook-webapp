@@ -54,7 +54,7 @@ exports.reserveCredit=onCall(options,async req=>{
   const samePeriod=a.period===period,used=samePeriod?(a.used||0):0,reserved=samePeriod?(a.reserved||0):0;
   if(limit!==null&&used+reserved>=limit)throw new HttpsError("resource-exhausted","Monthly video quota exceeded");
   tx.set(rec,{barcode:code,status:"reserved",period,createdAt:FieldValue.serverTimestamp(),file:null,overrideOf:override?kSnap.data().operationId:null,approvalId:override?approvalId:null});
-  if(override)tx.update(approvalRef,{status:"consumed",consumedBy:op,consumedAt:FieldValue.serverTimestamp()});
+  if(override){tx.update(approvalRef,{status:"consumed",consumedBy:op,consumedAt:FieldValue.serverTimestamp()});if(approvalSnap.data().requestId)tx.update(ref.collection("duplicateRequests").doc(approvalSnap.data().requestId),{status:"consumed",consumedBy:op})}
   tx.set(key,{operationId:op,barcode:code,status:"reserved",previousOperationId:override?kSnap.data().operationId:null,createdAt:FieldValue.serverTimestamp()});
   tx.update(ref,{period,used,reserved:reserved+1,updatedAt:FieldValue.serverTimestamp()});
   tx.create(ref.collection("audit").doc(),{action:"reserve",recordingId:op,createdAt:FieldValue.serverTimestamp()});
@@ -213,7 +213,7 @@ exports.approveDuplicateRequest=onCall(options,async req=>{
   if(!t.exists||t.data().status!=="pending")throw new HttpsError("failed-precondition","Request not pending");
   const x=t.data(),lock=await tx.get(acc.collection("barcodeLocks").doc(barcodeKey(x.barcode)));
   if(!lock.exists||lock.data().status!=="completed")throw new HttpsError("failed-precondition","Barcode is not completed");
-  tx.create(approval,{barcode:x.barcode,reason:x.reason,status:"approved",approvedBy:owner,requestedBy:x.requestedBy,approvedAt:FieldValue.serverTimestamp(),expiresAtMs:now+5*60000,originalOperationId:lock.data().operationId});
+  tx.create(approval,{barcode:x.barcode,reason:x.reason,requestId:id,status:"approved",approvedBy:owner,requestedBy:x.requestedBy,approvedAt:FieldValue.serverTimestamp(),expiresAtMs:now+5*60000,originalOperationId:lock.data().operationId});
   tx.update(ticket,{status:"approved",approvalId:approval.id,approvedAt:FieldValue.serverTimestamp()});
   tx.create(acc.collection("audit").doc(),{action:"operator_duplicate_approved",requestId:id,approvalId:approval.id,approvedBy:owner,createdAt:FieldValue.serverTimestamp()});
   return {approved:true,approvalId:approval.id};
