@@ -112,16 +112,16 @@ async function renderSubscriptionRequests(){
   const labels={free:'Free Plan',active:'ใช้งานอยู่',expired:'หมดอายุ',unconfigured:'ยังไม่ได้ตั้งวันหมดอายุ',invalid:'ข้อมูลสมาชิกไม่ถูกต้อง'};
   status.textContent='แพ็กเกจปัจจุบัน: '+details.plan+' • '+(labels[details.status]||details.status)+' • หมดอายุ: '+(details.expiresAt?new Date(details.expiresAt).toLocaleDateString('th-TH'):'ยังไม่กำหนด');
   box.append(status);
-  const note=document.createElement('p');note.textContent='การส่งคำขอแพ็กเกจยังไม่เก็บเงินและไม่เปลี่ยนสิทธิ์ใช้งาน ต้องรอการเชื่อมระบบชำระเงิน';box.append(note);
-  for(const x of details.requests){const line=document.createElement('p');line.textContent=x.plan+' — '+(x.status==='pending_payment_setup'?'รอเปิดระบบชำระเงิน':x.status)+' — '+(x.createdAt?new Date(x.createdAt).toLocaleDateString('th-TH'):'');box.append(line)}
+  const note=document.createElement('p');note.textContent='ชำระผ่าน Stripe Checkout เท่านั้น ระบบจะเปลี่ยนแพ็กเกจหลัง Stripe ยืนยันยอดชำระทาง Webhook (Staging: ใช้ Test Mode)';box.append(note);
+  for(const x of details.requests){const line=document.createElement('div');line.style.margin='10px 0';const name=document.createElement('span');name.textContent=x.plan+' — '+({pending_payment_setup:'รอชำระเงิน',checkout_created:'สร้างหน้าชำระเงินแล้ว',paid:'ชำระแล้ว'}[x.status]||x.status)+' — '+(x.createdAt?new Date(x.createdAt).toLocaleDateString('th-TH'):'');line.append(name);if(['pending_payment_setup','checkout_created'].includes(x.status)){const button=document.createElement('button');button.type='button';button.className='secondary';button.style.marginLeft='12px';button.textContent='ไปหน้าชำระเงิน (Stripe)';button.onclick=async()=>{button.disabled=true;try{const result=await credit().createPaymentCheckout(x.id);if(result.url&&new URL(result.url).hostname==='checkout.stripe.com')window.location.assign(result.url);else throw Error('ปลายทางชำระเงินไม่ถูกต้อง')}catch(e){toast('ไม่สามารถเปิดหน้าชำระเงิน: '+e.message);button.disabled=false}};line.append(button)}box.append(line)}
  }catch(e){const p=document.createElement('p');p.textContent='โหลดข้อมูลสมาชิกไม่สำเร็จ: '+e.message;box.append(p)}
 }
 function renderPlans(){
  $('planGrid').innerHTML=plans.map(p=>`<article class="plan ${remoteQuota?.plan===p[0]?'selected':''}"><h4>${p[0]}</h4><div class="price">฿${p[1].toLocaleString()}<small>/เดือน</small></div><p>${Number.isFinite(p[2])?p[2].toLocaleString():'ไม่จำกัด'} วิดีโอ / เดือน</p><p>${p[3]} เครื่อง</p><button type="button" class="secondary" data-plan-request="${p[0]}" ${p[0]==='Free'||remoteQuota?.plan===p[0]?'disabled':''}>${remoteQuota?.plan===p[0]?'แพ็กเกจปัจจุบัน':p[0]==='Free'?'แผนใช้ฟรี':'ส่งคำขอแพ็กเกจ'}</button></article>`).join('');
  document.querySelectorAll('[data-plan-request]').forEach(button=>button.addEventListener('click',async()=>{
-  const p=button.dataset.planRequest;if(!confirm('ส่งคำขอแพ็กเกจ '+p+'? ยังไม่มีการเรียกเก็บเงินหรือเปลี่ยนสิทธิ์'))return;
+  const p=button.dataset.planRequest;if(!confirm('สร้างคำขอแพ็กเกจ '+p+'? จะยังไม่เก็บเงินจนกว่าจะยืนยันชำระบน Stripe Checkout'))return;
   button.disabled=true;
-  try{const result=await credit().requestPlanChange(p);toast('บันทึกคำขอ '+result.plan+' แล้ว (ยังไม่ชำระเงิน)');await renderSubscriptionRequests()}catch(e){toast('ส่งคำขอไม่สำเร็จ: '+e.message)}finally{button.disabled=false}
+  try{const result=await credit().requestPlanChange(p);toast('บันทึกคำขอ '+result.plan+' แล้ว โปรดเลือกชำระเงินในประวัติคำขอ');await renderSubscriptionRequests()}catch(e){toast('ส่งคำขอไม่สำเร็จ: '+e.message)}finally{button.disabled=false}
  }));
  void renderSubscriptionRequests();
 }
