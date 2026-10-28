@@ -226,3 +226,9 @@ exports.operatorApprovalStatus=onCall(options,async req=>{
  if(!snap.exists||snap.data().requestedBy!==member)throw new HttpsError("not-found","Request not found");
  return {status:snap.data().status,approvalId:snap.data().status==="approved"?snap.data().approvalId:null};
 });
+
+exports.myDuplicateRequests=onCall(options,async req=>{
+ const member=uid(req),acc=await ownerRef(member);
+ const snap=await acc.collection("duplicateRequests").where("requestedBy","==",member).limit(50).get();
+ return {requests:snap.docs.map(x=>({id:x.id,barcode:x.data().barcode,reason:x.data().reason,status:x.data().status,approvalId:x.data().status==="approved"?x.data().approvalId:null}))};
+});
