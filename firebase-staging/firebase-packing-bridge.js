@@ -20,7 +20,8 @@ window.PACKTOOK_FIREBASE={
  async logout(){await signOut(auth)},
  async usage(){return (await api("usageStatus")({})).data},
  async recordingStatus(operationId){return (await api("recordingStatus")({operationId})).data},
- async reserve(barcode,operationId){return (await api("reserveCredit")({barcode,operationId,deviceId:deviceId()})).data},
+ async authorizeDuplicate(barcode,reason){return (await api("authorizeDuplicate")({barcode,reason})).data},
+ async reserve(barcode,operationId,approvalId=null){return (await api("reserveCredit")({barcode,operationId,deviceId:deviceId(),approvalId})).data},
  async finalize(operationId,success,meta={}){return (await api("finalizeCredit")({operationId,success,...meta})).data}
 };
 window.dispatchEvent(new Event("packtook-firebase-ready"));
