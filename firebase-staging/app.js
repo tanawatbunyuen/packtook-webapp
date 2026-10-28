@@ -53,26 +53,6 @@ async function renderDeviceManager(){
   }
  }catch(e){loading.textContent='โหลดรายชื่อเครื่องไม่ได้: '+e.message}
 }
-async function refreshTeam(){
- const root=$('teamManager');if(!root||!remoteUser)return;
- root.replaceChildren();const role=accountRoleInfo?.role;
- const title=document.createElement('h3');title.textContent='สมาชิกในร้าน';root.append(title);
- if(role!=='admin'){
-  const button=document.createElement('button');button.type='button';button.className='secondary';button.textContent='รับคำเชิญเข้าร้าน';button.onclick=async()=>{try{await credit().acceptOperatorInvite();accountRoleInfo=await credit().accountRole();await refreshRemoteQuota();await refreshTeam();toast('เข้าร่วมร้านสำเร็จ')}catch(e){toast(e.message)}};root.append(button);
-  const note=document.createElement('p');note.textContent='Operator ใช้เครดิตและสิทธิ์เครื่องร่วมกับร้าน ต้องให้ Admin เชิญด้วยอีเมลบัญชีนี้ก่อน';root.append(note);try{const d=await credit().myDuplicateRequests();const h=document.createElement('h3');h.textContent='คำขอบันทึกซ้ำของฉัน';root.append(h);for(const item of d.requests){const p=document.createElement('p');p.textContent=item.barcode+' — '+(item.status==='approved'?'อนุมัติแล้ว (สแกน Barcode อีกครั้งเพื่อเริ่มบันทึก)':item.status==='pending'?'รอ Admin อนุมัติ':item.status);root.append(p)}}catch(e){toast(e.message)}return;
- }
- const invite=document.createElement('button');invite.type='button';invite.className='secondary';invite.textContent='เชิญพนักงาน Operator';invite.onclick=async()=>{const email=prompt('อีเมลพนักงานที่ยืนยัน Firebase แล้ว:');if(!email)return;try{await credit().inviteOperator(email);toast('บันทึกคำเชิญแล้ว ให้พนักงาน Login และกดรับคำเชิญ');await refreshTeam()}catch(e){toast(e.message)}};root.append(invite);
- try{const data=await credit().listOperators();
-  for(const x of data.operators){const line=document.createElement('p');line.textContent='Operator: '+x.email;root.append(line)}
-  for(const x of data.invitations.filter(x=>x.status==='pending')){const line=document.createElement('p');line.textContent='รอรับคำเชิญ: '+x.email;root.append(line)}
- }catch(e){toast('โหลดสมาชิกไม่ได้: '+e.message)}
- const approvals=document.createElement('h3');approvals.textContent='คำขออนุมัติบันทึกซ้ำ';root.append(approvals);
- const refresh=document.createElement('button');refresh.type='button';refresh.className='secondary';refresh.textContent='รีเฟรชคำขอ';refresh.onclick=refreshTeam;root.append(refresh);
- try{const data=await credit().listDuplicateRequests();
-  if(!data.requests.length){const empty=document.createElement('p');empty.textContent='ไม่มีคำขอที่รออนุมัติ';root.append(empty)}
-  for(const item of data.requests){const row=document.createElement('div');row.className='users-device-list';const label=document.createElement('p');label.textContent=item.barcode+' — '+item.reason;const approve=document.createElement('button');approve.type='button';approve.className='secondary';approve.textContent='อนุมัติ';approve.onclick=async()=>{if(!confirm('อนุมัติบันทึกซ้ำ '+item.barcode+' ?'))return;try{await credit().approveDuplicateRequest(item.id);toast('อนุมัติแล้ว ให้ Operator ตรวจสถานะคำขอภายใน 5 นาที');await refreshTeam()}catch(e){toast(e.message)}};row.append(label,approve);root.append(row)}
- }catch(e){toast('โหลดคำขอไม่ได้: '+e.message)}
-}
 async function setupDevice(){
  const pane=$('deviceControl');
  let status;
@@ -122,7 +102,7 @@ function used(){return store.logs.filter(v=>v.month===monthKey()).length}
 function plan(){return plans.find(p=>p[0]===store.plan)||plans[0]}
 function updateQuota(){const q=remoteQuota;const p=q?plans.find(x=>x[0]===q.plan)||plans[0]:plans[0];const u=q?.used??0,unlimited=q?.limit===null;const left=q?.remaining??0;$('planName').textContent=p[0].toUpperCase();$('usedCount').textContent=u.toLocaleString();$('remainingCount').textContent=unlimited?'∞':left.toLocaleString();$('limitLabel').textContent=unlimited?'ไม่จำกัดวิดีโอ':`จาก ${(q?.limit??20).toLocaleString()} วิดีโอ`;$('quotaText').textContent=unlimited?`${u.toLocaleString()} / ไม่จำกัด`:`${u.toLocaleString()} / ${(q?.limit??20).toLocaleString()}`;$('quotaProgress').style.width=unlimited?'0%':`${Math.min(100,u/(q?.limit||20)*100)}%`}
 
-function showTab(tab){document.querySelectorAll('.tabcontent').forEach(e=>e.hidden=e.id!==tab);document.querySelectorAll('.nav').forEach(e=>e.classList.toggle('active',e.dataset.tab===tab));$('crumb').textContent=tab.toUpperCase();$('pageTitle').textContent={packing:'บันทึกวิดีโอการแพ็กสินค้า',dashboard:'ค้นหาประวัติวิดีโอ',plans:'แพ็กเกจและโควตาวิดีโอ',help:'คู่มือการใช้งาน',users:'จัดการผู้ใช้และอุปกรณ์'}[tab];if(tab==='dashboard'){renderHistory();void runRetention(false)}if(tab==='plans')renderPlans();if(tab==='users'){void refreshTeam();updateUsersSummary();void refreshRemoteQuota().catch(e=>toast(e.message));void renderDeviceManager()}}
+function showTab(tab){document.querySelectorAll('.tabcontent').forEach(e=>e.hidden=e.id!==tab);document.querySelectorAll('.nav').forEach(e=>e.classList.toggle('active',e.dataset.tab===tab));$('crumb').textContent=tab.toUpperCase();$('pageTitle').textContent={packing:'บันทึกวิดีโอการแพ็กสินค้า',dashboard:'ค้นหาประวัติวิดีโอ',plans:'แพ็กเกจและโควตาวิดีโอ',help:'คู่มือการใช้งาน',users:'จัดการผู้ใช้และอุปกรณ์'}[tab];if(tab==='dashboard'){renderHistory();void runRetention(false)}if(tab==='plans')renderPlans();if(tab==='users'){updateUsersSummary();void refreshRemoteQuota().catch(e=>toast(e.message));void renderDeviceManager()}}
 function renderPlans(){$('planGrid').innerHTML=plans.map(p=>`<article class="plan ${remoteQuota?.plan===p[0]?'selected':''}"><h4>${p[0]}</h4><div class="price">฿${p[1].toLocaleString()}<small>/เดือน</small></div><p>${Number.isFinite(p[2])?p[2].toLocaleString():'ไม่จำกัด'} วิดีโอ / เดือน</p><p>${p[3]} เครื่อง</p><button type="button" class="secondary" disabled>${remoteQuota?.plan===p[0]?'แพ็กเกจปัจจุบัน':'ติดต่อเพื่อสมัครแพ็กเกจ'}</button></article>`).join('')}
 
 async function deleteRecordedVideo(log,ask=true){
@@ -172,22 +152,8 @@ try{granted=await credit().reserve(barcode,op)}catch(err){
  const reason=prompt('เหตุผลในการบันทึก Barcode ซ้ำ (อย่างน้อย 10 ตัวอักษร):');
  if(reason===null)return;
  if(reason.trim().length<10||reason.trim().length>500)return toast('โปรดระบุเหตุผลระหว่าง 10–500 ตัวอักษร');
- const permissions=await credit().accountRole();
- let approvalId;
- if(permissions.canApproveDuplicates){const approval=await credit().authorizeDuplicate(barcode,reason.trim());approvalId=approval.approvalId}
- else{
-  const existing=await credit().myDuplicateRequests();
-  const approved=existing.requests.find(x=>x.barcode===barcode&&x.status==='approved'&&x.approvalId);
-  if(approved){approvalId=approved.approvalId}
-  else{
-   const waiting=existing.requests.some(x=>x.barcode===barcode&&x.status==='pending');
-   if(waiting){alert('คำขอของ Barcode นี้อยู่ระหว่างรอ Admin อนุมัติ กรุณาตรวจสอบสถานะในแท็บ Users');return}
-   await credit().requestDuplicate(barcode,reason.trim());
-   alert('ส่งคำขอให้ Admin แล้ว กรุณารออนุมัติ และสแกน Barcode อีกครั้งเมื่ออนุมัติ (ภายใน 5 นาที)');
-   return;
-  }
- }
- granted=await credit().reserve(barcode,op,approvalId);
+ const approval=await credit().authorizeDuplicate(barcode,reason.trim());
+ granted=await credit().reserve(barcode,op,approval.approvalId);
 }if(granted.status!=='reserved')throw Error('การจองเครดิตไม่ได้รับอนุญาต');recordingOp=op;localStorage.setItem(pendingKey(),JSON.stringify({operationId:op,barcode}));showRecovery();parts=[];recordingFailure='';recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:({480:850000,720:1800000,1080:3500000}[Number($('videoQuality').value)]||1800000)});const rec=recorder;rec.ondataavailable=e=>{if(e.data?.size)parts.push(e.data)};rec.onerror=e=>{recordingFailure=e.error?.message||'MediaRecorder error';updateHealth('⚠ กล้องบันทึกผิดพลาด','danger-health');if(activeBarcode&&!ending)void stopRecording('recorder_error')};rec.start(1000);activeBarcode=barcode;startMs=Date.now();$('recordState').textContent='กำลังบันทึก '+barcode+' — สแกน Barcode เดิมเพื่อหยุด';$('recordState').classList.add('active');$('recBadge').textContent='● RECORDING';$('recBadge').classList.add('recording');$('stopBtn').disabled=false;$('recTimer').hidden=false;updateHealth('● กำลังบันทึก','good-health');ticker=setInterval(()=>$('recTimer').textContent='REC '+fmtSec(Math.floor((Date.now()-startMs)/1000)),1000);toast('เริ่มบันทึก '+barcode)}catch(e){activeBarcode='';if(recordingOp){const op=recordingOp;recordingOp=null;try{await credit().finalize(op,false);clearPending()}catch(err){toast('คืนเครดิตไม่สำเร็จ โปรดติดต่อผู้ดูแล: '+err.message)}}if(e.code==='functions/already-exists'||String(e.message).includes('Barcode already scanned'))alert('⚠ Barcode '+barcode+' ถูกสแกนหรือบันทึกไว้ก่อนแล้ว ไม่อนุญาตให้บันทึกซ้ำ');else toast('เริ่มบันทึกไม่สำเร็จ: '+e.message);void refreshRemoteQuota().catch(()=>{})}}
 // Local file verification. A browser cannot prove the camera captured genuine packing;
 // only confirm that saved WebM is decodable and sampled frames are not blank.
