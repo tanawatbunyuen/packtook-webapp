@@ -103,7 +103,28 @@ function plan(){return plans.find(p=>p[0]===store.plan)||plans[0]}
 function updateQuota(){const q=remoteQuota;const p=q?plans.find(x=>x[0]===q.plan)||plans[0]:plans[0];const u=q?.used??0,unlimited=q?.limit===null;const left=q?.remaining??0;$('planName').textContent=p[0].toUpperCase();$('usedCount').textContent=u.toLocaleString();$('remainingCount').textContent=unlimited?'∞':left.toLocaleString();$('limitLabel').textContent=unlimited?'ไม่จำกัดวิดีโอ':`จาก ${(q?.limit??20).toLocaleString()} วิดีโอ`;$('quotaText').textContent=unlimited?`${u.toLocaleString()} / ไม่จำกัด`:`${u.toLocaleString()} / ${(q?.limit??20).toLocaleString()}`;$('quotaProgress').style.width=unlimited?'0%':`${Math.min(100,u/(q?.limit||20)*100)}%`}
 
 function showTab(tab){document.querySelectorAll('.tabcontent').forEach(e=>e.hidden=e.id!==tab);document.querySelectorAll('.nav').forEach(e=>e.classList.toggle('active',e.dataset.tab===tab));$('crumb').textContent=tab.toUpperCase();$('pageTitle').textContent={packing:'บันทึกวิดีโอการแพ็กสินค้า',dashboard:'ค้นหาประวัติวิดีโอ',plans:'แพ็กเกจและโควตาวิดีโอ',help:'คู่มือการใช้งาน',users:'จัดการผู้ใช้และอุปกรณ์'}[tab];if(tab==='dashboard'){renderHistory();void runRetention(false)}if(tab==='plans')renderPlans();if(tab==='users'){updateUsersSummary();void refreshRemoteQuota().catch(e=>toast(e.message));void renderDeviceManager()}}
-function renderPlans(){$('planGrid').innerHTML=plans.map(p=>`<article class="plan ${remoteQuota?.plan===p[0]?'selected':''}"><h4>${p[0]}</h4><div class="price">฿${p[1].toLocaleString()}<small>/เดือน</small></div><p>${Number.isFinite(p[2])?p[2].toLocaleString():'ไม่จำกัด'} วิดีโอ / เดือน</p><p>${p[3]} เครื่อง</p><button type="button" class="secondary" disabled>${remoteQuota?.plan===p[0]?'แพ็กเกจปัจจุบัน':'ติดต่อเพื่อสมัครแพ็กเกจ'}</button></article>`).join('')}
+async function renderSubscriptionRequests(){
+ const box=$('subscriptionRequests');if(!box)return;box.replaceChildren();
+ try{
+  const details=await credit().subscriptionOverview();
+  const heading=document.createElement('h3');heading.textContent='สถานะสมาชิกและคำขอแพ็กเกจ';box.append(heading);
+  const status=document.createElement('p');
+  const labels={free:'Free Plan',active:'ใช้งานอยู่',expired:'หมดอายุ',unconfigured:'ยังไม่ได้ตั้งวันหมดอายุ',invalid:'ข้อมูลสมาชิกไม่ถูกต้อง'};
+  status.textContent='แพ็กเกจปัจจุบัน: '+details.plan+' • '+(labels[details.status]||details.status)+' • หมดอายุ: '+(details.expiresAt?new Date(details.expiresAt).toLocaleDateString('th-TH'):'ยังไม่กำหนด');
+  box.append(status);
+  const note=document.createElement('p');note.textContent='การส่งคำขอแพ็กเกจยังไม่เก็บเงินและไม่เปลี่ยนสิทธิ์ใช้งาน ต้องรอการเชื่อมระบบชำระเงิน';box.append(note);
+  for(const x of details.requests){const line=document.createElement('p');line.textContent=x.plan+' — '+(x.status==='pending_payment_setup'?'รอเปิดระบบชำระเงิน':x.status)+' — '+(x.createdAt?new Date(x.createdAt).toLocaleDateString('th-TH'):'');box.append(line)}
+ }catch(e){const p=document.createElement('p');p.textContent='โหลดข้อมูลสมาชิกไม่สำเร็จ: '+e.message;box.append(p)}
+}
+function renderPlans(){
+ $('planGrid').innerHTML=plans.map(p=>`<article class="plan ${remoteQuota?.plan===p[0]?'selected':''}"><h4>${p[0]}</h4><div class="price">฿${p[1].toLocaleString()}<small>/เดือน</small></div><p>${Number.isFinite(p[2])?p[2].toLocaleString():'ไม่จำกัด'} วิดีโอ / เดือน</p><p>${p[3]} เครื่อง</p><button type="button" class="secondary" data-plan-request="${p[0]}" ${p[0]==='Free'||remoteQuota?.plan===p[0]?'disabled':''}>${remoteQuota?.plan===p[0]?'แพ็กเกจปัจจุบัน':p[0]==='Free'?'แผนใช้ฟรี':'ส่งคำขอแพ็กเกจ'}</button></article>`).join('');
+ document.querySelectorAll('[data-plan-request]').forEach(button=>button.addEventListener('click',async()=>{
+  const p=button.dataset.planRequest;if(!confirm('ส่งคำขอแพ็กเกจ '+p+'? ยังไม่มีการเรียกเก็บเงินหรือเปลี่ยนสิทธิ์'))return;
+  button.disabled=true;
+  try{const result=await credit().requestPlanChange(p);toast('บันทึกคำขอ '+result.plan+' แล้ว (ยังไม่ชำระเงิน)');await renderSubscriptionRequests()}catch(e){toast('ส่งคำขอไม่สำเร็จ: '+e.message)}finally{button.disabled=false}
+ }));
+ void renderSubscriptionRequests();
+}
 
 async function deleteRecordedVideo(log,ask=true){
  if(activeBarcode||ending){toast('หยุดการอัดก่อนลบวิดีโอ');return false}
