@@ -13,6 +13,7 @@ window.PACKTOOK_FIREBASE={
  ready:true,
  deviceId,
  async registerDevice(name){return (await api("registerDevice")({deviceId,name})).data},
+ async removeDevice(targetId){return (await api("removeDevice")({deviceId,targetId})).data},
  async deviceStatus(){return (await api("deviceStatus")({deviceId})).data},
  onUser(cb){listeners.add(cb);cb(user);return()=>listeners.delete(cb)},
  async login(email,password){const result=await signInWithEmailAndPassword(auth,email,password);if(!result.user.emailVerified){await signOut(auth);throw Error("กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ")}return result.user},
