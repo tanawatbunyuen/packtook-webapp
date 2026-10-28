@@ -1,5 +1,9 @@
 "use strict";
 const {onCall,HttpsError}=require("firebase-functions/v2/https");
+const {onRequest}=require("firebase-functions/v2/https");
+const {defineSecret}=require("firebase-functions/params");
+const stripeKey=defineSecret("STRIPE_SECRET_KEY");
+const stripeWebhookKey=defineSecret("STRIPE_WEBHOOK_SECRET");
 const admin=require("firebase-admin");
 const crypto=require("node:crypto");
 admin.initializeApp();
@@ -166,4 +170,62 @@ exports.requestPlanChange=onCall(options,async req=>{
  const acc=await ensureAccount(id),ticket=acc.collection("billingRequests").doc();
  await ticket.create({plan,amountTHB:pricesTHB[plan],status:"pending_payment_setup",createdAt:FieldValue.serverTimestamp(),requestedBy:id});
  return {requestId:ticket.id,status:"pending_payment_setup",plan,amountTHB:pricesTHB[plan],message:"No payment has been collected. Plan remains unchanged."};
+});
+
+const stripeOptions={region,timeoutSeconds:30,secrets:[stripeKey]};
+const paymentReturnBase="https://packtook-staging.web.app/";
+exports.createPaymentCheckout=onCall(stripeOptions,async req=>{
+ const user=uid(req),d=data(req),id=d.requestId;
+ if(!validOp(id))throw new HttpsError("invalid-argument","Invalid billing request ID");
+ const acc=await ensureAccount(user),ticket=acc.collection("billingRequests").doc(id),snap=await ticket.get();
+ if(!snap.exists||snap.data().requestedBy!==user)throw new HttpsError("not-found","Billing request not found");
+ const item=snap.data();
+ if(!Object.hasOwn(pricesTHB,item.plan)||item.plan==="Free"||item.amountTHB!==pricesTHB[item.plan])throw new HttpsError("failed-precondition","Invalid server-side price");
+ if(item.status!=="pending_payment_setup"&&item.status!=="checkout_created")throw new HttpsError("failed-precondition","Billing request already processed");
+ if(item.checkoutUrl&&item.status==="checkout_created")return {url:item.checkoutUrl,status:"checkout_created"};
+ const key=stripeKey.value();
+ if(!key)throw new HttpsError("failed-precondition","Payment gateway not configured");
+ const form=new URLSearchParams({
+  mode:"payment",success_url:paymentReturnBase+"?payment=return",cancel_url:paymentReturnBase+"?payment=cancel",
+  "line_items[0][price_data][currency]":"thb",
+  "line_items[0][price_data][product_data][name]":"PACKTOOK "+item.plan+" - 30 days",
+  "line_items[0][price_data][unit_amount]":String(item.amountTHB*100),
+  "line_items[0][quantity]":"1",
+  "metadata[uid]":user,"metadata[requestId]":id,
+  "payment_method_types[0]":"card","payment_method_types[1]":"promptpay"
+ });
+ const response=await fetch("https://api.stripe.com/v1/checkout/sessions",{method:"POST",headers:{Authorization:"Bearer "+key,"Content-Type":"application/x-www-form-urlencoded","Idempotency-Key":"packtook-"+user+"-"+id},body:form});
+ const session=await response.json();
+ if(!response.ok||!session.id||!session.url)throw new HttpsError("unavailable","Stripe Checkout unavailable");
+ await ticket.update({status:"checkout_created",stripeSessionId:session.id,checkoutUrl:session.url,checkoutCreatedAt:FieldValue.serverTimestamp()});
+ return {url:session.url,status:"checkout_created"};
+});
+exports.stripePaymentWebhook=onRequest({region,secrets:[stripeWebhookKey],invoker:"public"},async(req,res)=>{
+ if(req.method!=="POST"){res.status(405).send("Method not allowed");return}
+ const header=req.headers["stripe-signature"],secret=stripeWebhookKey.value();
+ if(!header||!secret||!req.rawBody){res.status(400).send("Missing signature");return}
+ const parts=Object.fromEntries(String(header).split(",").map(v=>v.split("=",2)));
+ const ts=Number(parts.t),signature=parts.v1;
+ if(!Number.isFinite(ts)||Math.abs(Date.now()/1000-ts)>300||!signature){res.status(400).send("Invalid signature");return}
+ const expected=crypto.createHmac("sha256",secret).update(ts+"."+req.rawBody.toString("utf8")).digest("hex");
+ if(signature.length!==expected.length||!crypto.timingSafeEqual(Buffer.from(signature),Buffer.from(expected))){res.status(400).send("Invalid signature");return}
+ let event;try{event=JSON.parse(req.rawBody.toString("utf8"))}catch{res.status(400).send("Invalid payload");return}
+ if(event.type!=="checkout.session.completed"&&event.type!=="checkout.session.async_payment_succeeded"){res.status(200).send("ignored");return}
+ const session=event.data?.object||{};
+ if(session.payment_status!=="paid"){res.status(200).send("awaiting payment");return}
+ const id=session.metadata?.requestId,user=session.metadata?.uid;
+ if(!validOp(id)||typeof user!=="string"||!user){res.status(400).send("Invalid metadata");return}
+ const acc=own(user),ticket=acc.collection("billingRequests").doc(id);
+ try{await db.runTransaction(async tx=>{
+  const [tSnap,aSnap]=await Promise.all([tx.get(ticket),tx.get(acc)]);
+  if(!tSnap.exists||!aSnap.exists)throw Error("Missing billing record");
+  const t=tSnap.data(),a=aSnap.data();
+  if(t.status==="paid")return;
+  if(t.status!=="checkout_created"||t.stripeSessionId!==session.id||t.requestedBy!==user||session.currency!=="thb"||session.amount_total!==t.amountTHB*100||t.amountTHB!==pricesTHB[t.plan])throw Error("Payment verification mismatch");
+  const base=a.plan===t.plan&&Date.parse(a.planExpiresAt)>Date.now()?Date.parse(a.planExpiresAt):Date.now();
+  const expiresAt=new Date(base+30*86400000).toISOString();
+  tx.update(acc,{plan:t.plan,planExpiresAt:expiresAt,updatedAt:FieldValue.serverTimestamp()});
+  tx.update(ticket,{status:"paid",paidAt:FieldValue.serverTimestamp(),stripePaymentIntentId:session.payment_intent||null});
+  tx.create(acc.collection("audit").doc(),{action:"subscription_paid",billingRequestId:id,stripeSessionId:session.id,plan:t.plan,createdAt:FieldValue.serverTimestamp()});
+ });res.status(200).send("ok")}catch(e){res.status(500).send("Verification failed")}
 });
