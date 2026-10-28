@@ -59,7 +59,7 @@ async function refreshTeam(){
  const title=document.createElement('h3');title.textContent='สมาชิกในร้าน';root.append(title);
  if(role!=='admin'){
   const button=document.createElement('button');button.type='button';button.className='secondary';button.textContent='รับคำเชิญเข้าร้าน';button.onclick=async()=>{try{await credit().acceptOperatorInvite();accountRoleInfo=await credit().accountRole();await refreshRemoteQuota();await refreshTeam();toast('เข้าร่วมร้านสำเร็จ')}catch(e){toast(e.message)}};root.append(button);
-  const note=document.createElement('p');note.textContent='Operator ใช้เครดิตและสิทธิ์เครื่องร่วมกับร้าน ต้องให้ Admin เชิญด้วยอีเมลบัญชีนี้ก่อน';root.append(note);return;
+  const note=document.createElement('p');note.textContent='Operator ใช้เครดิตและสิทธิ์เครื่องร่วมกับร้าน ต้องให้ Admin เชิญด้วยอีเมลบัญชีนี้ก่อน';root.append(note);try{const d=await credit().myDuplicateRequests();const h=document.createElement('h3');h.textContent='คำขอบันทึกซ้ำของฉัน';root.append(h);for(const item of d.requests){const p=document.createElement('p');p.textContent=item.barcode+' — '+(item.status==='approved'?'อนุมัติแล้ว (สแกน Barcode อีกครั้งเพื่อเริ่มบันทึก)':item.status==='pending'?'รอ Admin อนุมัติ':item.status);root.append(p)}}catch(e){toast(e.message)}return;
  }
  const invite=document.createElement('button');invite.type='button';invite.className='secondary';invite.textContent='เชิญพนักงาน Operator';invite.onclick=async()=>{const email=prompt('อีเมลพนักงานที่ยืนยัน Firebase แล้ว:');if(!email)return;try{await credit().inviteOperator(email);toast('บันทึกคำเชิญแล้ว ให้พนักงาน Login และกดรับคำเชิญ');await refreshTeam()}catch(e){toast(e.message)}};root.append(invite);
  try{const data=await credit().listOperators();
@@ -176,13 +176,16 @@ try{granted=await credit().reserve(barcode,op)}catch(err){
  let approvalId;
  if(permissions.canApproveDuplicates){const approval=await credit().authorizeDuplicate(barcode,reason.trim());approvalId=approval.approvalId}
  else{
-  const ticket=await credit().requestDuplicate(barcode,reason.trim());
-  alert('ส่งคำขอถึง Admin แล้ว ให้ Admin เปิดแท็บ Users เพื่อกดอนุมัติ');
-  const check=confirm('หลัง Admin อนุมัติแล้ว กด OK เพื่อตรวจสถานะคำขอ (ภายใน 5 นาที)');
-  if(!check)return;
-  const decision=await credit().operatorApprovalStatus(ticket.requestId);
-  if(decision.status!=='approved'||!decision.approvalId)throw Error('คำขอยังไม่อนุมัติ กรุณาติดต่อ Admin');
-  approvalId=decision.approvalId;
+  const existing=await credit().myDuplicateRequests();
+  const approved=existing.requests.find(x=>x.barcode===barcode&&x.status==='approved'&&x.approvalId);
+  if(approved){approvalId=approved.approvalId}
+  else{
+   const waiting=existing.requests.some(x=>x.barcode===barcode&&x.status==='pending');
+   if(waiting){alert('คำขอของ Barcode นี้อยู่ระหว่างรอ Admin อนุมัติ กรุณาตรวจสอบสถานะในแท็บ Users');return}
+   await credit().requestDuplicate(barcode,reason.trim());
+   alert('ส่งคำขอให้ Admin แล้ว กรุณารออนุมัติ และสแกน Barcode อีกครั้งเมื่ออนุมัติ (ภายใน 5 นาที)');
+   return;
+  }
  }
  granted=await credit().reserve(barcode,op,approvalId);
 }if(granted.status!=='reserved')throw Error('การจองเครดิตไม่ได้รับอนุญาต');recordingOp=op;localStorage.setItem(pendingKey(),JSON.stringify({operationId:op,barcode}));showRecovery();parts=[];recordingFailure='';recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:({480:850000,720:1800000,1080:3500000}[Number($('videoQuality').value)]||1800000)});const rec=recorder;rec.ondataavailable=e=>{if(e.data?.size)parts.push(e.data)};rec.onerror=e=>{recordingFailure=e.error?.message||'MediaRecorder error';updateHealth('⚠ กล้องบันทึกผิดพลาด','danger-health');if(activeBarcode&&!ending)void stopRecording('recorder_error')};rec.start(1000);activeBarcode=barcode;startMs=Date.now();$('recordState').textContent='กำลังบันทึก '+barcode+' — สแกน Barcode เดิมเพื่อหยุด';$('recordState').classList.add('active');$('recBadge').textContent='● RECORDING';$('recBadge').classList.add('recording');$('stopBtn').disabled=false;$('recTimer').hidden=false;updateHealth('● กำลังบันทึก','good-health');ticker=setInterval(()=>$('recTimer').textContent='REC '+fmtSec(Math.floor((Date.now()-startMs)/1000)),1000);toast('เริ่มบันทึก '+barcode)}catch(e){activeBarcode='';if(recordingOp){const op=recordingOp;recordingOp=null;try{await credit().finalize(op,false);clearPending()}catch(err){toast('คืนเครดิตไม่สำเร็จ โปรดติดต่อผู้ดูแล: '+err.message)}}if(e.code==='functions/already-exists'||String(e.message).includes('Barcode already scanned'))alert('⚠ Barcode '+barcode+' ถูกสแกนหรือบันทึกไว้ก่อนแล้ว ไม่อนุญาตให้บันทึกซ้ำ');else toast('เริ่มบันทึกไม่สำเร็จ: '+e.message);void refreshRemoteQuota().catch(()=>{})}}
