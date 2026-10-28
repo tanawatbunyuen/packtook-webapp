@@ -6,6 +6,7 @@ admin.initializeApp();
 const db=admin.firestore();
 const {FieldValue}=admin.firestore;
 const limits={Free:20,Starter:50,Basic:300,Growth:1500,Business:5000,Pro:null};
+const pricesTHB={Free:0,Starter:199,Basic:299,Growth:599,Business:1290,Pro:1990};
 const deviceLimits={Free:1,Starter:1,Basic:1,Growth:3,Business:5,Pro:10};
 const region="asia-southeast1";
 const options={region,maxInstances:20,timeoutSeconds:30}; // Enable enforceAppCheck:true after configuring web App Check.
@@ -46,7 +47,7 @@ exports.reserveCredit=onCall(options,async req=>{
   if(!aSnap.exists)throw new HttpsError("failed-precondition","Account not provisioned");
   const a=aSnap.data(),limit=limits[a.plan];if(limit===undefined)throw new HttpsError("failed-precondition","Invalid plan");
   if(!(a.devices||[]).some(d=>d.id===body.deviceId))throw new HttpsError("permission-denied","Device not registered");
-  const sub=subscriptionState(a);if(sub==="expired"||sub==="invalid")throw new HttpsError("permission-denied","Subscription expired or invalid");
+  const sub=subscriptionState(a);if(sub==="expired"||sub==="invalid"||sub==="unconfigured")throw new HttpsError("permission-denied","Subscription expired or invalid");
   if(rSnap.exists){const old=rSnap.data();if(old.barcode!==barcode.trim())throw new HttpsError("already-exists","Operation ID previously used");return {recordingId:op,status:old.status,idempotent:true}}
   const override=kSnap.exists&&kSnap.data().operationId!==op;
   if(override){const approved=approvalSnap?.exists?approvalSnap.data():null;if(!approved||approved.barcode!==code||approved.status!=="approved"||approved.expiresAtMs<=Date.now()||(approved.requestedBy&&approved.requestedBy!==id))throw new HttpsError("already-exists","Barcode already scanned or recorded");if(kSnap.data().status!=="completed")throw new HttpsError("failed-precondition","Previous recording is not completed")}
@@ -153,3 +154,16 @@ exports.accountRole=onCall(options,async req=>{
  return {role:"admin",accountId:id,canApproveDuplicates:true,multiUserEnabled:false};
 });
 
+
+exports.subscriptionOverview=onCall(options,async req=>{
+ const id=uid(req),ref=await ensureAccount(id),snap=await ref.get(),a=snap.data();
+ const hist=await ref.collection("billingRequests").orderBy("createdAt","desc").limit(20).get();
+ return {plan:a.plan,status:subscriptionState(a),expiresAt:a.planExpiresAt||null,priceTHB:pricesTHB[a.plan]??null,requests:hist.docs.map(x=>({id:x.id,plan:x.data().plan,status:x.data().status,createdAt:x.data().createdAt?.toDate()?.toISOString()||null}))};
+});
+exports.requestPlanChange=onCall(options,async req=>{
+ const id=uid(req),d=data(req),plan=d.plan;
+ if(!Object.hasOwn(pricesTHB,plan)||plan==="Free")throw new HttpsError("invalid-argument","Select a paid plan");
+ const acc=await ensureAccount(id),ticket=acc.collection("billingRequests").doc();
+ await ticket.create({plan,amountTHB:pricesTHB[plan],status:"pending_payment_setup",createdAt:FieldValue.serverTimestamp(),requestedBy:id});
+ return {requestId:ticket.id,status:"pending_payment_setup",plan,amountTHB:pricesTHB[plan],message:"No payment has been collected. Plan remains unchanged."};
+});
