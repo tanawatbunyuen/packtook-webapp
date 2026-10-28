@@ -27,7 +27,7 @@ async function recoverCredit(){
 function showRecovery(){
  let b=$('recoverCreditBtn');
  if(!b){b=document.createElement('button');b.id='recoverCreditBtn';b.type='button';b.className='secondary';b.textContent='⚠ ตรวจสอบเครดิตจองค้าง';b.onclick=recoverCredit;($('packing')||$('appPage')).prepend(b)}
- b.hidden=!pending();
+ b.hidden=false;b.textContent=pending()?'⚠ ตรวจสอบเครดิตจองค้าง':'ตรวจสอบสถานะเครดิตจองค้าง';
 }
 async function refreshRemoteQuota(){if(!remoteUser)return;remoteQuota=await credit().usage();updateQuota()}
 
