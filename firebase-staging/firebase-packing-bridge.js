@@ -29,6 +29,7 @@ window.PACKTOOK_FIREBASE={
  async approveDuplicateRequest(requestId){return (await api("approveDuplicateRequest")({requestId})).data},
  async operatorApprovalStatus(requestId){return (await api("operatorApprovalStatus")({requestId})).data},
  async subscriptionOverview(){return (await api("subscriptionOverview")({})).data},
+ async createPaymentCheckout(requestId){return (await api("createPaymentCheckout")({requestId})).data},
  async requestPlanChange(plan){return (await api("requestPlanChange")({plan})).data},
  async accountRole(){return (await api("accountRole")({})).data},
  async authorizeDuplicate(barcode,reason){return (await api("authorizeDuplicate")({barcode,reason})).data},
