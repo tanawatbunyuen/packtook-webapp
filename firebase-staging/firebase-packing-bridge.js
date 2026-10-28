@@ -13,6 +13,7 @@ window.PACKTOOK_FIREBASE={
  async login(email,password){const result=await signInWithEmailAndPassword(auth,email,password);if(!result.user.emailVerified){await signOut(auth);throw Error("กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ")}return result.user},
  async logout(){await signOut(auth)},
  async usage(){return (await api("usageStatus")({})).data},
+ async recordingStatus(operationId){return (await api("recordingStatus")({operationId})).data},
  async reserve(barcode,operationId){return (await api("reserveCredit")({barcode,operationId})).data},
  async finalize(operationId,success,meta={}){return (await api("finalizeCredit")({operationId,success,...meta})).data}
 };
