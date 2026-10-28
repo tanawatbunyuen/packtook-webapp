@@ -162,7 +162,7 @@ exports.accountRole=onCall(options,async req=>{
 exports.subscriptionOverview=onCall(options,async req=>{
  const id=uid(req),ref=await ensureAccount(id),snap=await ref.get(),a=snap.data();
  const hist=await ref.collection("billingRequests").orderBy("createdAt","desc").limit(20).get();
- return {plan:a.plan,status:subscriptionState(a),expiresAt:a.planExpiresAt||null,priceTHB:pricesTHB[a.plan]??null,requests:hist.docs.map(x=>({id:x.id,plan:x.data().plan,status:x.data().status,createdAt:x.data().createdAt?.toDate()?.toISOString()||null}))};
+ return {plan:a.plan,status:subscriptionState(a),expiresAt:a.planExpiresAt||null,priceTHB:pricesTHB[a.plan]??null,requests:hist.docs.map(x=>({id:x.id,plan:x.data().plan,amountTHB:x.data().amountTHB,status:x.data().status,createdAt:x.data().createdAt?.toDate()?.toISOString()||null}))};
 });
 exports.requestPlanChange=onCall(options,async req=>{
  const id=uid(req),d=data(req),plan=d.plan;
