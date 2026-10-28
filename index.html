@@ -16,8 +16,8 @@
   <section class="auth-right"><form id="loginForm" class="login-card">
     <div class="auth-logo-full"><span class="packtook-lockup packtook-lockup-dark"><img src="logo.svg" alt="" class="packtook-mark"><span class="packtook-type"><strong>PACK<span>TOOK</span></strong><small>PACKING VIDEO RECORDER</small></span></span></div>
     <aside class="eagle-tip eagle-login" aria-label="ผู้ช่วย PACKTOOK"><img src="mascot-eagle.svg" alt="มาสคอตนกอินทรี PACKTOOK"><span><strong>สวัสดีครับ ผมอีเกิล!</strong><small>พร้อมช่วยมองเห็นทุกขั้นตอนการแพ็ก</small></span></aside><h2>เข้าสู่ระบบ</h2><p class="auth-sub">จัดการบันทึกวิดีโอแพ็กสินค้าอย่างเป็นระบบ<br>ผ่าน PACKTOOK Web App</p>
-    <label for="email">อีเมล / Username</label><div class="field-icon"><span>✉</span><input id="email" type="email" required value="demo@packtook.test" autocomplete="username"></div>
-    <label for="password">รหัสผ่าน</label><div class="password-line field-icon"><span>♙</span><input id="password" type="password" required value="DemoPacktook2026!" autocomplete="current-password"><button type="button" id="showPassword" aria-label="แสดงหรือซ่อนรหัสผ่าน">แสดง</button></div>
+    <label for="email">อีเมล / Username</label><div class="field-icon"><span>✉</span><input id="email" type="email" required placeholder="อีเมลที่ยืนยันแล้ว" autocomplete="username"></div>
+    <label for="password">รหัสผ่าน</label><div class="password-line field-icon"><span>♙</span><input id="password" type="password" required  autocomplete="current-password"><button type="button" id="showPassword" aria-label="แสดงหรือซ่อนรหัสผ่าน">แสดง</button></div>
     <div class="auth-options"><label class="remember-label"><input id="remember" type="checkbox" checked> จดจำอีเมล</label><span class="demo-mini">Demo Login</span></div>
     <button class="primary login-submit" type="submit">เข้าสู่ระบบ <span>➜</span></button><p id="loginError" role="alert" class="error" hidden></p>
     <div class="auth-divider"><span>หรือ</span></div>
@@ -38,4 +38,4 @@
 </div>
 <div class="workflow-panel"><h3>ขั้นตอนการบันทึกวิดีโอ</h3><p>วงจรหลักของ PACKTOOK สำหรับ 1 การแพ็กสินค้า</p><div class="workflow"><span>▥ สแกน Barcode</span><b>→</b><span>🔴 REC</span><b>→</b><span>📦 แพ็กสินค้า</span><b>→</b><span>▥ สแกนเดิม</span><b>→</b><span>✓ ไฟล์ถูกบันทึก</span></div></div>
 <div class="faq-grid"><article class="panel"><h3>💡 ข้อควรทราบ</h3><p>วิดีโอบันทึกลงโฟลเดอร์ในคอมพิวเตอร์เครื่องที่อัดเท่านั้น การดูวิดีโอจากเครื่องอื่นต้องจัดการการแชร์ไฟล์แยกต่างหาก</p><p>สิทธิ์กล้องและโฟลเดอร์อาจต้องยืนยันอีกครั้งเมื่อเปิด Browser ใหม่</p></article><article class="panel"><h3>🔐 ข้อจำกัด Demo</h3><p>บัญชีผู้ใช้ แพ็กเกจ และโควตาทั้งหมดเป็นการจำลองใน Browser ไม่ใช่ระบบ Subscription จริง จึงไม่ควรใช้สำหรับการขายหรือบังคับสิทธิ์ลูกค้า</p><p>ควรทดสอบการอัดวิดีโอต่อเนื่องและพื้นที่ดิสก์ก่อนใช้ในงานจริง</p></article></div>
-</section></main></div><div id="toast" class="toast" role="status"></div><script src="app.js?v=3.5.0"></script></body></html>
+</section></main></div><div id="toast" class="toast" role="status"></div><script type="module" src="firebase-packing-bridge.js"></script><script src="app.js?v=4.0.0"></script></body></html>
