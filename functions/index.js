@@ -141,3 +141,9 @@ exports.authorizeDuplicate=onCall(options,async req=>{
   return {approvalId:approval.id,expiresAtMs:now+5*60*1000};
  });
 });
+
+exports.accountRole=onCall(options,async req=>{
+ const id=uid(req),ref=await ensureAccount(id),snap=await ref.get(),a=snap.data();
+ const role=!a.ownerUid||a.ownerUid===id?"admin":"operator";
+ return {role,accountId:id,canApproveDuplicates:role==="admin",multiUserEnabled:false};
+});
