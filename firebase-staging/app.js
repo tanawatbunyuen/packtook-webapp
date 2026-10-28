@@ -29,6 +29,30 @@ function showRecovery(){
  if(!b){b=document.createElement('button');b.id='recoverCreditBtn';b.type='button';b.className='secondary';b.textContent='⚠ ตรวจสอบเครดิตจองค้าง';b.onclick=recoverCredit;($('packing')||$('appPage')).prepend(b)}
  b.hidden=false;b.textContent=pending()?'⚠ ตรวจสอบเครดิตจองค้าง':'ตรวจสอบสถานะเครดิตจองค้าง';
 }
+async function renderDeviceManager(){
+ let pane=$('deviceManager');
+ if(!pane){pane=document.createElement('section');pane.id='deviceManager';pane.className='panel';pane.style.margin='12px 0';($('packing')||$('appPage')).prepend(pane)}
+ pane.replaceChildren();
+ const head=document.createElement('h3');head.textContent='จัดการอุปกรณ์ (Staging)';pane.append(head);
+ const loading=document.createElement('p');loading.textContent='กำลังโหลดอุปกรณ์...';pane.append(loading);
+ try{
+  const state=await credit().deviceStatus();loading.textContent='ใช้งาน '+state.devices.length+'/'+state.limit+' เครื่อง • เครื่องนี้: '+(state.registered?'ลงทะเบียนแล้ว':'ยังไม่ลงทะเบียน');
+  for(const device of state.devices){
+   const line=document.createElement('div');line.style.margin='8px 0';line.style.display='flex';line.style.alignItems='center';line.style.gap='8px';line.style.flexWrap='wrap';
+   const label=document.createElement('span');label.textContent=device.name+(device.isCurrent?' (เครื่องนี้)':'')+' • '+(device.addedAt?new Date(device.addedAt).toLocaleDateString('th-TH'):'');
+   const remove=document.createElement('button');remove.type='button';remove.className='secondary';remove.textContent='ถอดเครื่อง';remove.disabled=!!activeBarcode||ending;
+   remove.addEventListener('click',async()=>{
+    if(activeBarcode||ending)return toast('หยุด REC ก่อนจัดการอุปกรณ์');
+    if(!confirm('ยืนยันถอด '+device.name+' ออกจากบัญชี? การถอดเครื่องไม่ลบวิดีโอในเครื่อง'))return;
+    remove.disabled=true;
+    try{await credit().removeDevice(device.id);await renderDeviceManager();await setupDevice().catch(()=>{});toast('ถอดเครื่องสำเร็จ')}catch(e){toast('ถอดเครื่องไม่สำเร็จ: '+e.message);remove.disabled=false}
+   });line.append(label,remove);pane.append(line);
+  }
+  if(!state.registered){
+   const register=document.createElement('button');register.type='button';register.className='secondary';register.textContent='ลงทะเบียน Browser นี้';register.onclick=async()=>{try{await setupDevice();await renderDeviceManager()}catch(e){toast(e.message)}};pane.append(register)
+  }
+ }catch(e){loading.textContent='โหลดรายชื่อเครื่องไม่ได้: '+e.message}
+}
 async function setupDevice(){
  const pane=$('deviceControl');
  let status;
@@ -156,7 +180,7 @@ $('showPassword').onclick=()=>{$('password').type=$('password').type==='password
 $('logout').onclick=async()=>{if(activeBarcode||recordingOp)return toast('กรุณาหยุดการบันทึกและตรวจเครดิตก่อนออกจากระบบ');await credit().logout();remoteUser=null;remoteQuota=null;$('appPage').hidden=true;$('loginPage').hidden=false;stream?.getTracks().forEach(t=>t.stop());stream=null;cameraState(false)};
 document.querySelectorAll('[data-tab]').forEach(e=>e.onclick=()=>showTab(e.dataset.tab));$('cameraBtn').onclick=toggleCamera;$('folderBtn').onclick=selectFolder;$('stopBtn').onclick=stopRecording;$('focusScan').onclick=()=>$('barcode').focus();$('refreshHistory').onclick=renderHistory;$('dateFilter').onchange=renderHistory;
 $('barcode').addEventListener('keydown',e=>{if(e.key!=='Enter')return;e.preventDefault();const code=$('barcode').value.trim();$('barcode').value='';if(!code){toast('กรุณาสแกนหรือพิมพ์ Barcode ก่อนกด Enter');return}if(ending||reservation){toast('ระบบกำลังดำเนินการ กรุณารอสักครู่');return}if(activeBarcode){if(code===activeBarcode)stopRecording();else toast('กำลังอัด '+activeBarcode+' ต้องสแกนรหัสเดิมเพื่อหยุด');return}reservation=true;startRecording(code).catch(e=>toast('เกิดข้อผิดพลาด: '+e.message)).finally(()=>{reservation=false;$('barcode').focus()})});
-function connectFirebaseUI(){if(!credit()?.ready)return;credit().onUser(u=>{remoteUser=u;if(u){showRecovery();showDeviceControl();void setupDevice().catch(e=>toast('Device Management: '+e.message));$('loginPage').hidden=true;$('appPage').hidden=false;void refreshRemoteQuota().then(()=>showTab('packing')).catch(e=>{showTab('packing');toast('เชื่อมโควตาไม่สำเร็จ: '+e.message)})}else{$('appPage').hidden=true;$('loginPage').hidden=false}});const msg=$('firebaseConnectStatus');if(msg)msg.textContent='เชื่อมต่อ Firebase แล้ว — เข้าสู่ระบบเพื่อเปิด Packing / Dashboard / Packages / Help'}
+function connectFirebaseUI(){if(!credit()?.ready)return;credit().onUser(u=>{remoteUser=u;if(u){showRecovery();showDeviceControl();void setupDevice().catch(e=>toast('Device Management: '+e.message)).finally(()=>void renderDeviceManager());$('loginPage').hidden=true;$('appPage').hidden=false;void refreshRemoteQuota().then(()=>showTab('packing')).catch(e=>{showTab('packing');toast('เชื่อมโควตาไม่สำเร็จ: '+e.message)})}else{$('appPage').hidden=true;$('loginPage').hidden=false}});const msg=$('firebaseConnectStatus');if(msg)msg.textContent='เชื่อมต่อ Firebase แล้ว — เข้าสู่ระบบเพื่อเปิด Packing / Dashboard / Packages / Help'}
 if(credit()?.ready)connectFirebaseUI();else window.addEventListener('packtook-firebase-ready',connectFirebaseUI,{once:true});
 
 $('barcodeFilter').addEventListener('input',renderHistory);
