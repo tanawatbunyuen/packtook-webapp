@@ -24,6 +24,7 @@ window.PACKTOOK_FIREBASE={
  async acceptOperatorInvite(){return (await api("acceptOperatorInvite")({})).data},
  async listOperators(){return (await api("listOperators")({})).data},
  async requestDuplicate(barcode,reason){return (await api("requestDuplicate")({barcode,reason})).data},
+ async myDuplicateRequests(){return (await api("myDuplicateRequests")({})).data},
  async listDuplicateRequests(){return (await api("listDuplicateRequests")({})).data},
  async approveDuplicateRequest(requestId){return (await api("approveDuplicateRequest")({requestId})).data},
  async operatorApprovalStatus(requestId){return (await api("operatorApprovalStatus")({requestId})).data},
