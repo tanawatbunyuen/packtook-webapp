@@ -132,6 +132,27 @@ async function startOmiseUI(id,method,amountTHB){
   toast('สถานะ Omise: '+result.status);await renderSubscriptionRequests();
  }catch(e){toast('Omise: '+e.message)}
 }
+async function testPaidRecheck(requestId,button){
+ button.disabled=true;button.textContent='กำลังทดสอบ 3 ครั้ง…';
+ try{
+  const before=await credit().subscriptionOverview();
+  const results=[];
+  for(let i=0;i<3;i++){
+   const response=await credit().omisePaymentStatus(requestId);
+   results.push(response.status);
+  }
+  const after=await credit().subscriptionOverview();
+  const unchanged=before.plan===after.plan&&before.expiresAt===after.expiresAt;
+  const allPaid=results.every(v=>v==='paid');
+  const passed=allPaid&&unchanged;
+  const text='Payment Recheck: '+(passed?'PASS':'FAIL')+'\\n3 calls: '+results.join(', ')+'\\nExpiry before: '+(before.expiresAt||'none')+'\\nExpiry after: '+(after.expiresAt||'none')+'\\nPlan before/after: '+before.plan+' / '+after.plan;
+  alert(text);
+  if(!passed)toast('ตรวจสอบซ้ำไม่ผ่าน กรุณาส่งผลให้ตรวจโค้ด');
+  await refreshRemoteQuota();
+  await renderSubscriptionRequests();
+ }catch(e){alert('ทดสอบไม่สำเร็จ: '+e.message)}
+ finally{button.disabled=false;button.textContent='ทดสอบตรวจซ้ำ 3 ครั้ง'}
+}
 async function renderSubscriptionRequests(){
  const box=$('subscriptionRequests');if(!box)return;box.replaceChildren();
  try{
@@ -142,7 +163,12 @@ async function renderSubscriptionRequests(){
   status.textContent='แพ็กเกจปัจจุบัน: '+details.plan+' • '+(labels[details.status]||details.status)+' • หมดอายุ: '+(details.expiresAt?new Date(details.expiresAt).toLocaleDateString('th-TH'):'ยังไม่กำหนด');
   box.append(status);
   const note=document.createElement('p');note.textContent='ชำระผ่าน Omise Test Mode: PromptPay QR หรือบัตร ระบบยืนยันยอดจาก Omise ก่อนเปิดแพ็กเกจ';box.append(note);
-  for(const x of details.requests){const line=document.createElement('div');line.style.margin='10px 0';const name=document.createElement('span');name.textContent=x.plan+' — '+({pending_payment_setup:'รอชำระเงิน',checkout_created:'สร้างหน้าชำระเงินแล้ว',paid:'ชำระแล้ว'}[x.status]||x.status)+' — '+(x.createdAt?new Date(x.createdAt).toLocaleDateString('th-TH'):'');line.append(name);if(['pending_payment_setup','creating_charge','payment_pending'].includes(x.status)){
+  for(const x of details.requests){const line=document.createElement('div');line.style.margin='10px 0';const name=document.createElement('span');name.textContent=x.plan+' — '+({pending_payment_setup:'รอชำระเงิน',checkout_created:'สร้างหน้าชำระเงินแล้ว',paid:'ชำระแล้ว'}[x.status]||x.status)+' — '+(x.createdAt?new Date(x.createdAt).toLocaleDateString('th-TH'):'');line.append(name);
+ if(x.status==='paid'){
+  const test=document.createElement('button');test.type='button';test.className='secondary';test.style.marginLeft='10px';
+  test.textContent='ทดสอบตรวจซ้ำ 3 ครั้ง';test.onclick=()=>testPaidRecheck(x.id,test);line.append(test);
+ }
+ if(['pending_payment_setup','creating_charge','payment_pending'].includes(x.status)){
  const controls=document.createElement('div');controls.style.marginTop='8px';
  if(x.status==='pending_payment_setup'){
   const qr=document.createElement('button');qr.type='button';qr.className='secondary';qr.textContent='PromptPay QR (Test)';
