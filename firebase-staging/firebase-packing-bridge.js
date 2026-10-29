@@ -32,6 +32,7 @@ window.PACKTOOK_FIREBASE={
  async omiseConfig(){return (await api("omisePaymentConfig")({})).data},
  async startOmisePayment(requestId,method,token=null){return (await api("createOmisePayment")({requestId,method,token})).data},
  async recoverOmiseCharge(requestId){return (await api("recoverOmiseCharge")({requestId})).data},
+ async paymentAudit(requestId){return (await api("paymentAudit")({requestId})).data},
  async omisePaymentStatus(requestId){return (await api("omisePaymentStatus")({requestId})).data},
  async requestPlanChange(plan){return (await api("requestPlanChange")({plan})).data},
  async accountRole(){return (await api("accountRole")({})).data},
