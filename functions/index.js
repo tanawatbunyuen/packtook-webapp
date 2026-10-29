@@ -193,17 +193,17 @@ async function reconcileCharge(accountId,requestId,chargeId){
   if(!tSnap.exists||!aSnap.exists)throw Error("Billing record missing");
   const item=tSnap.data(),a=aSnap.data();
   if(item.omiseChargeId!==chargeId||item.requestedBy!==accountId||charge.id!==chargeId||charge.currency.toLowerCase()!=="thb"||charge.amount!==item.amountTHB*100||item.amountTHB!==pricesTHB[item.plan]||charge.metadata?.requestId!==requestId||charge.metadata?.uid!==accountId||charge.livemode!==false)throw Error("Charge mismatch");
-  if(item.status==="paid")return {status:"paid",plan:item.plan};
+  if(item.status==="paid")return {status:"paid",plan:item.plan,alreadyApplied:true};
   if(charge.status==="successful"&&charge.paid===true){
    const currentEnd=Date.parse(a.planExpiresAt);
    const base=a.plan===item.plan&&Number.isFinite(currentEnd)&&currentEnd>Date.now()?currentEnd:Date.now();
    const expiresAt=new Date(base+30*86400000).toISOString();
-   tx.update(acc,{plan:item.plan,planExpiresAt:expiresAt,updatedAt:FieldValue.serverTimestamp()});
-   tx.update(ref,{status:"paid",paidAt:FieldValue.serverTimestamp(),paymentProvider:"omise"});
+   tx.update(acc,{plan:item.plan,planExpiresAt:expiresAt,lastPaidAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()});
+   tx.update(ref,{status:"paid",paidAt:FieldValue.serverTimestamp(),paymentProvider:"omise",activationExpiresAt:expiresAt});
    tx.create(acc.collection("audit").doc(),{action:"subscription_paid",billingRequestId:requestId,omiseChargeId:chargeId,plan:item.plan,createdAt:FieldValue.serverTimestamp()});
    return {status:"paid",plan:item.plan,expiresAt};
   }
-  if(["failed","expired"].includes(charge.status))tx.update(ref,{status:charge.status});
+  if(["failed","expired"].includes(charge.status)&&!["failed","expired"].includes(item.status))tx.update(ref,{status:charge.status});
   return {status:charge.status};
  });
 }
@@ -254,7 +254,7 @@ exports.recoverOmiseCharge=onCall(paymentSecrets,async req=>{
  const ref=own(user).collection("billingRequests").doc(requestId),snap=await ref.get();
  if(!snap.exists||snap.data().requestedBy!==user)throw new HttpsError("not-found","Billing request not found");
  const bill=snap.data();
- if(bill.omiseChargeId)return {status:bill.status,chargeId:bill.omiseChargeId,found:true};
+ if(bill.omiseChargeId){const result=await reconcileCharge(user,requestId,bill.omiseChargeId);const current=await omiseAPI("/charges/"+encodeURIComponent(bill.omiseChargeId));return {...result,chargeId:bill.omiseChargeId,found:true,qrImage:current.source?.scannable_code?.image?.download_uri||null};}
  if(bill.status!=="creating_charge")return {status:bill.status,found:false};
  // List by charge creation time to avoid reusing an unrelated customer payment.
  const from=bill.claimedAt?.toDate?.()||bill.createdAt?.toDate?.();
@@ -275,7 +275,7 @@ exports.recoverOmiseCharge=onCall(paymentSecrets,async req=>{
   const t=await tx.get(ref);
   if(!t.exists)throw new HttpsError("not-found","Request missing");
   if(t.data().omiseChargeId&&t.data().omiseChargeId!==charge.id)throw new HttpsError("failed-precondition","Different charge already linked");
-  if(!t.data().omiseChargeId)tx.update(ref,{omiseChargeId:charge.id,status:"payment_pending",recoveredAt:FieldValue.serverTimestamp()});
+  if(!t.data().omiseChargeId&&t.data().status==="creating_charge")tx.update(ref,{omiseChargeId:charge.id,status:"payment_pending",recoveredAt:FieldValue.serverTimestamp()});
  });
  const verified=await reconcileCharge(user,requestId,charge.id);
  return {...verified,found:true,chargeId:charge.id,qrImage:charge.source?.scannable_code?.image?.download_uri||null};
@@ -306,4 +306,22 @@ exports.omisePaymentWebhook=onRequest({region,secrets:[omiseKey,omiseWebhookKey]
  if(!validOp(id)||!user){res.status(400).send("invalid metadata");return}
  try{await reconcileCharge(user,id,event.data.id);res.status(200).send("verified")}
  catch(e){res.status(500).send("reconciliation failed")}
+});
+
+exports.paymentAudit=onCall(paymentSecrets,async req=>{
+ const user=uid(req),id=data(req).requestId;
+ if(!validOp(id))throw new HttpsError("invalid-argument","Invalid billing request ID");
+ const acc=own(user),ticket=acc.collection("billingRequests").doc(id),snap=await ticket.get();
+ if(!snap.exists||snap.data().requestedBy!==user)throw new HttpsError("not-found","Billing request not found");
+ const item=snap.data(),account=(await acc.get()).data();
+ const result={requestId:id,status:item.status,plan:item.plan,amountTHB:item.amountTHB,
+   provider:"omise",hasChargeId:!!item.omiseChargeId,paidAt:item.paidAt?.toDate?.()?.toISOString()||null,
+   activationExpiresAt:item.activationExpiresAt||null,currentPlan:account?.plan||null,
+   currentExpiresAt:account?.planExpiresAt||null};
+ if(item.omiseChargeId){
+   const charge=await omiseAPI("/charges/"+encodeURIComponent(item.omiseChargeId));
+   result.providerStatus=charge.status;result.providerPaid=charge.paid===true;result.providerTest=charge.livemode===false;
+   result.amountMatches=charge.amount===item.amountTHB*100&&String(charge.currency).toLowerCase()==="thb";
+ }
+ return result;
 });
