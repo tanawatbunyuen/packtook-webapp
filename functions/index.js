@@ -248,6 +248,38 @@ exports.createOmisePayment=onCall(paymentSecrets,async req=>{
  const status=await reconcileCharge(user,id,charge.id);
  return {status:status.status,chargeId:charge.id,authorizeUri:charge.authorize_uri||null,qrImage:charge.source?.scannable_code?.image?.download_uri||null};
 });
+exports.recoverOmiseCharge=onCall(paymentSecrets,async req=>{
+ const user=uid(req),requestId=data(req).requestId;
+ if(!validOp(requestId))throw new HttpsError("invalid-argument","Invalid request ID");
+ const ref=own(user).collection("billingRequests").doc(requestId),snap=await ref.get();
+ if(!snap.exists||snap.data().requestedBy!==user)throw new HttpsError("not-found","Billing request not found");
+ const bill=snap.data();
+ if(bill.omiseChargeId)return {status:bill.status,chargeId:bill.omiseChargeId,found:true};
+ if(bill.status!=="creating_charge")return {status:bill.status,found:false};
+ // List by charge creation time to avoid reusing an unrelated customer payment.
+ const from=bill.claimedAt?.toDate?.()||bill.createdAt?.toDate?.();
+ const params=new URLSearchParams({limit:"100",order:"reverse_chronological"});
+ if(from)params.set("from",new Date(from.getTime()-120000).toISOString());
+ const matches=[];
+ for(let offset=0;offset<500;offset+=100){
+  params.set("offset",String(offset));
+  const page=await omiseAPI("/charges?"+params.toString());
+  for(const ch of page.data||[]){
+   if(ch.livemode===false&&ch.metadata?.uid===user&&ch.metadata?.requestId===requestId&&ch.amount===bill.amountTHB*100&&String(ch.currency).toLowerCase()==="thb")matches.push(ch);
+  }
+  if(!(page.data||[]).length||!(page.has_more||page.data?.length===100))break;
+ }
+ if(matches.length!==1)return {status:"creating_charge",found:false,matchCount:matches.length,action:matches.length>1?"manual_review":"check_omise_dashboard"};
+ const charge=matches[0];
+ await db.runTransaction(async tx=>{
+  const t=await tx.get(ref);
+  if(!t.exists)throw new HttpsError("not-found","Request missing");
+  if(t.data().omiseChargeId&&t.data().omiseChargeId!==charge.id)throw new HttpsError("failed-precondition","Different charge already linked");
+  if(!t.data().omiseChargeId)tx.update(ref,{omiseChargeId:charge.id,status:"payment_pending",recoveredAt:FieldValue.serverTimestamp()});
+ });
+ const verified=await reconcileCharge(user,requestId,charge.id);
+ return {...verified,found:true,chargeId:charge.id,qrImage:charge.source?.scannable_code?.image?.download_uri||null};
+});
 exports.omisePaymentStatus=onCall(paymentSecrets,async req=>{
  const user=uid(req),id=data(req).requestId;
  if(!validOp(id))throw new HttpsError("invalid-argument","Invalid request");
