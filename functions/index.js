@@ -182,7 +182,7 @@ async function omiseAPI(path,method="GET",params=null){
  if(params)headers["Content-Type"]="application/x-www-form-urlencoded";
  const result=await fetch("https://api.omise.co"+path,{method,headers,...(params?{body:new URLSearchParams(params)}:{})});
  const payload=await result.json();
- if(!result.ok)throw new HttpsError("unavailable","Omise API returned error: "+(payload.code||result.status));
+ if(!result.ok)throw new HttpsError("failed-precondition","Omise rejected request: "+(payload.code||result.status),{providerRejected:true});
  return payload;
 }
 async function reconcileCharge(accountId,requestId,chargeId){
@@ -238,7 +238,13 @@ exports.createOmisePayment=onCall(paymentSecrets,async req=>{
   charge=await omiseAPI("/charges","POST",form);
   if(!charge.id||charge.livemode!==false)throw Error("Unexpected charge");
   await ticket.update({status:"payment_pending",omiseChargeId:charge.id,omiseStatus:charge.status,createdChargeAt:FieldValue.serverTimestamp()});
- }catch(e){throw new HttpsError("unavailable","Omise charge creation failed or could not be recorded. Please create a NEW billing request after checking Omise Test Dashboard. Original request requires reconciliation.")}
+ }catch(e){
+  if(e instanceof HttpsError&&e.details?.providerRejected===true){
+   await db.runTransaction(async tx=>{const t=await tx.get(ticket);if(t.exists&&t.data().status==="creating_charge"&&!t.data().omiseChargeId)tx.update(ticket,{status:"pending_payment_setup",omiseErrorCode:String(e.message).slice(0,160)})});
+   throw new HttpsError("failed-precondition",e.message+" (No charge created; you may retry this request)");
+  }
+  throw new HttpsError("unavailable","Charge creation outcome is uncertain. Check Omise Test Dashboard before submitting a new request.");
+ }
  const status=await reconcileCharge(user,id,charge.id);
  return {status:status.status,chargeId:charge.id,authorizeUri:charge.authorize_uri||null,qrImage:charge.source?.scannable_code?.image?.download_uri||null};
 });
