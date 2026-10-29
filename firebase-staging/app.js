@@ -150,8 +150,13 @@ async function renderSubscriptionRequests(){
   const card=document.createElement('button');card.type='button';card.className='secondary';card.style.marginLeft='8px';card.textContent='บัตรเครดิต (Test)';
   card.onclick=()=>startOmiseUI(x.id,'card',x.amountTHB);controls.append(card);
  }else{
+  if(x.status==='creating_charge'){
+   const recover=document.createElement('button');recover.type='button';recover.className='secondary';recover.textContent='กู้คืน Charge จาก Omise';
+   recover.onclick=async()=>{recover.disabled=true;try{const result=await credit().recoverOmiseCharge(x.id);if(result.qrImage)displayOmiseQR(result.qrImage);if(!result.found)alert(result.matchCount>1?'พบรายการชำระเงินมากกว่าหนึ่งรายการ ต้องตรวจสอบกับผู้ดูแล':'ไม่พบ Charge ที่ตรงกับคำขอในการค้นหาอัตโนมัติ กรุณาตรวจสอบ Omise Test Dashboard ก่อนสร้างคำขอใหม่');else toast('กู้คืนรายการแล้ว: '+result.status);await renderSubscriptionRequests()}catch(e){toast('กู้คืน Charge ไม่สำเร็จ: '+e.message)}finally{recover.disabled=false}};
+   controls.append(recover);
+  }
   const check=document.createElement('button');check.type='button';check.className='secondary';check.textContent='ตรวจสอบสถานะจาก Omise';
-  check.onclick=async()=>{try{const st=await credit().omisePaymentStatus(x.id);if(st.qrImage)displayOmiseQR(st.qrImage);if(st.needsReconciliation)alert('รายการนี้ค้างระหว่างสร้าง Charge และยังไม่มี Charge ID กรุณาตรวจสอบ Omise Dashboard ก่อนสร้างคำขอใหม่');toast('สถานะ: '+st.status);await refreshRemoteQuota();await renderSubscriptionRequests()}catch(e){toast(e.message)}};controls.append(check);
+  check.onclick=async()=>{try{const st=await credit().omisePaymentStatus(x.id);if(st.qrImage)displayOmiseQR(st.qrImage);if(st.needsReconciliation)toast('กรุณากด กู้คืน Charge เพื่อค้นหารายการจาก Omise');toast('สถานะ: '+st.status);await refreshRemoteQuota();await renderSubscriptionRequests()}catch(e){toast(e.message)}};controls.append(check);
  }
  line.append(controls)
 }box.append(line)}
