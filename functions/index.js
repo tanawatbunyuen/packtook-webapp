@@ -227,7 +227,7 @@ exports.createOmisePayment=onCall(paymentSecrets,async req=>{
   return {claimed:true,amount:item.amountTHB,plan:item.plan};
  });
  if(!claim.claimed){
-  if(claim.chargeId)return {status:claim.status,chargeId:claim.chargeId};
+  if(claim.chargeId){const prev=await omiseAPI("/charges/"+encodeURIComponent(claim.chargeId));return {status:prev.status,chargeId:prev.id,authorizeUri:prev.authorize_uri||null,qrImage:prev.source?.scannable_code?.image?.download_uri||null};}
   throw new HttpsError("failed-precondition","Payment already started; contact support for reconciliation if stuck");
  }
  let charge;
@@ -238,7 +238,7 @@ exports.createOmisePayment=onCall(paymentSecrets,async req=>{
   charge=await omiseAPI("/charges","POST",form);
   if(!charge.id||charge.livemode!==false)throw Error("Unexpected charge");
   await ticket.update({status:"payment_pending",omiseChargeId:charge.id,omiseStatus:charge.status,createdChargeAt:FieldValue.serverTimestamp()});
- }catch(e){throw new HttpsError("unavailable","Payment initiation needs reconciliation. Do not create another request until checked.")}
+ }catch(e){throw new HttpsError("unavailable","Omise charge creation failed or could not be recorded. Please create a NEW billing request after checking Omise Test Dashboard. Original request requires reconciliation.")}
  const status=await reconcileCharge(user,id,charge.id);
  return {status:status.status,chargeId:charge.id,authorizeUri:charge.authorize_uri||null,qrImage:charge.source?.scannable_code?.image?.download_uri||null};
 });
@@ -247,8 +247,10 @@ exports.omisePaymentStatus=onCall(paymentSecrets,async req=>{
  if(!validOp(id))throw new HttpsError("invalid-argument","Invalid request");
  const snap=await own(user).collection("billingRequests").doc(id).get();
  if(!snap.exists||snap.data().requestedBy!==user)throw new HttpsError("not-found","Billing request not found");
- if(!snap.data().omiseChargeId)return {status:snap.data().status};
- return reconcileCharge(user,id,snap.data().omiseChargeId);
+ if(!snap.data().omiseChargeId)return {status:snap.data().status,needsReconciliation:snap.data().status==="creating_charge"};
+ const result=await reconcileCharge(user,id,snap.data().omiseChargeId);
+ if(result.status==="pending"){const charge=await omiseAPI("/charges/"+encodeURIComponent(snap.data().omiseChargeId));return {...result,qrImage:charge.source?.scannable_code?.image?.download_uri||null,chargeId:charge.id}}
+ return result;
 });
 exports.omisePaymentWebhook=onRequest({region,secrets:[omiseKey,omiseWebhookKey],invoker:"public"},async(req,res)=>{
  if(req.method!=="POST"){res.status(405).send("Method not allowed");return}
