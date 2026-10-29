@@ -167,6 +167,9 @@ async function renderSubscriptionRequests(){
  if(x.status==='paid'){
   const test=document.createElement('button');test.type='button';test.className='secondary';test.style.marginLeft='10px';
   test.textContent='ทดสอบตรวจซ้ำ 3 ครั้ง';test.onclick=()=>testPaidRecheck(x.id,test);line.append(test);
+  const audit=document.createElement('button');audit.type='button';audit.className='secondary';audit.style.marginLeft='8px';audit.textContent='ตรวจ Payment Audit';
+  audit.onclick=async()=>{audit.disabled=true;try{const a=await credit().paymentAudit(x.id);const ok=a.status==='paid'&&a.providerStatus==='successful'&&a.providerPaid&&a.providerTest&&a.amountMatches;alert('PAYMENT AUDIT: '+(ok?'PASS':'REVIEW')+'\\nแพ็กเกจ: '+a.plan+'\\nOmise: '+a.providerStatus+'\\nยอดเงินตรงกัน: '+a.amountMatches+'\\nเวลาชำระ: '+a.paidAt+'\\nวันสิ้นสุดสิทธิ์ที่เปิด: '+(a.activationExpiresAt||'ไม่มีข้อมูลเก่า'));}catch(e){toast('Audit: '+e.message)}finally{audit.disabled=false}};
+  line.append(audit);
  }
  if(['pending_payment_setup','creating_charge','payment_pending'].includes(x.status)){
  const controls=document.createElement('div');controls.style.marginTop='8px';
