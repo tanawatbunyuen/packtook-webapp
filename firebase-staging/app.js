@@ -103,6 +103,14 @@ function plan(){return plans.find(p=>p[0]===store.plan)||plans[0]}
 function updateQuota(){const q=remoteQuota;const p=q?plans.find(x=>x[0]===q.plan)||plans[0]:plans[0];const u=q?.used??0,unlimited=q?.limit===null;const left=q?.remaining??0;$('planName').textContent=p[0].toUpperCase();$('usedCount').textContent=u.toLocaleString();$('remainingCount').textContent=unlimited?'∞':left.toLocaleString();$('limitLabel').textContent=unlimited?'ไม่จำกัดวิดีโอ':`จาก ${(q?.limit??20).toLocaleString()} วิดีโอ`;$('quotaText').textContent=unlimited?`${u.toLocaleString()} / ไม่จำกัด`:`${u.toLocaleString()} / ${(q?.limit??20).toLocaleString()}`;$('quotaProgress').style.width=unlimited?'0%':`${Math.min(100,u/(q?.limit||20)*100)}%`}
 
 function showTab(tab){document.querySelectorAll('.tabcontent').forEach(e=>e.hidden=e.id!==tab);document.querySelectorAll('.nav').forEach(e=>e.classList.toggle('active',e.dataset.tab===tab));$('crumb').textContent=tab.toUpperCase();$('pageTitle').textContent={packing:'บันทึกวิดีโอการแพ็กสินค้า',dashboard:'ค้นหาประวัติวิดีโอ',plans:'แพ็กเกจและโควตาวิดีโอ',help:'คู่มือการใช้งาน',users:'จัดการผู้ใช้และอุปกรณ์'}[tab];if(tab==='dashboard'){renderHistory();void runRetention(false)}if(tab==='plans')renderPlans();if(tab==='users'){updateUsersSummary();void refreshRemoteQuota().catch(e=>toast(e.message));void renderDeviceManager()}}
+function displayOmiseQR(uri){
+ const url=new URL(uri);
+ if(url.protocol!=="https:"||!(url.hostname==="api.omise.co"||url.hostname.endsWith(".omise.co")))throw Error("URL รูป QR ไม่ปลอดภัย");
+ const container=$('paymentQrResult');container.replaceChildren();
+ const label=document.createElement('p');label.textContent='PromptPay QR จาก Omise (Test Mode)';
+ const img=document.createElement('img');img.src=url.href;img.alt='PromptPay QR (Test)';img.style.maxWidth='280px';
+ container.append(label,img);container.scrollIntoView({behavior:'smooth',block:'center'});
+}
 async function startOmiseUI(id,method,amountTHB){
  if(!confirm('ชำระผ่าน Omise TEST MODE เท่านั้น ไม่มีการเก็บเงินจริง ต้องการดำเนินการต่อ?'))return;
  try{
@@ -119,14 +127,7 @@ async function startOmiseUI(id,method,amountTHB){
    if(!token?.startsWith('tokn_test_'))throw Error('ไม่ได้รับ Test token จาก Omise');
   }
   const result=await credit().startOmisePayment(id,method,token);
-  if(result.qrImage){
-   const url=new URL(result.qrImage);
-   if(url.protocol!=='https:'||!url.hostname.endsWith('.omise.co'))throw Error('QR image URL is untrusted');
-   const container=$('paymentQrResult');container.replaceChildren();
-   const label=document.createElement('p');label.textContent='สแกน QR ด้วยแอปธนาคาร (Omise TEST MODE)';
-   const img=document.createElement('img');img.src=url.href;img.alt='Omise PromptPay test QR';img.style.maxWidth='260px';
-   container.append(label,img);
-  }
+  if(result.qrImage)displayOmiseQR(result.qrImage);
   if(result.authorizeUri){const url=new URL(result.authorizeUri);if(url.protocol==='https:')window.location.assign(url.href)}
   toast('สถานะ Omise: '+result.status);await renderSubscriptionRequests();
  }catch(e){toast('Omise: '+e.message)}
@@ -150,7 +151,7 @@ async function renderSubscriptionRequests(){
   card.onclick=()=>startOmiseUI(x.id,'card',x.amountTHB);controls.append(card);
  }else{
   const check=document.createElement('button');check.type='button';check.className='secondary';check.textContent='ตรวจสอบสถานะจาก Omise';
-  check.onclick=async()=>{try{const st=await credit().omisePaymentStatus(x.id);toast('สถานะ: '+st.status);await refreshRemoteQuota();await renderSubscriptionRequests()}catch(e){toast(e.message)}};controls.append(check);
+  check.onclick=async()=>{try{const st=await credit().omisePaymentStatus(x.id);if(st.qrImage)displayOmiseQR(st.qrImage);if(st.needsReconciliation)alert('รายการนี้ค้างระหว่างสร้าง Charge และยังไม่มี Charge ID กรุณาตรวจสอบ Omise Dashboard ก่อนสร้างคำขอใหม่');toast('สถานะ: '+st.status);await refreshRemoteQuota();await renderSubscriptionRequests()}catch(e){toast(e.message)}};controls.append(check);
  }
  line.append(controls)
 }box.append(line)}
