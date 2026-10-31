@@ -551,3 +551,18 @@
   #appPage .sidebrand .packtook-type strong{font-size:16px;letter-spacing:-.6px}
   #appPage .sidebrand .packtook-type small{display:none}
 }
+
+
+/* PACKTOOK V5.5 — rapid scanner response: distinct stopping/saving vs recording */
+#appPage #recordState.saving{
+ background:#edf6ff;color:#14578c;border:1px solid #b9d8f4;
+ font-weight:850;box-shadow:inset 4px 0 0 #2790dc;
+}
+#appPage #recBadge.saving{
+ background:#dceeff;color:#155a97;border:1px solid #a5d5f8;
+ font-weight:850;white-space:normal;
+}
+@media(max-width:700px){
+ #appPage #recordState.saving{font-size:19px}
+ #appPage #recBadge.saving{font-size:14px}
+}
