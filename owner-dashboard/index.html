@@ -2,7 +2,7 @@
 <html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#07152e">
 <meta name="description" content="PACKTOOK Owner Analytics — private business dashboard">
 <title>PACKTOOK Owner | Analytics Dashboard</title>
-<link rel="stylesheet" href="./style.css?v=5.8.0"></head>
+<link rel="stylesheet" href="./style.css?v=5.8.1"></head>
 <body>
 <section id="loginScreen" class="login-screen">
  <div class="login-bg"></div>
@@ -54,11 +54,11 @@
    <div class="panel plan-panel"><div class="table-scroll"><table><thead><tr><th>แพ็กเกจ</th><th>บัญชีทั้งหมด</th><th>Active</th><th>หมดอายุ</th><th>ชำระ Test</th><th>ยอดทดสอบ (฿)</th></tr></thead><tbody id="planRows"><tr><td colspan="6">กำลังโหลดข้อมูล…</td></tr></tbody></table></div></div>
   </section>
   <section id="customers" class="report-section">
-   <div class="section-heading"><div><p class="eyebrow">04 / CUSTOMER ACCOUNTS</p><h2>บัญชีสมาชิก PACKTOOK</h2><p class="muted">แสดงเฉพาะรหัสบัญชี แพ็กเกจ และสถานะ เพื่อจำกัดข้อมูลส่วนบุคคลที่ไม่จำเป็น</p></div><button id="reloadCustomers" type="button" class="secondary">รีโหลดรายชื่อ</button></div>
-   <div class="panel"><div class="table-scroll"><table><thead><tr><th>บัญชี Firebase</th><th>แพ็กเกจ</th><th>สถานะ</th><th>วันที่สร้าง</th><th>วันหมดอายุ</th></tr></thead><tbody id="customerRows"><tr><td colspan="5">กำลังโหลดข้อมูล…</td></tr></tbody></table></div><div class="customer-pager"><span id="customerPageStatus">เรียงตามรหัสบัญชี · 25 รายการต่อครั้ง</span><button id="moreCustomers" type="button" class="secondary" hidden>โหลดลูกค้าเพิ่ม 25 รายการ</button></div></div>
+   <div class="section-heading"><div><p class="eyebrow">04 / CUSTOMER ACCOUNTS</p><h2>บัญชีสมาชิก PACKTOOK</h2><p class="muted">ข้อมูลจาก Firebase Authentication และบัญชีสมาชิก · เครดิตคือจำนวนที่ใช้บันทึกได้ในขณะนี้</p></div><button id="reloadCustomers" type="button" class="secondary">รีโหลดรายชื่อ</button></div>
+   <div class="panel"><div class="table-scroll"><table><thead><tr><th>Email ลูกค้า</th><th>บัญชี Firebase</th><th>แพ็กเกจ</th><th>สถานะ</th><th>เครดิตวิดีโอคงเหลือ</th><th>เครดิตที่จองอยู่</th><th>วันที่สร้าง</th><th>วันหมดอายุ</th></tr></thead><tbody id="customerRows"><tr><td colspan="8">กำลังโหลดข้อมูล…</td></tr></tbody></table></div><div class="customer-pager"><span id="customerPageStatus">เรียงตามรหัสบัญชี · 25 รายการต่อครั้ง</span><button id="moreCustomers" type="button" class="secondary" hidden>โหลดลูกค้าเพิ่ม 25 รายการ</button></div></div>
   </section>
   <footer class="footer"><span>PACKTOOK OWNER · Staging Analytics</span><span>ข้อมูลชำระเงินจาก Firestore snapshots ไม่ใช่การตรวจ Refund แบบ Real Time</span></footer>
  </main>
 </div>
-<script type="module" src="./app.js?v=5.8.0"></script>
+<script type="module" src="./app.js?v=5.8.1"></script>
 </body></html>
