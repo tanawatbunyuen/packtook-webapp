@@ -525,3 +525,114 @@ exports.paymentAudit=onCall(paymentSecrets,async req=>{
  }
  return result;
 });
+
+
+// V5.8: standalone PACKTOOK Owner App. This role is NEVER inferred from a
+// customer's "admin" role, email/domain, account.plan or a client supplied field.
+// Only a separately provisioned Firebase Authentication custom claim can authorize it.
+function requirePlatformOwner(req){
+ const id=uid(req);
+ if(req.auth.token.packtookPlatformOwner!==true)
+  throw new HttpsError("permission-denied","Platform owner access only");
+ return id;
+}
+function ownerMonthTH(timestamp){
+ return new Date(timestamp+7*3600000).toISOString().slice(0,7);
+}
+function ownerTimestamp(value){
+ if(!value)return null;
+ if(typeof value.toMillis==="function")return value.toMillis();
+ if(typeof value==="number"&&Number.isFinite(value))return value;
+ if(typeof value==="string"){const ms=Date.parse(value);return Number.isFinite(ms)?ms:null}
+ return null;
+}
+const ownerOptions={region,maxInstances:2,timeoutSeconds:180,memory:"512MiB"};
+const OWNER_MAX_ACCOUNTS=1200,OWNER_BATCH=100,OWNER_CONCURRENCY=12;
+exports.ownerAnalyticsSummary=onCall(ownerOptions,async req=>{
+ requirePlatformOwner(req);
+ const now=Date.now(),plans=Object.keys(pricesTHB),currentMonth=ownerMonthTH(now);
+ const months=Array.from({length:12},(_,i)=>{
+  const d=new Date(now);d.setUTCDate(1);d.setUTCHours(12,0,0,0);
+  d.setUTCMonth(d.getUTCMonth()-(11-i));return ownerMonthTH(d.getTime());
+ });
+ const byMonth=new Map(months.map(month=>[month,{month,newCustomers:0,testSalesTHB:0,testPayments:0,unknownPayments:0}]));
+ const byPlan=new Map(plans.map(plan=>[plan,{plan,customers:0,active:0,expired:0,testSalesTHB:0,testPayments:0}]));
+ const totals={customers:0,free:0,activePaid:0,expiredPaid:0,otherPaid:0,
+  testSalesTHB:0,testPayments:0,unknownPayments:0,unknownSalesTHB:0,liveSalesTHB:0,livePayments:0};
+ let cursor=null,scanned=0,truncated=false;
+ while(scanned<OWNER_MAX_ACCOUNTS){
+  let query=db.collection("accounts").orderBy(admin.firestore.FieldPath.documentId()).limit(Math.min(OWNER_BATCH,OWNER_MAX_ACCOUNTS-scanned));
+  if(cursor)query=query.startAfter(cursor);
+  const accounts=await query.get();
+  if(accounts.empty)break;
+  for(let offset=0;offset<accounts.docs.length;offset+=OWNER_CONCURRENCY){
+   const part=accounts.docs.slice(offset,offset+OWNER_CONCURRENCY);
+   const billing=await Promise.all(part.map(async doc=>{
+    const paid=await doc.ref.collection("billingRequests").where("status","==","paid").get();
+    return paid.docs.map(x=>x.data());
+   }));
+   part.forEach((doc,i)=>{
+    const account=doc.data(),plan=typeof account.plan==="string"?account.plan:"Unknown";
+    const tier=byPlan.get(plan),state=subscriptionState(account);
+    totals.customers++;
+    if(tier)tier.customers++;
+    if(plan==="Free")totals.free++;
+    else if(state==="active"){totals.activePaid++;if(tier)tier.active++}
+    else if(state==="expired"){totals.expiredPaid++;if(tier)tier.expired++}
+    else totals.otherPaid++;
+    const joined=ownerTimestamp(account.createdAt);
+    const joinedMonth=joined===null?null:byMonth.get(ownerMonthTH(joined));
+    if(joinedMonth)joinedMonth.newCustomers++;
+    for(const pay of billing[i]){
+     if(!Number.isSafeInteger(pay.amountTHB)||pay.amountTHB<0||pay.paymentProvider!=="omise")continue;
+     const monthMs=ownerTimestamp(pay.paidAt)||ownerTimestamp(pay.createdAt);
+     const month=monthMs===null?null:byMonth.get(ownerMonthTH(monthMs));
+     const chargeId=String(pay.omiseChargeId||"");
+     const isTest=pay.omiseLivemode===false||chargeId.startsWith("chrg_test_");
+     // Current Omise integration verifies ONLY test mode; do not treat an
+     // unclassified legacy invoice as production revenue.
+     const isLive=pay.omiseLivemode===true&&chargeId.length>8&&!chargeId.startsWith("chrg_test_");
+     if(isTest){
+      totals.testPayments++;totals.testSalesTHB+=pay.amountTHB;
+      if(tier&&pay.plan===plan){tier.testPayments++;tier.testSalesTHB+=pay.amountTHB}
+      else{const purchaseTier=byPlan.get(pay.plan);if(purchaseTier){purchaseTier.testPayments++;purchaseTier.testSalesTHB+=pay.amountTHB}}
+      if(month){month.testPayments++;month.testSalesTHB+=pay.amountTHB}
+     }else if(isLive){
+      totals.livePayments++;totals.liveSalesTHB+=pay.amountTHB;
+     }else{
+      totals.unknownPayments++;totals.unknownSalesTHB+=pay.amountTHB;
+      if(month)month.unknownPayments++;
+     }
+    }
+   });
+  }
+  scanned+=accounts.size;cursor=accounts.docs[accounts.docs.length-1];
+  if(accounts.size<OWNER_BATCH)break;
+ }
+ if(scanned>=OWNER_MAX_ACCOUNTS){
+  const more=await db.collection("accounts").orderBy(admin.firestore.FieldPath.documentId()).startAfter(cursor).limit(1).get();
+  truncated=!more.empty;
+ }
+ return {asOf:new Date(now).toISOString(),timezone:"Asia/Bangkok",mode:"staging", 
+  truncated,scannedAccounts:scanned,maxScannedAccounts:OWNER_MAX_ACCOUNTS,
+  totals,plans:[...byPlan.values()],months:[...byMonth.values()],
+  caveat:"ยอดจากรายการ Firestore ที่บันทึกว่าชำระสำเร็จ ไม่ใช่การตรวจสถานะคืนเงินแบบ Real Time; Omise Test Mode ไม่ใช่ยอดเงินจริง"};
+});
+exports.ownerAnalyticsCustomers=onCall(ownerOptions,async req=>{
+ requirePlatformOwner(req);
+ const d=data(req),afterId=d.afterId;
+ if(afterId!==undefined&&afterId!==null&&(!validOp(afterId)||afterId.includes("/")))
+  throw new HttpsError("invalid-argument","Invalid customer cursor");
+ const collection=db.collection("accounts");
+ let query=collection.orderBy(admin.firestore.FieldPath.documentId()).limit(26);
+ if(afterId)query=query.startAfter(afterId);
+ const snap=await query.get(),items=snap.docs.slice(0,25);
+ const customers=items.map(doc=>{
+  const a=doc.data(),state=subscriptionState(a);
+  return {accountId:doc.id,plan:a.plan||"Unknown",status:state,
+   joinedAt:ownerTimestamp(a.createdAt)?new Date(ownerTimestamp(a.createdAt)).toISOString():null,
+   expiresAt:typeof a.planExpiresAt==="string"?a.planExpiresAt:null,
+   hasBilling:!!a.lastPaidAt};
+ });
+ return {customers,nextCursor:snap.docs.length>25&&items.length?items[items.length-1].id:null};
+});
