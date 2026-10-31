@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Production V6.0 is not open to customer traffic.
+    // Fail-closed until production Backend and access tests are complete.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
