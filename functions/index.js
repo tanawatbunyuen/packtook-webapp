@@ -66,9 +66,12 @@ function purchaseDecision(a,target,now=Date.now()){
  if(reserved>0)return {allowed:false,reason:"Finish outstanding recordings before purchasing or renewing"};
  const exhausted=remaining===0;
  const exp=Date.parse(a.planExpiresAt),nearExpiry=Number.isFinite(exp)&&exp>now&&exp-now<=7*86400000;
- if(exhausted&&tiers.indexOf(target)>=tiers.indexOf(a.plan))return {allowed:true,kind:"exhausted_topup",resetQuota:false};
+ // Upgrading to a higher-priced tier is permitted immediately, including when credits remain.
+ // Keep all unused credits and add the new tier allowance only after Omise confirms payment.
+ if(tiers.indexOf(target)>tiers.indexOf(a.plan))return {allowed:true,kind:"upgrade",resetQuota:false};
+ if(exhausted&&target===a.plan)return {allowed:true,kind:"exhausted_topup",resetQuota:false};
  if(nearExpiry&&target===a.plan)return {allowed:true,kind:"renewal",resetQuota:false};
- return {allowed:false,reason:reserved>0&&remaining===0?"Finish outstanding recordings before buying more": "Current plan is active. Buy the same/higher tier only after quota is exhausted, or renew the same tier within 7 days of expiry."};
+ return {allowed:false,reason:"Active subscriptions cannot downgrade. Same-tier purchases require exhausted credits or at most 7 days until expiry; upgrades to higher tiers are allowed now."};
 }
 function billingOpen(a){return typeof a.openBillingRequestId==="string"&&a.openBillingRequestId.length>0}
 
@@ -266,7 +269,8 @@ async function reconcileCharge(accountId,requestId,chargeId){
    const sameRevision=(a.billingVersion||0)===(item.baseBillingVersion||0);
    const lockOk=a.openBillingRequestId===requestId;
    const decision=purchaseDecision(a,item.plan);
-   const authorized=legacy?(!hasActivePaidPlan(a)&&!billingOpen(a)):lockOk&&sameRevision&&(decision.allowed||item.purchaseKind==="renewal"&&a.plan===item.plan);
+   const upgradeStillValid=item.purchaseKind==="upgrade"&&decision.kind==="upgrade"&&a.plan===item.basePlan&&a.planExpiresAt===item.baseExpiresAt;
+   const authorized=legacy?(!hasActivePaidPlan(a)&&!billingOpen(a)):lockOk&&sameRevision&&(item.purchaseKind==="upgrade"?upgradeStillValid:(decision.allowed||item.purchaseKind==="renewal"&&a.plan===item.plan));
    if(!authorized){
     if(item.status!=="payment_review"){
      tx.update(ref,{status:"payment_review",reviewReason:"active_or_changed_subscription",reviewedAgainstPlan:a.plan,reviewedAgainstExpiresAt:a.planExpiresAt||null,reviewRequiredAt:FieldValue.serverTimestamp()});
@@ -313,7 +317,7 @@ exports.createOmisePayment=onCall(paymentSecrets,async req=>{
   if(!item.purchaseKind)throw new HttpsError("failed-precondition","This billing request was created before V5.0. Create a new request to purchase.");
   if(!accountSnap.exists)throw new HttpsError("not-found","Account missing");
   const purchase=purchaseDecision(accountSnap.data(),item.plan);
-  if(!purchase.allowed||item.purchaseKind&&(!billingOpen(accountSnap.data())||accountSnap.data().openBillingRequestId!==id||(accountSnap.data().billingVersion||0)!==(item.baseBillingVersion||0)))throw new HttpsError("failed-precondition",purchase.reason||"Billing request is no longer valid");
+  if(!purchase.allowed||item.purchaseKind&&(!billingOpen(accountSnap.data())||accountSnap.data().openBillingRequestId!==id||(accountSnap.data().billingVersion||0)!==(item.baseBillingVersion||0))||item.purchaseKind==="upgrade"&&(purchase.kind!=="upgrade"||item.basePlan!==accountSnap.data().plan||item.baseExpiresAt!==accountSnap.data().planExpiresAt))throw new HttpsError("failed-precondition",purchase.reason||"Billing request is no longer valid");
   if(!Object.hasOwn(pricesTHB,item.plan)||item.plan==="Free"||item.amountTHB!==pricesTHB[item.plan])throw new HttpsError("failed-precondition","Invalid price");
   if(item.status!=="pending_payment_setup")return {claimed:false,status:item.status,chargeId:item.omiseChargeId};
   tx.update(ticket,{status:"creating_charge",paymentMethod:method,paymentProvider:"omise",claimedAt:FieldValue.serverTimestamp()});
