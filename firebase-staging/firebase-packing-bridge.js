@@ -20,6 +20,8 @@ window.PACKTOOK_FIREBASE={
  async logout(){await signOut(auth)},
  async usage(){return (await api("usageStatus")({})).data},
  async recordingStatus(operationId){return (await api("recordingStatus")({operationId})).data},
+ async pendingVideoReservations(){return (await api("pendingVideoReservations")({})).data},
+ async recoverStaleVideoReservation(operationId){return (await api("recoverStaleVideoReservation")({operationId,confirmNoVideo:true})).data},
  async inviteOperator(email){return (await api("inviteOperator")({email})).data},
  async acceptOperatorInvite(){return (await api("acceptOperatorInvite")({})).data},
  async listOperators(){return (await api("listOperators")({})).data},
