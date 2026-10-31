@@ -53,11 +53,11 @@ exports.ownerGetCustomerManageState=wrap(async r=>{
   if(!e.exists||!p.exists)error('not-found','Customer subscription not found');
   const plan=get(p.data(),v.planField);
   if(plan==null)error('failed-precondition','Plan field not found');
-  const isPro=unlimited(plan),balance=c.exists?get(c.data(),v.remainingField):null;
-  if(!isPro&&(!Number.isSafeInteger(balance)||balance<0))error('failed-precondition','Remaining credits field mismatch');
+  const isPro=unlimited(plan),walletActive=c.exists&&c.data()?.creditWalletV1===true,balance=c.exists?get(c.data(),v.remainingField):null;
+  if(walletActive&&!isPro&&(!Number.isSafeInteger(balance)||balance<0))error('failed-precondition','Remaining credits field mismatch');
   const expiryAt=iso(get(e.data(),v.expiryField));
   const email=(await admin.auth().getUser(uid).catch(()=>null))?.email||null;
-  return {customerUid:uid,email,remainingCredits:isPro?null:balance,plan,expiryAt,unlimited:isPro,creditEditable:!isPro,active:!!expiryAt&&Date.parse(expiryAt)>Date.now()};
+  return {customerUid:uid,email,remainingCredits:isPro||!walletActive?null:balance,plan,expiryAt,unlimited:isPro,creditEditable:walletActive&&!isPro,active:!!expiryAt&&Date.parse(expiryAt)>Date.now()};
 });
 exports.ownerGrantVideoCredits=wrap(async r=>{
   const ownerUid=checkOwner(r),v=cfg(),uid=validUid(r.data?.customerUid),amount=r.data?.amount,reason=validReason(r.data?.reason),requestId=validId(r.data?.requestId);
@@ -70,6 +70,8 @@ exports.ownerGrantVideoCredits=wrap(async r=>{
     if(previous.exists){const prev=previous.data();if(prev.ownerUid!==ownerUid||prev.fingerprint!==fp)error('already-exists','Request ID reused');return {...prev.result,replayed:true};}
     if(!credit.exists||!plan.exists)error('not-found','Customer balance or plan not found');
     const before=get(credit.data(),v.remainingField),p=get(plan.data(),v.planField);
+    if(credit.data()?.creditWalletV1!==true)error('failed-precondition','Account wallet is inactive');
+    if(credit.data()?.openBillingRequestId)error('failed-precondition','Pending billing request');
     if(!Number.isSafeInteger(before)||before<0||p==null)error('failed-precondition','Credit/plan field mismatch');
     if(unlimited(p))error('failed-precondition','Pro plan has unlimited videos');
     const after=before+amount;if(!Number.isSafeInteger(after))error('out-of-range','Balance overflow');
@@ -89,6 +91,7 @@ exports.ownerUpdateCustomerExpiry=wrap(async r=>{
     const [prev,docSnap]=await Promise.all([tx.get(action),tx.get(ref)]);
     if(prev.exists){const a=prev.data();if(a.ownerUid!==ownerUid||a.fingerprint!==fp)error('already-exists','Request ID reused');return {...a.result,replayed:true};}
     if(!docSnap.exists||get(docSnap.data(),v.expiryField)===undefined)error('failed-precondition','Expiry field not found');
+    if(docSnap.data()?.openBillingRequestId)error('failed-precondition','Pending billing request');
     const before=iso(get(docSnap.data(),v.expiryField)),after=date.toISOString();
     const result={customerUid:uid,previousExpiryAt:before,expiryAt:after,requestId};
     const audit={customerUid:uid,ownerUid,operation:'setExpiry',before,after,reason,expiryDate,requestId,fingerprint:fp,result,createdAt:admin.firestore.FieldValue.serverTimestamp()};
