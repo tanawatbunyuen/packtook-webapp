@@ -44,6 +44,9 @@ ENTRY="$(node -e "console.log(require('./$FN_SRC/package.json').main||'index.js'
 if [[ "$(node -e "console.log(require('./$FN_SRC/package.json').type||'commonjs')")" == "module" ]]; then
   echo "ERROR: ESM functions project. This installer requires CommonJS and intentionally did not modify your files."; exit 1
 fi
+if [[ "$ENTRY" == lib/* || "$ENTRY" == dist/* ]]; then
+  echo "ERROR: Compiled functions entrypoint detected: $ENTRY. Integrate in source and rebuild; no files changed."; exit 1
+fi
 [[ -f "$FN_SRC/$ENTRY" ]] || { echo "ERROR: Cannot find functions entrypoint $FN_SRC/$ENTRY"; exit 1; }
 [[ -d "$WEB_SRC" && -f "$WEB_SRC/index.html" ]] || { echo "ERROR: Owner HTML absent in $WEB_SRC. Run your existing frontend build first."; exit 1; }
 echo
@@ -89,7 +92,7 @@ echo "Backups: $BACKUP"
 cp "$HERE/functions/owner-management-v59.js" "$FN_SRC/owner-management-v59.js"
 node --check "$FN_SRC/owner-management-v59.js"
 if ! grep -Fq "require('./owner-management-v59')" "$FN_SRC/$ENTRY"; then
-  printf "\n// PACKTOOK Owner V5.9: preserve existing functions\nObject.assign(exports, require('./owner-management-v59'));\n" >> "$FN_SRC/$ENTRY"
+  printf "\n// PACKTOOK Owner V5.9: preserve existing functions\nObject.assign(module.exports, require('./owner-management-v59'));\n" >> "$FN_SRC/$ENTRY"
 fi
 node --check "$FN_SRC/$ENTRY"
 python3 - "$FN_SRC/.env.$PROJECT" <<'PY'
@@ -110,7 +113,7 @@ lines.extend(k+'='+v for k,v in p.items())
 open(path,'w').write('\n'.join(lines)+'\n')
 PY
 cp "$HERE/owner-management-v59.js" "$WEB_SRC/owner-management-v59.js"
-node --check "$WEB_SRC/owner-management-v59.js"
+node --input-type=module --check < "$WEB_SRC/owner-management-v59.js"
 python3 - "$WEB_SRC/index.html" <<'PY'
 import sys
 p=sys.argv[1]
