@@ -300,8 +300,10 @@ exports.omisePaymentWebhook=onRequest({region,secrets:[omiseKey,omiseWebhookKey]
  const expected=crypto.createHmac("sha256",Buffer.from(secret,"base64")).update(ts+"."+req.rawBody.toString("utf8")).digest();
  const valid=sigs.some(sig=>{if(!/^[a-f0-9]{64}$/i.test(sig.trim()))return false;return crypto.timingSafeEqual(Buffer.from(sig.trim(),"hex"),expected)});
  if(!valid){res.status(401).send("Invalid signature");return}
+ // charge.update is useful for non-3DS cards where charge.complete may not arrive.
+ // All notifications are independently verified with GET /charges/{id} before any activation.
  const event=req.body;
- if(event?.key!=="charge.complete"||!/^chrg_test_[a-zA-Z0-9]+$/.test(event?.data?.id||"")){res.status(200).send("ignored");return}
+ if(!["charge.complete","charge.update","charge.create"].includes(event?.key)||!/^chrg_test_[a-zA-Z0-9]+$/.test(event?.data?.id||"")){res.status(200).send("ignored");return}
  const id=event.data.metadata?.requestId,user=event.data.metadata?.uid;
  if(!validOp(id)||!user){res.status(400).send("invalid metadata");return}
  try{await reconcileCharge(user,id,event.data.id);res.status(200).send("verified")}
