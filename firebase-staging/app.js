@@ -606,27 +606,109 @@ function fmtSec(s){return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%
 function cameraState(on){$('noCam').hidden=on;$('cameraBtn').textContent=on?'ปิดกล้อง':'เปิดกล้อง';if(!activeBarcode)$('recBadge').textContent=on?'● CAMERA ON':'● CAMERA OFF'}
 async function toggleCamera(){if(stream){if(activeBarcode)return toast('หยุดการบันทึกก่อนปิดกล้อง');clearHealth();stream.getTracks().forEach(t=>t.stop());stream=null;$('preview').srcObject=null;cameraState(false);updateHealth('● ปิดกล้องแล้ว');return}await openCamera()}
 async function selectFolder(){try{if(!window.showDirectoryPicker)throw Error('รองรับ Chrome / Edge Desktop เท่านั้น');const h=await window.showDirectoryPicker({mode:'readwrite'});const perm=await h.requestPermission({mode:'readwrite'});if(perm!=='granted')throw Error('ไม่มีสิทธิ์เขียนโฟลเดอร์');folder=h;await saveFolderHandle(h);$('folderStatus').textContent='โฟลเดอร์ที่เลือก: '+h.name;toast('เลือกโฟลเดอร์สำเร็จ')}catch(e){toast('เลือกโฟลเดอร์ไม่สำเร็จ: '+e.message)}}
-async function startRecording(barcode){const scanRequestedAt=performance.now();if(recordingOp||pending())return toast('มีเครดิตที่ยังไม่ทราบสถานะ โปรดตรวจสอบรายการก่อนบันทึกใหม่');if(ending||activeBarcode)return;if(!remoteUser||!credit())return toast('กรุณาเข้าสู่ระบบ Firebase ก่อน');if(!streamGood())return toast('กรุณาเปิดกล้องและตรวจสอบสัญญาณ');if(!folder)return toast('กรุณาเลือกโฟลเดอร์บันทึกก่อน');if(!window.MediaRecorder)return toast('Browser ไม่รองรับ MediaRecorder');try{let perm=await folder.queryPermission({mode:'readwrite'});if(perm!=='granted')return toast('กรุณาเชื่อมต่อโฟลเดอร์เดิมและให้สิทธิ์ก่อน');const mime=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(t=>MediaRecorder.isTypeSupported(t));if(!mime)throw Error('Browser ไม่รองรับ WebM');// ReserveCredit is the single source of truth for quota, subscription and registered device.
-// Do not perform separate usageStatus/deviceStatus network roundtrips before each scan.
-const op=crypto.randomUUID();let granted;
-$('recordState').textContent='⏳ สแกน '+barcode+' แล้ว • กำลังขอสิทธิ์เริ่ม REC…';
-updateHealth('กำลังตรวจสอบสิทธิ์การบันทึก…');
-try{granted=await credit().reserve(barcode,op)}catch(err){
- const unregistered=err.code==='functions/permission-denied'&&/Device not registered|Device registration required/i.test(String(err.message));
- if(unregistered){
-  // First scan on a newly signed-in computer only: register, then retry same operation ID.
-  await setupDevice();
-  granted=await credit().reserve(barcode,op);
- }else{
- const duplicate=err.code==='functions/already-exists'||String(err.message).includes('Barcode already scanned');
- if(!duplicate)throw err;
- if(!confirm('พบ Barcode '+barcode+' ที่บันทึกแล้ว\\nต้องการขออนุญาตบันทึกซ้ำพร้อมระบุเหตุผลหรือไม่?'))return;
- const reason=prompt('เหตุผลในการบันทึก Barcode ซ้ำ (อย่างน้อย 10 ตัวอักษร):');
- if(reason===null)return;
- if(reason.trim().length<10||reason.trim().length>500)return toast('โปรดระบุเหตุผลระหว่าง 10–500 ตัวอักษร');
- const approval=await credit().authorizeDuplicate(barcode,reason.trim());
- granted=await credit().reserve(barcode,op,approval.approvalId);
- }}if(granted.status!=='reserved')throw Error('การจองเครดิตไม่ได้รับอนุญาต');recordingOp=op;localStorage.setItem(pendingKey(),JSON.stringify({operationId:op,barcode}));showRecovery();parts=[];recordingFailure='';recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:({480:850000,720:1800000,1080:3500000}[Number($('videoQuality').value)]||1800000)});const rec=recorder;rec.ondataavailable=e=>{if(e.data?.size)parts.push(e.data)};rec.onerror=e=>{recordingFailure=e.error?.message||'MediaRecorder error';updateHealth('⚠ กล้องบันทึกผิดพลาด','danger-health');if(activeBarcode&&!ending)void stopRecording('recorder_error')};rec.start(1000);activeBarcode=barcode;startMs=Date.now();console.info('[PACKTOOK] Barcode → REC start:',Math.round(performance.now()-scanRequestedAt),'ms');$('recordState').textContent='กำลังบันทึก '+barcode+' — สแกน Barcode เดิมเพื่อหยุด';$('recordState').classList.add('active');$('recBadge').textContent='● RECORDING';$('recBadge').classList.add('recording');$('stopBtn').disabled=false;$('recTimer').hidden=false;updateHealth('● กำลังบันทึก','good-health');ticker=setInterval(()=>$('recTimer').textContent='REC '+fmtSec(Math.floor((Date.now()-startMs)/1000)),1000);toast('เริ่มบันทึก '+barcode)}catch(e){activeBarcode='';if(recordingOp){const op=recordingOp;recordingOp=null;try{await credit().finalize(op,false);clearPending()}catch(err){toast('คืนเครดิตไม่สำเร็จ โปรดติดต่อผู้ดูแล: '+err.message)}}if(e.code==='functions/already-exists'||String(e.message).includes('Barcode already scanned'))alert('⚠ Barcode '+barcode+' ถูกสแกนหรือบันทึกไว้ก่อนแล้ว ไม่อนุญาตให้บันทึกซ้ำ');else toast('เริ่มบันทึกไม่สำเร็จ: '+e.message);void refreshRemoteQuota().catch(()=>{})}finally{if(!activeBarcode&&!ending){$('recordState').classList.remove('active');$('recordState').textContent=recordingOp||pending()?'⚠ มีเครดิตจองค้าง • ตรวจสอบก่อนเริ่มใหม่':'พร้อมสแกน Barcode เพื่อเริ่มบันทึก';updateHealth(streamGood()?'● กล้องพร้อมใช้งาน':'● กรุณาตรวจสอบกล้อง',streamGood()?'good-health':'danger-health')}}}
+async function startRecording(barcode){
+ const scanRequestedAt=performance.now();
+ if(recordingOp||pending())return toast('มีรายการจองเครดิตที่ยังไม่ยืนยัน กรุณากดตรวจสอบเครดิตจองค้าง');
+ if(ending||activeBarcode)return;
+ if(!remoteUser||!credit())return toast('กรุณาเข้าสู่ระบบ Firebase ก่อน');
+ if(!streamGood())return toast('กรุณาเปิดกล้องและตรวจสอบสัญญาณ');
+ if(!folder)return toast('กรุณาเลือกโฟลเดอร์บันทึกก่อน');
+ if(!window.MediaRecorder||!window.PACKTOOK_VIDEO_WRITER)return toast('Browser ไม่รองรับระบบ Streaming Video');
+ let attemptedOperationId=null,started=false,writer=null;
+ try{
+  const perm=await folder.queryPermission({mode:'readwrite'});
+  if(perm!=='granted')return toast('กรุณาเชื่อมต่อโฟลเดอร์และให้สิทธิ์ก่อน');
+  const mime=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(t=>MediaRecorder.isTypeSupported(t));
+  if(!mime)throw Error('Browser ไม่รองรับ WebM');
+  const op=crypto.randomUUID();attemptedOperationId=op;
+  const filename=safeFilename(barcode)+'_'+new Date().toISOString().replace(/[:.]/g,'-')+'_'+op.slice(0,8)+'.webm';
+  // Operation intent must be durable BEFORE the network request. A timeout may still
+  // mean that the server committed the reservation, so the ID can be reconciled.
+  setPendingOperation(op,barcode,'reserving',filename);
+  updatePendingOperation({worker:$('worker').value.trim()||'Unknown'});
+  showRecovery();
+  $('recordState').textContent='⏳ สแกน '+barcode+' แล้ว • กำลังตรวจสอบเครดิตกับ Firebase…';
+  updateHealth('กำลังตรวจสอบสิทธิ์การบันทึก…');
+  let granted;
+  try{granted=await credit().reserve(barcode,op)}
+  catch(err){
+   const unregistered=err.code==='functions/permission-denied'&&/Device not registered|Device registration required/i.test(String(err.message));
+   if(unregistered){
+    await setupDevice();
+    granted=await credit().reserve(barcode,op);
+   }else{
+    const duplicate=err.code==='functions/already-exists'||String(err.message).includes('Barcode already scanned');
+    if(!duplicate)throw err;
+    if(!confirm('พบ Barcode '+barcode+' ที่บันทึกแล้ว\\nต้องการขออนุญาตบันทึกซ้ำหรือไม่?')){clearPending();showRecovery();return}
+    const reason=prompt('เหตุผลในการบันทึก Barcode ซ้ำ (อย่างน้อย 10 ตัวอักษร):');
+    if(reason===null){clearPending();showRecovery();return}
+    if(reason.trim().length<10||reason.trim().length>500){clearPending();showRecovery();return toast('โปรดระบุเหตุผลระหว่าง 10–500 ตัวอักษร')}
+    const approval=await credit().authorizeDuplicate(barcode,reason.trim());
+    granted=await credit().reserve(barcode,op,approval.approvalId);
+   }
+  }
+  if(granted.status!=='reserved')throw Error('Server ไม่ยืนยันการจองเครดิต: '+granted.status);
+  recordingOp=op;updatePendingOperation({phase:'reserved'});
+  // File is opened only after credit authorization. Every emitted chunk is written
+  // incrementally; a 30-minute video is never accumulated in a single JS array.
+  writer=await window.PACKTOOK_VIDEO_WRITER.open(folder,filename);
+  videoWriter=writer;
+  recordingFailure='';
+  recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:({480:850000,720:1800000,1080:3500000}[Number($('videoQuality').value)]||1800000)});
+  const rec=recorder;
+  rec.ondataavailable=e=>{
+   try{if(e.data?.size)writer.enqueue(e.data)}
+   catch(err){
+    recordingFailure=err.message||'Video stream write error';
+    updateHealth('⚠ เขียนไฟล์ไม่ทันหรือดิสก์ผิดพลาด','danger-health');
+    if(activeBarcode&&!ending)void stopRecording('disk_error');
+   }
+  };
+  rec.onerror=e=>{
+   recordingFailure=e.error?.message||'MediaRecorder error';
+   updateHealth('⚠ กล้องบันทึกผิดพลาด','danger-health');
+   if(activeBarcode&&!ending)void stopRecording('recorder_error');
+  };
+  rec.start(1000);started=true;activeBarcode=barcode;startMs=Date.now();
+  updatePendingOperation({phase:'recording',startedAt:startMs});
+  console.info('[PACKTOOK] Barcode → REC start:',Math.round(performance.now()-scanRequestedAt),'ms');
+  $('recordState').textContent='กำลังบันทึก '+barcode+' — สแกน Barcode เดิมเพื่อหยุด';
+  $('recordState').classList.add('active');
+  $('recBadge').textContent='● RECORDING';$('recBadge').classList.add('recording');
+  $('stopBtn').disabled=false;$('recTimer').hidden=false;
+  updateHealth('● กำลังบันทึก','good-health');
+  ticker=setInterval(()=>$('recTimer').textContent='REC '+fmtSec(Math.floor((Date.now()-startMs)/1000)),1000);
+  toast('เริ่มบันทึก '+barcode);
+ }catch(e){
+  if(writer&&!started){try{await writer.cancelUnstarted()}catch(x){console.warn('Empty writer cleanup',x)}videoWriter=null}
+  if(recordingOp&&!started){
+   try{
+    const out=await credit().finalize(recordingOp,false);
+    if(out.status==='failed'){recordingOp=null;clearPending()}
+   }catch(err){console.warn('Start reservation needs manual recovery',err)}
+  }else if(!recordingOp&&attemptedOperationId&&pending()?.operationId===attemptedOperationId){
+   // A rejected/timeout callable is ambiguous. Check by operation ID, never
+   // issue a second reservation or silently return a possibly-used credit.
+   try{
+    const check=await credit().recordingStatus(attemptedOperationId);
+    if(check.status==='reserved')recordingOp=attemptedOperationId;
+    if(check.status==='failed')clearPending();
+   }catch(err){
+    if(err.code==='functions/not-found')clearPending();
+    else console.warn('Reservation response uncertain; keep operation intent',err.code);
+   }
+  }
+  if(started){updatePendingOperation({phase:'needs_review'});toast('พบข้อผิดพลาดหลังเริ่มอัด กรุณาตรวจไฟล์และเครดิต')}
+  else toast('เริ่มบันทึกไม่สำเร็จ: '+e.message+(pending()?' • กรุณาตรวจเครดิตจองค้าง':''));
+  showRecovery();void refreshRemoteQuota().catch(()=>{});
+ }finally{
+  if(!activeBarcode&&!ending){
+   $('recordState').classList.remove('active');
+   $('recordState').textContent=pending()?'⚠ มีรายการเครดิตรอตรวจสอบก่อนเริ่มออเดอร์ถัดไป':'พร้อมสแกน Barcode เพื่อเริ่มบันทึก';
+   updateHealth(streamGood()?'● กล้องพร้อมใช้งาน':'● กรุณาตรวจสอบกล้อง',streamGood()?'good-health':'danger-health');
+  }
+ }
+}
 // Local file verification. A browser cannot prove the camera captured genuine packing;
 // only confirm that saved WebM is decodable and sampled frames are not blank.
 async function verifySavedVideo(file,expectedSeconds){
