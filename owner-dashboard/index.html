@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#07152e">
+<meta name="description" content="PACKTOOK Owner Analytics — private business dashboard">
+<title>PACKTOOK Owner | Analytics Dashboard</title>
+<link rel="stylesheet" href="./style.css?v=5.8.0"></head>
+<body>
+<section id="loginScreen" class="login-screen">
+ <div class="login-bg"></div>
+ <form id="loginForm" class="login-card">
+  <div class="brand brand-center"><span class="brand-symbol" aria-hidden="true">◈</span><div><strong>PACK<span>TOOK</span></strong><small>OWNER ANALYTICS</small></div></div>
+  <div class="login-rule"></div>
+  <p class="eyebrow">PLATFORM CONTROL CENTER</p><h1>เข้าสู่ระบบเจ้าของแพลตฟอร์ม</h1>
+  <p class="muted">Dashboard สำหรับดูสมาชิกและข้อมูลธุรกิจ PACKTOOK โดยเฉพาะ</p>
+  <label for="loginEmail">อีเมลบัญชี Owner</label><input id="loginEmail" type="email" autocomplete="username" placeholder="owner@example.com" required>
+  <label for="loginPassword">รหัสผ่าน</label><input id="loginPassword" type="password" autocomplete="current-password" required>
+  <button class="primary wide" type="submit" id="loginButton">เข้าสู่ Owner Dashboard</button>
+  <p id="loginError" class="error" role="alert" hidden></p>
+  <div class="auth-footer"><span class="dot"></span> Firebase Staging · เฉพาะ Platform Owner</div>
+ </form>
+</section>
+<div id="ownerApp" class="app" hidden>
+ <aside class="sidebar">
+  <div class="brand brand-sidebar"><span class="brand-symbol" aria-hidden="true">◈</span><div><strong>PACK<span>TOOK</span></strong><small>OWNER CONTROL CENTER</small></div></div>
+  <div class="sidebar-menu"><a href="#overview" class="sidebar-link active">▦ <span>ภาพรวมธุรกิจ</span></a><a href="#trends" class="sidebar-link">▥ <span>แนวโน้มรายเดือน</span></a><a href="#plans" class="sidebar-link">◈ <span>รายงานแพ็กเกจ</span></a><a href="#customers" class="sidebar-link">♙ <span>บัญชีลูกค้า</span></a></div>
+  <div class="sidebar-bottom"><div class="environment"><span class="dot"></span> STAGING · TEST MODE</div><small>ส่วนจัดการแยกจากเว็บไซต์ของลูกค้า</small><button type="button" class="secondary logout" id="logoutButton">ออกจากระบบ</button></div>
+ </aside>
+ <main class="content">
+  <header class="topbar">
+   <div><p class="eyebrow">BUSINESS INTELLIGENCE / V5.8</p><h1>Owner Analytics Dashboard</h1><p class="muted">ดูการเติบโตของ PACKTOOK จากข้อมูลสมาชิกและรายการชำระเงินที่บันทึกใน Firebase</p></div>
+   <div class="top-actions"><span id="currentEmail" class="owner-email"></span><button type="button" id="refreshButton" class="primary">↻ รีเฟรชข้อมูล</button></div>
+  </header>
+  <div class="test-banner"><span class="test-banner-icon" aria-hidden="true">!</span><div><strong>OMISE TEST MODE — ยอดทดสอบไม่ใช่รายได้จริง</strong><p>ข้อมูลรายงานปัจจุบันเป็น Staging การชำระผ่าน PromptPay Test จะแสดงแยกจากยอดรับเงินจริงเสมอ</p></div></div>
+  <section id="overview" class="report-section">
+   <div class="section-heading"><div><p class="eyebrow">01 / BUSINESS PULSE</p><h2>ภาพรวมสมาชิกและยอดขาย</h2></div><span class="last-update" id="lastUpdate">ยังไม่โหลดข้อมูล</span></div>
+   <div class="metric-grid">
+    <article class="metric"><span class="metric-icon blue">♙</span><p>บัญชีลูกค้าทั้งหมด</p><strong id="totalCustomers">—</strong><small>บัญชีใน Firebase Accounts</small></article>
+    <article class="metric"><span class="metric-icon green">✓</span><p>สมาชิกเสียเงินที่ Active</p><strong id="activeCustomers">—</strong><small>แพ็กเกจยังไม่หมดอายุ</small></article>
+    <article class="metric"><span class="metric-icon purple">◆</span><p>สมาชิก Free</p><strong id="freeCustomers">—</strong><small>บัญชีแพ็กเกจ Free</small></article>
+    <article class="metric"><span class="metric-icon amber">◷</span><p>สมาชิกเสียเงินหมดอายุ</p><strong id="expiredCustomers">—</strong><small>ต้องต่ออายุเพื่อใช้งานต่อ</small></article>
+    <article class="metric metric-test"><span class="metric-icon cyan">฿</span><p>ยอดชำระทดสอบสะสม</p><strong id="testRevenue">—</strong><small id="testTransactions">Omise Test Mode เท่านั้น</small></article>
+    <article class="metric metric-real"><span class="metric-icon emerald">฿</span><p>ยอดขายเงินจริงที่ยืนยันได้</p><strong id="realRevenue">—</strong><small>Live payment ยังไม่ได้เปิดใช้งาน</small></article>
+   </div>
+   <p id="partialNotice" class="partial-notice" hidden></p>
+  </section>
+  <section id="trends" class="report-section">
+   <div class="section-heading"><div><p class="eyebrow">02 / GROWTH TRENDS</p><h2>แนวโน้มรายเดือน</h2></div><label class="chart-control" for="monthRange">ดูย้อนหลัง <select id="monthRange"><option value="6">6 เดือน</option><option value="12" selected>12 เดือน</option></select></label></div>
+   <div class="charts-grid">
+    <article class="panel"><div class="panel-head"><h3>ลูกค้าใหม่รายเดือน</h3><span class="chart-swatch">● จำนวนบัญชี</span></div><div id="customerChart" class="bar-chart" aria-label="กราฟลูกค้าใหม่ต่อเดือน"></div></article>
+    <article class="panel"><div class="panel-head"><h3>ยอดชำระทดสอบรายเดือน</h3><span class="chart-swatch test-color">● Omise Test (บาท)</span></div><div id="testSalesChart" class="bar-chart" aria-label="กราฟยอดชำระทดสอบต่อเดือน"></div></article>
+   </div>
+  </section>
+  <section id="plans" class="report-section">
+   <div class="section-heading"><div><p class="eyebrow">03 / PLAN MIX</p><h2>ลูกค้าและยอดชำระตามแพ็กเกจ</h2></div><span class="hint">สัดส่วนลูกค้าและธุรกรรมที่ตรวจพบ</span></div>
+   <div class="panel plan-panel"><div class="table-scroll"><table><thead><tr><th>แพ็กเกจ</th><th>บัญชีทั้งหมด</th><th>Active</th><th>หมดอายุ</th><th>ชำระ Test</th><th>ยอดทดสอบ (฿)</th></tr></thead><tbody id="planRows"><tr><td colspan="6">กำลังโหลดข้อมูล…</td></tr></tbody></table></div></div>
+  </section>
+  <section id="customers" class="report-section">
+   <div class="section-heading"><div><p class="eyebrow">04 / CUSTOMER ACCOUNTS</p><h2>บัญชีสมาชิก PACKTOOK</h2><p class="muted">แสดงเฉพาะรหัสบัญชี แพ็กเกจ และสถานะ เพื่อจำกัดข้อมูลส่วนบุคคลที่ไม่จำเป็น</p></div><button id="reloadCustomers" type="button" class="secondary">รีโหลดรายชื่อ</button></div>
+   <div class="panel"><div class="table-scroll"><table><thead><tr><th>บัญชี Firebase</th><th>แพ็กเกจ</th><th>สถานะ</th><th>วันที่สร้าง</th><th>วันหมดอายุ</th></tr></thead><tbody id="customerRows"><tr><td colspan="5">กำลังโหลดข้อมูล…</td></tr></tbody></table></div><div class="customer-pager"><span id="customerPageStatus">เรียงตามรหัสบัญชี · 25 รายการต่อครั้ง</span><button id="moreCustomers" type="button" class="secondary" hidden>โหลดลูกค้าเพิ่ม 25 รายการ</button></div></div>
+  </section>
+  <footer class="footer"><span>PACKTOOK OWNER · Staging Analytics</span><span>ข้อมูลชำระเงินจาก Firestore snapshots ไม่ใช่การตรวจ Refund แบบ Real Time</span></footer>
+ </main>
+</div>
+<script type="module" src="./app.js?v=5.8.0"></script>
+</body></html>
