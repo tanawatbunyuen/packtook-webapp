@@ -566,3 +566,9 @@
  #appPage #recordState.saving{font-size:19px}
  #appPage #recBadge.saving{font-size:14px}
 }
+
+
+/* PACKTOOK V5.6 — scalable local video history pagination */
+#appPage .history-pagination{display:flex;justify-content:center;padding:18px 6px 8px}
+#appPage #historyNext{min-width:260px;min-height:52px;font-size:17px;font-weight:800;border-radius:12px}
+#appPage #historyNext[hidden]{display:none}
