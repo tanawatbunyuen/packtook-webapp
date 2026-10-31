@@ -36,7 +36,9 @@
  function validate(row){
   if(!row||typeof row.filename!=='string'||!row.filename||!Number.isSafeInteger(row.timestamp))
    throw Error('ข้อมูลประวัติวิดีโอไม่ครบ');
-  return {...row,month:row.month||new Date(row.timestamp).toISOString().slice(0,7)};
+  const dt=new Date(row.timestamp);
+  const yyyy=dt.getFullYear(),mm=String(dt.getMonth()+1).padStart(2,'0'),dd=String(dt.getDate()).padStart(2,'0');
+  return {...row,day:yyyy+'-'+mm+'-'+dd,month:yyyy+'-'+mm};
  }
  async function put(row){const item=validate(row);return transaction('readwrite',store=>store.put(item))}
  async function putMany(rows){
