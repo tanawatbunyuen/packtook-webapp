@@ -24,6 +24,7 @@ node scripts/verify.mjs "$PROD"
 # The new Firebase project must already exist. Creating it is a separate, deliberate action.
 echo "Validating separate Firebase project: $PROD"
 PROJECTS_JSON="$(mktemp)"
+SITES_JSON=""
 trap 'rm -f "$PROJECTS_JSON" "$SITES_JSON"' EXIT
 firebase projects:list --json > "$PROJECTS_JSON" || fail "Firebase CLI cannot list projects. Check firebase login."
 node - "$PROD" "$PROJECTS_JSON" <<'JS'
