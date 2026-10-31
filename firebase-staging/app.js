@@ -15,6 +15,7 @@ async function recoverCredit(){
  try{
   if(!folder)await restoreFolder(false);
   if(!folder)return toast('เลือกโฟลเดอร์เดิมที่ใช้บันทึกวิดีโอก่อนตรวจและคืนเครดิต');
+  if(p.folderName&&folder.name!==p.folderName)return toast('โฟลเดอร์ไม่ตรงกับไฟล์เดิม ('+p.folderName+') กรุณาเลือกโฟลเดอร์ที่บันทึกจริงก่อนตรวจเครดิต');
   if(await folder.queryPermission({mode:'read'})!=='granted')return toast('กรุณากดเชื่อมโฟลเดอร์เดิมและอนุญาตสิทธิ์อ่านก่อน');
   let server=null;
   try{server=await credit().recordingStatus(p.operationId)}
@@ -149,7 +150,7 @@ async function saveVideoHistory(row){
 }
 function setPendingOperation(operationId,barcode,phase,filename){
  const key=pendingKey();if(!key)throw Error('ไม่พบบัญชีผู้ใช้สำหรับบันทึกสถานะ');
- localStorage.setItem(key,JSON.stringify({operationId,barcode,phase,filename,createdAt:Date.now()}));
+ localStorage.setItem(key,JSON.stringify({operationId,barcode,phase,filename,folderName:folder?.name||null,createdAt:Date.now()}));
 }
 function updatePendingOperation(patch){
  const p=pending(),key=pendingKey();
@@ -577,7 +578,7 @@ async function deleteRecordedVideo(log,ask=true){
  let perm=await folder.queryPermission({mode:'readwrite'});
  if(perm!=='granted')perm=await folder.requestPermission({mode:'readwrite'});
  if(perm!=='granted'){toast('ไม่ได้รับสิทธิ์ลบไฟล์');return false}
- try{await folder.removeEntry(log.filename)}catch(e){toast('ลบไฟล์ไม่สำเร็จ: '+e.message);return false}
+ try{await folder.removeEntry(log.filename)}catch(e){if(e.name!=='NotFoundError'){toast('ลบไฟล์ไม่สำเร็จ: '+e.message);return false}}
  if(!$('videoPanel').hidden)closePlayback();
  try{await ensureVideoHistory();await window.PACKTOOK_VIDEO_HISTORY.remove(log.filename)}
  catch(e){console.error('Failed to remove video metadata',e);store.logs=Array.isArray(store.logs)?store.logs:[];const old=store.logs.find(x=>x.filename===log.filename);if(old)old.deleted=true;persist();toast('ไฟล์ถูกลบแล้ว แต่ IndexedDB มีปัญหา กรุณาตรวจสอบประวัติอีกครั้ง')}
@@ -606,7 +607,7 @@ async function runRetention(force=false){
   if(perm!=='granted')return;
   for(const log of expired){
    try{
-    await folder.removeEntry(log.filename);
+    try{await folder.removeEntry(log.filename)}catch(e){if(e.name!=='NotFoundError')throw e}
     await window.PACKTOOK_VIDEO_HISTORY.remove(log.filename);
     removed++;
    }catch(e){console.warn('Cleanup skipped',log.filename,e)}
