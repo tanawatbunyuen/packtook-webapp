@@ -231,3 +231,82 @@
 #pendingReservationReview .pending-reservation-name{font-size:16px;font-weight:750;color:#213751;overflow-wrap:anywhere}
 #pendingReservationReview .pending-reservation-line p{font-size:14px;color:#7b5d39;margin:0}
 #pendingReservationReview button{font-size:15px;min-height:42px;max-width:100%;white-space:normal}
+
+
+/* V5.3 — compact premium subscription dashboard and paginated billing history */
+#appPage #subscriptionRequests{background:transparent;border:0;padding:0;box-shadow:none}
+#appPage #subscriptionRequests>.subscription-dashboard{padding:0;margin:0;border:0;display:flex;flex-direction:column;gap:16px}
+#appPage .subscription-dashboard{font-size:15px;color:#193552;line-height:1.55}
+#appPage .sub-summary-card,#appPage .sub-content-card{background:#fff;border:1px solid #dfe8f3;border-radius:20px;box-shadow:0 8px 24px rgba(17,43,83,.045)}
+#appPage .sub-summary-card{padding:24px 26px;background:linear-gradient(123deg,#ffffff 45%,#f0f7ff 100%)}
+#appPage .sub-summary-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+#appPage .sub-summary-title{margin-right:auto}
+#appPage .sub-summary-eyebrow{color:#7088a2;font-size:13px;font-weight:750;letter-spacing:.025em;margin-bottom:8px}
+#appPage .sub-summary-plan{display:flex;align-items:center;gap:12px;color:#112f50}
+#appPage .sub-summary-plan strong{font-size:27px;font-weight:850;letter-spacing:-.02em}
+#appPage .sub-summary-icon{display:inline-grid;place-items:center;border-radius:14px;background:#e8f1ff;width:48px;height:48px;font-size:27px}
+#appPage .sub-summary-head>button{border:1px solid #b8d4f3;color:#1d5595;padding:10px 15px;border-radius:11px;font-size:15px;min-height:42px}
+#appPage .sub-summary-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:22px}
+#appPage .sub-summary-metric{border:1px solid #e6edf6;background:#f9fbfe;padding:17px 18px;border-radius:15px;min-width:0;display:flex;flex-direction:column;gap:7px}
+#appPage .sub-summary-metric small{font-size:13px;font-weight:650;color:#68819d}
+#appPage .sub-summary-metric strong{font-size:clamp(20px,2.1vw,27px);font-weight:800;color:#142f52;line-height:1.3;overflow-wrap:anywhere}
+#appPage .sub-summary-metric span{font-size:13px;color:#69829f}
+#appPage .sub-summary-foot{color:#6f849e;font-size:13px;margin:16px 0 0}
+#appPage .sub-content-grid{display:grid;grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);align-items:start;gap:16px}
+#appPage .sub-content-grid.sub-grid-single{grid-template-columns:1fr}
+#appPage .sub-content-card{min-width:0;padding:22px 23px}
+#appPage .sub-content-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:11px}
+#appPage .sub-content-head h3{margin:0;color:#163657;font-size:20px;font-weight:800}
+#appPage .sub-content-head p{margin:4px 0 0;color:#8295ab;font-size:13px}
+#appPage .sub-entry{padding:15px 0;border-top:1px solid #e9eff6}
+#appPage .sub-entry-top{display:flex;align-items:center;justify-content:space-between;gap:11px;flex-wrap:wrap}
+#appPage .sub-entry-title{font-size:16px;font-weight:800;color:#163657}
+#appPage .sub-entry-info{color:#8294a9;display:flex;flex-wrap:wrap;gap:10px;font-size:13px;margin-top:3px}
+#appPage .sub-entry-credits{margin-top:8px;font-size:14px;color:#305b85;background:#f0f7ff;border-radius:9px;padding:7px 10px}
+#appPage .sub-entry-expiry{font-size:13px;color:#657e96;margin-top:6px}
+#appPage .sub-entry-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px;align-items:center}
+#appPage .sub-entry-actions button{font-size:14px;min-height:38px!important;margin:0;border-radius:9px;padding:8px 12px}
+#appPage .sub-entry-actions .sub-primary-action{background:#1864b8;color:#fff;border:1px solid #1864b8}
+#appPage .sub-entry-actions .sub-primary-action:disabled{opacity:.5}
+#appPage .sub-entry-compact{padding:13px 0}
+#appPage .sub-entry-compact .sub-entry-credits{background:transparent;padding:0;margin-top:6px}
+#appPage .sub-expand-btn{margin-top:7px!important;padding:2px 0!important;color:#215e9e;background:transparent;border:0;min-height:28px!important;font-size:13px!important;font-weight:750}
+#appPage .sub-expand-btn:hover{text-decoration:underline}
+#appPage .sub-entry-expanded{padding-top:1px}
+#appPage .sub-entry-muted{color:#8b6473;font-size:13px;margin:8px 0}
+#appPage .sub-review-note{font-size:13px;color:#98413e;background:#fff4f2;padding:10px;border-radius:10px;margin:0;line-height:1.55}
+#appPage .sub-state-chip,.subscription-history-dialog .sub-state-chip{display:inline-flex;white-space:nowrap;align-items:center;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:800;letter-spacing:.005em}
+#appPage .sub-state-paid,.subscription-history-dialog .sub-state-paid{background:#e4f7ed;color:#13764b}
+#appPage .sub-state-pending,.subscription-history-dialog .sub-state-pending{background:#fff1d9;color:#97600e}
+#appPage .sub-state-review,.subscription-history-dialog .sub-state-review{background:#ffe9e9;color:#9c3636}
+#appPage .sub-state-muted,.subscription-history-dialog .sub-state-muted{background:#edf1f5;color:#687a8c}
+#appPage .sub-notice{border:1px solid #beddf4;background:#eff8ff;border-radius:13px;padding:12px 16px;color:#1b5c91;font-size:14px}
+#appPage .sub-notice-attention{border-color:#f2d9a6;background:#fff9ec;color:#825a18}
+#appPage .sub-history-more{margin-top:14px;background:#f4f8fd;border:1px solid #cfdeef;border-radius:10px;width:100%;min-height:43px;color:#1d5894;font-weight:750}
+#appPage .sub-empty,#appPage .sub-loading{font-size:15px;color:#8294a9;padding:17px 0;margin:0}
+#appPage .sub-error{font-size:15px;color:#a22f39;padding:14px 0}
+.subscription-history-dialog{box-sizing:border-box;width:min(860px,calc(100% - 24px));max-width:860px;max-height:min(86vh,860px);padding:0;border:1px solid #dbe5ef;border-radius:20px;box-shadow:0 25px 85px rgba(11,31,57,.26);color:#163553;font:15px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+.subscription-history-dialog::backdrop{background:rgba(10,22,39,.64);backdrop-filter:blur(3px)}
+.subscription-history-dialog .subscription-modal-head{display:flex;position:sticky;top:0;z-index:1;align-items:start;justify-content:space-between;gap:15px;background:#fff;padding:23px 26px 19px;border-bottom:1px solid #e7eef6}
+.subscription-history-dialog .subscription-modal-head h2{font-size:22px;color:#163657;margin:2px 0 4px}
+.subscription-history-dialog .subscription-modal-head p:not(.subscription-kicker){color:#7b91a9;font-size:14px;margin:0}
+.subscription-history-dialog .subscription-kicker{font-size:11px;letter-spacing:.1em;color:#4b88ba;font-weight:800;margin:0}
+.subscription-history-dialog .subscription-modal-close{background:#f5f8fc;border:1px solid #d4e1ef;border-radius:10px;white-space:nowrap;font-size:14px;padding:8px 12px;min-height:39px}
+.subscription-history-dialog .subscription-modal-rows{padding:4px 26px 12px}
+.subscription-history-dialog .subscription-modal-rows .sub-entry{padding:18px 0;border-top:1px solid #e9eff6}
+.subscription-history-dialog .sub-entry-top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.subscription-history-dialog .sub-entry-title{font-size:17px;font-weight:800}
+.subscription-history-dialog .sub-entry-info{color:#8092a7;display:flex;gap:11px;flex-wrap:wrap;font-size:13px}
+.subscription-history-dialog .sub-entry-credits{font-size:14px;color:#285c8e;margin-top:7px}
+.subscription-history-dialog .sub-entry-expiry,.subscription-history-dialog .sub-entry-muted{font-size:13px;color:#70839b;margin-top:5px}
+.subscription-history-dialog .sub-entry-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}
+.subscription-history-dialog .sub-entry-actions button{font:inherit;font-size:14px;background:#f5f8fd;border:1px solid #d4e1ef;padding:9px 13px;border-radius:9px;min-height:39px}
+.subscription-history-dialog .sub-entry-actions .sub-primary-action{background:#1a65b4;color:#fff}
+.subscription-history-dialog .sub-review-note{color:#9a3737;font-size:14px;margin:0;background:#fff2f2;border-radius:9px;padding:10px}
+.subscription-history-dialog .subscription-modal-footer{padding:16px 26px 24px}
+.subscription-history-dialog #subscriptionHistoryMore{width:100%;border:1px solid #cbdced;background:#eef5fc;border-radius:10px;color:#195f9e;padding:12px;font-size:14px;font-weight:750;cursor:pointer}
+.subscription-history-dialog button:disabled{opacity:.5;cursor:not-allowed}
+.subscription-history-dialog .sub-loading,.subscription-history-dialog .sub-empty{color:#7488a0;font-size:15px;padding:18px 0}
+.subscription-history-dialog .sub-error{color:#a33e41;font-size:14px;padding:14px 0}
+@media(max-width:900px){#appPage .sub-content-grid{grid-template-columns:1fr}#appPage .sub-summary-metrics{gap:9px}}
+@media(max-width:620px){#appPage .sub-summary-card{padding:18px}#appPage .sub-content-card{padding:18px}#appPage .sub-summary-metrics{grid-template-columns:1fr}#appPage .sub-summary-head>button{width:100%}#appPage .sub-summary-metric{padding:12px 15px}#appPage .sub-summary-metric strong{font-size:23px}.subscription-history-dialog .subscription-modal-head{padding:18px 16px}.subscription-history-dialog .subscription-modal-rows{padding:3px 16px}.subscription-history-dialog .subscription-modal-footer{padding:14px 16px}.subscription-history-dialog .subscription-modal-head h2{font-size:18px}.subscription-history-dialog .subscription-modal-close{font-size:13px}}
