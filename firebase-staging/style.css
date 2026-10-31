@@ -442,3 +442,112 @@
 @media(max-width:1140px){#help .help-v54-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#help .help-v54-card-3::after{display:grid}#help .help-v54-card:nth-child(even)::after{display:none}#help .help-v54-tips{grid-template-columns:1fr 1fr}}
 @media(max-width:920px){#appPage .workgrid{grid-template-columns:1fr}#appPage .main{padding:24px 18px}#appPage .statgrid{gap:11px}#appPage .metric{padding:15px}}
 @media(max-width:700px){#appPage .sidebar{width:100%;flex-direction:row;gap:7px;overflow-x:auto;scrollbar-width:thin}#appPage .main{width:100%;padding:19px 13px}#appPage .nav{font-size:16px;min-height:52px;padding:11px 12px}#appPage .nav small{font-size:10px}#appPage .topbar h2{font-size:27px}#appPage .statgrid{grid-template-columns:repeat(3,minmax(0,1fr))}#appPage .metric{padding:12px}#appPage .metric small,#appPage .metric span{font-size:13px}#appPage .metric b{font-size:29px}#appPage .workgrid{grid-template-columns:minmax(0,1fr)}#appPage .paneltop{flex-wrap:wrap}#appPage #subscriptionRequests .sub-summary-metrics{grid-template-columns:1fr}#help .help-v54-grid{grid-template-columns:1fr}#help .help-v54-card::after{display:none!important}#help .help-v54-head{padding:23px 19px}#help .help-v54-hero-mark{display:none}#help .help-v54-tips{grid-template-columns:1fr}#help .help-v54-flowitems{flex-direction:column}#help .help-v54-flowarrow{transform:rotate(90deg);align-self:center;line-height:1}#help .help-v54-lane{gap:7px;font-size:14px}#help .help-v54-art{min-height:155px}#help .help-v54-art svg{height:155px}#plans .available-plans-section{margin-top:22px}}
+
+
+/* PACKTOOK V5.4.1 — stronger, readable brand on login and app sidebar.
+   This scales the existing vector cube logo and live text; no asset substitution. */
+#loginPage .hero-brand{
+  display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+}
+#loginPage .hero-brand .packtook-lockup{
+  display:inline-flex;align-items:center;gap:16px;
+  padding:12px 20px 12px 12px;border-radius:20px;
+  border:1px solid rgba(131,199,255,.31);
+  background:linear-gradient(120deg,rgba(12,54,113,.55),rgba(8,51,107,.24));
+  box-shadow:0 16px 42px rgba(0,10,39,.20);
+}
+#loginPage .hero-brand .packtook-mark{
+  width:88px!important;height:88px!important;flex:0 0 88px;
+  filter:drop-shadow(0 7px 12px rgba(17,123,245,.35))!important;
+}
+#loginPage .hero-brand .packtook-type{gap:8px;min-width:0}
+#loginPage .hero-brand .packtook-type strong{
+  font-size:clamp(38px,3.65vw,54px);font-weight:900;
+  letter-spacing:-1.65px;line-height:1;color:#fff;
+}
+#loginPage .hero-brand .packtook-type small{
+  font-size:clamp(10px,.9vw,13px);font-weight:760;
+  letter-spacing:1.6px;line-height:1.3;color:#e0edff;
+}
+#loginPage .hero-brand .saas-pill{
+  font-size:14px;padding:9px 15px;
+  background:#185da8a8;border:1px solid #63b7f777;
+}
+#loginPage .auth-logo-full{
+  margin:0 auto 24px;max-width:100%;padding:17px 11px;
+  border-radius:19px;background:linear-gradient(125deg,#f6faff,#fff);
+  border:1px solid #e2ecfa;box-shadow:0 10px 30px rgba(18,77,148,.07);
+}
+#loginPage .auth-logo-full .packtook-lockup{gap:13px}
+#loginPage .auth-logo-full .packtook-mark{
+  width:86px!important;height:86px!important;flex:0 0 86px;
+}
+#loginPage .auth-logo-full .packtook-type{gap:7px}
+#loginPage .auth-logo-full .packtook-type strong{
+  font-size:clamp(31px,2.9vw,41px);letter-spacing:-1.25px;
+  color:#102750;line-height:1;
+}
+#loginPage .auth-logo-full .packtook-type small{
+  font-size:10px;letter-spacing:1.08px;font-weight:800;line-height:1.35;
+  color:#526f94;
+}
+/* Sidebar brand: enough width for both the mark and complete wordmark */
+#appPage .sidebar{
+  width:310px;
+}
+#appPage .main{
+  width:calc(100% - 310px);
+}
+#appPage .sidebrand{
+  display:flex;justify-content:flex-start;
+  margin:4px 0 24px;padding:17px 13px;
+  border:1px solid rgba(124,198,255,.20);
+  border-radius:17px;
+  background:linear-gradient(135deg,rgba(26,81,146,.45),rgba(10,35,81,.24));
+  box-shadow:0 12px 28px rgba(1,12,31,.16);
+}
+#appPage .sidebrand .packtook-lockup{gap:11px;width:100%;min-width:0}
+#appPage .sidebrand .packtook-mark{
+  width:68px!important;height:68px!important;flex:0 0 68px;
+  filter:drop-shadow(0 4px 9px rgba(5,101,232,.32))!important;
+}
+#appPage .sidebrand .packtook-type{gap:7px;min-width:0}
+#appPage .sidebrand .packtook-type strong{
+  font-size:clamp(23px,2.0vw,27px);line-height:1.05;
+  letter-spacing:-.9px;font-weight:900;color:#fff;white-space:nowrap;
+}
+#appPage .sidebrand .packtook-type strong span{color:#26c5ff}
+#appPage .sidebrand .packtook-type small{
+  font-size:9px;letter-spacing:.46px;line-height:1.3;
+  font-weight:750;color:#b5d6f7;white-space:nowrap;
+}
+@media(max-width:1190px) and (min-width:701px){
+  #loginPage .hero-brand .packtook-lockup{gap:12px;padding:11px}
+  #loginPage .hero-brand .packtook-mark{width:68px!important;height:68px!important;flex-basis:68px}
+  #loginPage .hero-brand .packtook-type strong{font-size:37px}
+  #loginPage .hero-brand .packtook-type small{font-size:10px;letter-spacing:1.05px}
+  #appPage .sidebar{width:286px}
+  #appPage .main{width:calc(100% - 286px)}
+  #appPage .sidebrand{padding:15px 10px}
+  #appPage .sidebrand .packtook-mark{width:58px!important;height:58px!important;flex-basis:58px}
+  #appPage .sidebrand .packtook-type strong{font-size:23px}
+  #appPage .sidebrand .packtook-type small{font-size:8px}
+}
+@media(max-width:700px){
+  #loginPage .auth-logo-full{padding:14px 9px}
+  #loginPage .auth-logo-full .packtook-lockup{gap:10px}
+  #loginPage .auth-logo-full .packtook-mark{width:64px!important;height:64px!important;flex-basis:64px}
+  #loginPage .auth-logo-full .packtook-type strong{font-size:clamp(26px,7.7vw,35px)}
+  #loginPage .auth-logo-full .packtook-type small{font-size:8px;letter-spacing:.6px}
+  #appPage .sidebar{width:100%;gap:8px}
+  #appPage .main{width:100%}
+  #appPage .sidebrand{
+    display:flex;flex:0 0 auto;margin:0;padding:6px 9px;
+    border-radius:10px;box-shadow:none;
+  }
+  #appPage .sidebrand .packtook-lockup{gap:6px}
+  #appPage .sidebrand .packtook-mark{width:35px!important;height:35px!important;flex-basis:35px}
+  #appPage .sidebrand .packtook-type{gap:0}
+  #appPage .sidebrand .packtook-type strong{font-size:16px;letter-spacing:-.6px}
+  #appPage .sidebrand .packtook-type small{display:none}
+}
