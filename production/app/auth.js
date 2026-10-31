@@ -57,8 +57,8 @@ if(!validConfig){
         if(password.length<12||!$("agree").checked)throw Error("รหัสผ่านต้องมีอย่างน้อย 12 ตัวอักษรและยอมรับนโยบายก่อนสมัคร");
         const result=await createUserWithEmailAndPassword(auth,email,password);
         await sendEmailVerification(result.user);await signOut(auth);
-        message("สมัครบัญชีสำเร็จ กรุณายืนยันอีเมลก่อนใช้งาน");
         switchMode("login");
+        message("สมัครบัญชีสำเร็จ กรุณายืนยันอีเมลก่อนใช้งาน");
       }else{
         const result=await signInWithEmailAndPassword(auth,email,password);
         if(!result.user.emailVerified){
@@ -77,8 +77,8 @@ if(!validConfig){
   $("signoutButton").addEventListener("click",()=>void signOut(auth));
   onAuthStateChanged(auth,async user=>{
     if(!user){show("authPanel");switchMode("login");return;}
-    await user.reload();
-    if(!user.emailVerified){show("authPanel");message("กรุณายืนยันอีเมลก่อนใช้งาน");return;}
+    try{await user.reload();}catch(e){show("authPanel");message("ตรวจสอบอีเมลไม่สำเร็จ กรุณาเข้าสู่ระบบใหม่");return;}
+    if(!user.emailVerified){await signOut(auth);show("authPanel");message("กรุณายืนยันอีเมลก่อนใช้งาน");return;}
     $("signedEmail").textContent=user.email||"บัญชี Production";
     show("signedPanel");
   });
