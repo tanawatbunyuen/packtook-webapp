@@ -178,7 +178,7 @@ function monthKey(date=new Date()){return `${date.getFullYear()}-${String(date.g
 function plan(){return plans.find(p=>p[0]===store.plan)||plans[0]}
 function updateQuota(){const q=remoteQuota;const p=q?plans.find(x=>x[0]===q.plan)||plans[0]:plans[0];const u=q?.used??0,unlimited=q?.limit===null;const left=q?.remaining??0;$('planName').textContent=p[0].toUpperCase();$('usedCount').textContent=u.toLocaleString();$('remainingCount').textContent=unlimited?'∞':left.toLocaleString();$('limitLabel').textContent=unlimited?'ไม่จำกัดวิดีโอ':q?.walletEnabled?'เครดิตสะสมที่ใช้ได้':'เครดิตคงเหลือในเดือนนี้';$('quotaText').textContent=unlimited?'เครดิตไม่จำกัด':q?.walletEnabled?`เครดิตสะสมคงเหลือ ${left.toLocaleString('th-TH')} วิดีโอ จาก ${Number(q.walletStartingCredits||left).toLocaleString('th-TH')} เครดิตหลังซื้อล่าสุด`:`ใช้แล้ว ${u.toLocaleString('th-TH')} / ${(q?.limit??20).toLocaleString('th-TH')}`;$('quotaProgress').style.width=unlimited?'0%':q?.walletEnabled?`${Math.min(100,100*left/Math.max(1,q.walletStartingCredits||left||1))}%`:`${Math.min(100,u/(q?.limit||20)*100)}%`}
 
-function showTab(tab){document.querySelectorAll('.tabcontent').forEach(e=>e.hidden=e.id!==tab);document.querySelectorAll('.nav').forEach(e=>e.classList.toggle('active',e.dataset.tab===tab));$('crumb').textContent=tab.toUpperCase();$('pageTitle').textContent={packing:'บันทึกวิดีโอการแพ็กสินค้า',dashboard:'ค้นหาประวัติวิดีโอ',plans:'แพ็กเกจและโควตาวิดีโอ',help:'คู่มือการใช้งาน',users:'จัดการผู้ใช้และอุปกรณ์'}[tab];if(tab==='dashboard'){renderHistory();void runRetention(false)}if(tab==='plans')renderPlans();if(tab==='users'){updateUsersSummary();void refreshRemoteQuota().catch(e=>toast(e.message));void renderDeviceManager()}}
+function showTab(tab){document.querySelectorAll('.tabcontent').forEach(e=>e.hidden=e.id!==tab);document.querySelectorAll('.nav').forEach(e=>e.classList.toggle('active',e.dataset.tab===tab));$('crumb').textContent=tab.toUpperCase();$('pageTitle').textContent={packing:'บันทึกวิดีโอการแพ็กสินค้า',dashboard:'ค้นหาประวัติวิดีโอ',plans:'แพ็กเกจและโควตาวิดีโอ',help:'คู่มือการใช้งาน',users:'จัดการผู้ใช้และอุปกรณ์'}[tab];if(tab==='dashboard'){renderHistory();void runRetention(false);window.PACKTOOK_PERF?.render()}if(tab==='plans')renderPlans();if(tab==='users'){updateUsersSummary();void refreshRemoteQuota().catch(e=>toast(e.message));void renderDeviceManager()}}
 async function verifyAfterPaymentReturn(){
  if(new URLSearchParams(location.search).get('payment')!=='return')return;
  showTab('plans');
@@ -715,6 +715,7 @@ async function startRecording(barcode){
   rec.start(1000);started=true;activeBarcode=barcode;startMs=Date.now();
   updatePendingOperation({phase:'recording',startedAt:startMs});
   console.info('[PACKTOOK] Barcode → REC start:',Math.round(performance.now()-scanRequestedAt),'ms');
+  window.PACKTOOK_PERF?.record('start',performance.now()-scanRequestedAt);
   $('recordState').textContent='กำลังบันทึก '+barcode+' — สแกน Barcode เดิมเพื่อหยุด';
   $('recordState').classList.add('active');
   $('recBadge').textContent='● RECORDING';$('recBadge').classList.add('recording');
@@ -723,6 +724,7 @@ async function startRecording(barcode){
   ticker=setInterval(()=>$('recTimer').textContent='REC '+fmtSec(Math.floor((Date.now()-startMs)/1000)),1000);
   toast('เริ่มบันทึก '+barcode);
  }catch(e){
+  window.PACKTOOK_PERF?.record('failure',null,{stage:'start',error:e});
   if(writer&&!started){try{await writer.cancelUnstarted()}catch(x){console.warn('Empty writer cleanup',x)}videoWriter=null}
   if(recordingOp&&!started){
    try{
@@ -796,6 +798,7 @@ async function stopRecording(reason='manual'){
  if(!activeBarcode||!recorder||ending)return;
  ending=true;
  const rec=recorder,code=activeBarcode,begun=startMs,stopRequestedAt=performance.now(),op=recordingOp;
+ let performancePhase='stop',savedFileBytes=0,videoSeconds=0;
  let stopped=Promise.resolve();
  try{
   // MediaRecorder.stop() is issued immediately. Saving and Firebase confirmation
@@ -817,20 +820,29 @@ async function stopRecording(reason='manual'){
   console.info('[PACKTOOK] Barcode → recorder.stop() requested:',Math.round(performance.now()-stopRequestedAt),'ms');
   await stopped;
   console.info('[PACKTOOK] Barcode → MediaRecorder stop event:',Math.round(performance.now()-stopRequestedAt),'ms');
+  window.PACKTOOK_PERF?.record('stop',performance.now()-stopRequestedAt);
   if(recordingFailure)throw Error(recordingFailure);
   if(!videoWriter)throw Error('ไม่พบตัวเขียนวิดีโอลงดิสก์');
+  performancePhase='disk';const diskStart=performance.now();
   const saved=await videoWriter.finish();
+  window.PACKTOOK_PERF?.record('disk',performance.now()-diskStart);
+  savedFileBytes=saved.size;
   if(saved.size<1000)throw Error('ไฟล์วิดีโอว่างหรือข้อมูลไม่สมบูรณ์');
   const timestamp=Date.now(),seconds=Math.max(1,Math.round((timestamp-begun)/1000));
+  videoSeconds=seconds;
   const filename=videoWriter.filename;
   updatePendingOperation({phase:'file_written',filename,bytes:saved.size,seconds,timestamp});
   $('recordState').textContent='ตรวจสอบไฟล์วิดีโอที่บันทึกแล้ว…';
+  performancePhase='verify';const verifyStart=performance.now();
   const verified=await verifySavedVideo(saved,seconds);
+  window.PACKTOOK_PERF?.record('verify',performance.now()-verifyStart);
   updatePendingOperation({phase:'verified',verified});
   if(!op)throw Error('ไม่พบการจองเครดิตบน Server');
   finalizePending=true;
   updatePendingOperation({phase:'finalizing'});
+  performancePhase='credit';const creditStart=performance.now();
   const finalResult=await credit().finalize(op,true,{filename,bytes:saved.size});
+  window.PACKTOOK_PERF?.record('credit',performance.now()-creditStart);
   if(finalResult.status!=='completed')throw Error('Firebase ไม่ยืนยันสถานะ Completed: '+finalResult.status);
   finalizePending=false;
   updatePendingOperation({phase:'completed'});
@@ -838,9 +850,11 @@ async function stopRecording(reason='manual'){
   await saveVideoHistory({month:monthKey(new Date(timestamp)),day:new Date(timestamp).toLocaleDateString('en-CA'),timestamp,barcode:code,worker:$('worker').value.trim()||'Unknown',seconds,filename,quality:$('actualQuality').textContent,verified});
   recordingOp=null;videoWriter=null;clearPending();showRecovery();
   void refreshRemoteQuota().catch(e=>console.warn('Quota refresh delayed after successful finalization',e));
+  window.PACKTOOK_PERF?.record('completion',performance.now()-stopRequestedAt,{bytes:savedFileBytes,seconds:videoSeconds});
   console.info('[PACKTOOK] Barcode stop → file saved, verified and credited:',Math.round(performance.now()-stopRequestedAt),'ms');
   toast('✓ บันทึกสำเร็จ: '+filename+(reason==='camera_lost'?' (กล้องหลุด)':''));
  }catch(e){
+  window.PACKTOOK_PERF?.record('failure',null,{stage:performancePhase,error:e});
   updateHealth('⚠ วิดีโอ/เครดิตรอตรวจสอบ','danger-health');
   console.error('PACKTOOK stop needs manual review',e);
   if(videoWriter){try{await videoWriter.preservePartial()}catch(err){console.warn('Preserve partial video',err)}}
