@@ -876,6 +876,8 @@ window.addEventListener('pagehide',()=>{closePlayback();clearHealth();if(activeB
 window.addEventListener('beforeunload',e=>{if(activeBarcode||ending){e.preventDefault();e.returnValue='';}});
 window.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&stream&&!streamGood()){updateHealth('⚠ กรุณาตรวจสอบกล้อง','danger-health')}});
 restoreFolder(false).catch(()=>{});
+// Background metadata migration does not block camera startup or barcode scanning.
+void ensureVideoHistory().catch(e=>console.warn('Video history migration deferred',e));
 
 $('videoQuality').value=String(store.videoQuality||720);
 $('videoQuality').addEventListener('change',async()=>{if(activeBarcode||ending){toast('เปลี่ยนความละเอียดระหว่างบันทึกไม่ได้');$('videoQuality').value=String(store.videoQuality||720);return}store.videoQuality=Number($('videoQuality').value);persist();if(stream){clearHealth();stream.getTracks().forEach(t=>t.stop());stream=null;$('preview').srcObject=null;cameraState(false);await openCamera()}});
