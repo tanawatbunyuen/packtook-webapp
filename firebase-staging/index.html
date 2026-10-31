@@ -1,4 +1,4 @@
-<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b1225"><title>PACKTOOK | Packing Video Recorder</title><link rel="icon" href="logo.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css?v=5.2.1"></head><body>
+<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b1225"><title>PACKTOOK | Packing Video Recorder</title><link rel="icon" href="logo.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css?v=5.3.0"></head><body>
 <div id="loginPage" class="auth-layout">
   <section class="hero">
     <div class="hero-ambient"></div>
@@ -49,4 +49,8 @@
 </div>
 <div class="workflow-panel"><h3>ขั้นตอนการบันทึกวิดีโอ</h3><p>วงจรหลักของ PACKTOOK สำหรับ 1 การแพ็กสินค้า</p><div class="workflow"><span>▥ สแกน Barcode</span><b>→</b><span>🔴 REC</span><b>→</b><span>📦 แพ็กสินค้า</span><b>→</b><span>▥ สแกนเดิม</span><b>→</b><span>✓ ไฟล์ถูกบันทึก</span></div></div>
 <div class="faq-grid"><article class="panel"><h3>💡 ข้อควรทราบ</h3><p>วิดีโอบันทึกลงโฟลเดอร์ในคอมพิวเตอร์เครื่องที่อัดเท่านั้น การดูวิดีโอจากเครื่องอื่นต้องจัดการการแชร์ไฟล์แยกต่างหาก</p><p>สิทธิ์กล้องและโฟลเดอร์อาจต้องยืนยันอีกครั้งเมื่อเปิด Browser ใหม่</p></article><article class="panel"><h3>🔐 ข้อจำกัด Demo</h3><p>บัญชีและโควตาจัดการผ่าน Firebase จริง แต่การชำระเงินเป็น Omise Test Mode และยังไม่เปิดใช้กับลูกค้าจริง</p><p>ควรทดสอบการอัดวิดีโอต่อเนื่องและพื้นที่ดิสก์ก่อนใช้ในงานจริง</p></article></div>
-</section></main></div><div id="toast" class="toast" role="status"></div><script type="module" src="firebase-packing-bridge.js?v=5.2.1"></script><script src="app.js?v=5.2.1"></script></body></html>
+</section></main></div><dialog id="subscriptionHistoryDialog" class="subscription-history-dialog" aria-labelledby="subscriptionHistoryTitle">
+ <div class="subscription-modal-head"><div><p class="subscription-kicker">BILLING HISTORY</p><h2 id="subscriptionHistoryTitle">ประวัติแพ็กเกจและการชำระเงิน</h2><p>รายการชำระและคำขอทั้งหมดของบัญชีนี้</p></div><button type="button" id="subscriptionHistoryClose" class="secondary subscription-modal-close" aria-label="ปิดประวัติ">✕ ปิด</button></div>
+ <div id="subscriptionHistoryRows" class="subscription-modal-rows" aria-live="polite"></div>
+ <div class="subscription-modal-footer"><button type="button" id="subscriptionHistoryMore" class="secondary" hidden>โหลดประวัติเพิ่ม</button></div>
+</dialog><div id="toast" class="toast" role="status"></div><script type="module" src="firebase-packing-bridge.js?v=5.3.0"></script><script src="app.js?v=5.3.0"></script></body></html>
