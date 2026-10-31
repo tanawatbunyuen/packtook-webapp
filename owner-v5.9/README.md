@@ -1,5 +1,19 @@
 # PACKTOOK Owner V5.9 — Google Cloud Shell Staging Patch
 
+## 0. Special case: Customer App Cloud Shell (firebase.json codebase default)
+
+If `find ~ -name firebase.json` returns only `~/packtook-webapp/firebase.json`, and `firebase.json` defines `functions: [{source:"functions",codebase:"default"}]` plus customer Hosting (`firebase-staging`), **do not use `install-cloudshell.sh`** (that version requires a separate Owner Hosting root). Instead, from `~/packtook-webapp` run:
+
+```sh
+PATCH_DIR="$(mktemp -d)"
+git clone --depth 1 --branch feature/owner-v5.9-management https://github.com/tanawatbunyuen/packtook-webapp.git "$PATCH_DIR"
+bash "$PATCH_DIR/owner-v5.9/install-backend-cloudshell.sh"
+```
+
+This installs **only the backend** into the existing Firebase project's `functions/` entrypoint. It backs up files, requires explicit Firestore field mappings, and does not deploy. The Owner frontend remains separate and still requires its original source code to add the Manage button. Do not run `firebase deploy --only hosting` from this customer Hosting root; that would target the customer site, not `packtook-owner-staging`.
+
+
+
 **Goal:** Add manual video-credit grants and subscription expiry edits to the EXISTING [Owner Staging](https://packtook-owner-staging.web.app/#customers). This directory is a patch, **not a complete replacement** for Owner Dashboard V5.8.
 
 ## 1. Copy into Cloud Shell
