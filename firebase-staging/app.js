@@ -128,24 +128,13 @@ function displayOmiseQR(uri){
  container.append(label,img);container.scrollIntoView({behavior:'smooth',block:'center'});
 }
 async function startOmiseUI(id,method,amountTHB){
- if(!confirm('ชำระผ่าน Omise TEST MODE เท่านั้น ไม่มีการเก็บเงินจริง ต้องการดำเนินการต่อ?'))return;
+ if(method!=='promptpay'){toast('ขณะนี้รองรับเฉพาะการชำระผ่าน PromptPay QR Code');return}
+ if(!confirm('สร้าง QR Code ผ่าน Omise TEST MODE สำหรับแพ็กเกจราคา ฿'+Number(amountTHB).toLocaleString('th-TH')+'? ยังไม่มีการเก็บเงินจริง'))return;
  try{
-  let token=null;
-  if(method==='card'){
-   const settings=await credit().omiseConfig();
-   if(!window.OmiseCard)throw Error('โหลด Omise.js ไม่สำเร็จ');
-   window.OmiseCard.configure({publicKey:settings.publicKey,frameLabel:'PACKTOOK',submitLabel:'Pay (TEST)',currency:'thb'});
-   token=await new Promise((resolve,reject)=>{
-    window.OmiseCard.open({amount:amountTHB*100,currency:'thb',defaultPaymentMethod:'credit_card',
-     onCreateTokenSuccess:nonce=>resolve(nonce),
-     onFormClosed:()=>reject(Error('ยกเลิกหน้าชำระเงิน'))});
-   });
-   if(!token?.startsWith('tokn_test_'))throw Error('ไม่ได้รับ Test token จาก Omise');
-  }
-  const result=await credit().startOmisePayment(id,method,token);
+  const result=await credit().startOmisePayment(id,'promptpay');
   if(result.qrImage)displayOmiseQR(result.qrImage);
-  if(result.authorizeUri){const url=new URL(result.authorizeUri);if(url.protocol==='https:')window.location.assign(url.href)}
-  toast('สถานะ Omise: '+result.status);await renderSubscriptionRequests();
+  toast('สถานะ Omise: '+result.status);
+  await renderSubscriptionRequests();
  }catch(e){toast('Omise: '+e.message)}
 }
 async function testPaidRecheck(requestId,button){
@@ -178,7 +167,7 @@ async function renderSubscriptionRequests(){
   const labels={free:'Free Plan',active:'ใช้งานอยู่',expired:'หมดอายุ',unconfigured:'ยังไม่ได้ตั้งวันหมดอายุ',invalid:'ข้อมูลสมาชิกไม่ถูกต้อง'};
   status.textContent='แพ็กเกจปัจจุบัน: '+details.plan+' • '+(labels[details.status]||details.status)+' • หมดอายุ: '+(details.expiresAt?new Date(details.expiresAt).toLocaleDateString('th-TH'):'ยังไม่กำหนด');
   box.append(status);
-  const note=document.createElement('p');note.textContent='ชำระผ่าน Omise Test Mode: PromptPay QR หรือบัตร ระบบยืนยันยอดจาก Omise ก่อนเปิดแพ็กเกจ';box.append(note);
+  const note=document.createElement('p');note.textContent='ชำระผ่าน PromptPay QR Code (Omise Test Mode) เท่านั้น ระบบยืนยันยอดจาก Omise ก่อนเปิดแพ็กเกจ';box.append(note);
   for(const x of details.requests){const line=document.createElement('div');line.style.margin='10px 0';const name=document.createElement('span');name.textContent=x.plan+' — '+({pending_payment_setup:'รอชำระเงิน',checkout_created:'สร้างหน้าชำระเงินแล้ว',creating_charge:'กำลังสร้างรายการชำระเงิน',payment_pending:'รอการชำระเงิน',failed:'ชำระเงินไม่สำเร็จ — แพ็กเกจไม่เปลี่ยน',expired:'รายการชำระเงินหมดอายุ — แพ็กเกจไม่เปลี่ยน',paid:'ชำระแล้ว'}[x.status]||x.status)+' — '+(x.createdAt?new Date(x.createdAt).toLocaleDateString('th-TH'):'');line.append(name);
  if(['failed','expired'].includes(x.status)){const failed=document.createElement('p');failed.textContent='รายการนี้ไม่ทำให้เปลี่ยนแพ็กเกจ หากต้องการลองอีกครั้งให้สร้างคำขอใหม่';failed.style.color='#9b3444';line.append(failed)}
  if(x.status==='paid'){
@@ -193,8 +182,6 @@ async function renderSubscriptionRequests(){
  if(x.status==='pending_payment_setup'){
   const qr=document.createElement('button');qr.type='button';qr.className='secondary';qr.textContent='PromptPay QR (Test)';
   qr.onclick=()=>startOmiseUI(x.id,'promptpay',x.amountTHB);controls.append(qr);
-  const card=document.createElement('button');card.type='button';card.className='secondary';card.style.marginLeft='8px';card.textContent='บัตรเครดิต (Test)';
-  card.onclick=()=>startOmiseUI(x.id,'card',x.amountTHB);controls.append(card);
  }else{
   if(x.status==='creating_charge'){
    const recover=document.createElement('button');recover.type='button';recover.className='secondary';recover.textContent='กู้คืน Charge จาก Omise';
