@@ -58,6 +58,7 @@ async function recoverCredit(){
   }
   if(!server){
    if(hasEvidence)return toast('⚠ พบไฟล์วิดีโอ แต่ไม่พบข้อมูลจองบน Firebase โปรดตรวจสอบก่อนดำเนินการ');
+   if(Date.now()-(p.createdAt||Date.now())<30000)return toast('Firebase อาจยังประมวลผลการจอง กรุณาตรวจสถานะซ้ำหลังผ่านอย่างน้อย 30 วินาที');
    if(!confirm('ไม่พบ Operation ID นี้บน Firebase และไม่พบไฟล์วิดีโอใช้งานได้ในโฟลเดอร์นี้\\nยืนยันยกเลิกรายการค้างใน Browser?'))return;
    clearPending();recordingOp=null;showRecovery();return toast('ล้างคำขอที่ Firebase ไม่พบแล้ว');
   }
@@ -734,11 +735,10 @@ async function startRecording(barcode){
     if(check.status==='reserved')recordingOp=attemptedOperationId;
     if(check.status==='failed')clearPending();
    }catch(err){
-    if(err.code==='functions/not-found')clearPending();
-    else console.warn('Reservation response uncertain; keep operation intent',err.code);
+    console.warn('Reservation status uncertain (including not-found during an in-flight request); keep operation intent for explicit recovery',err.code);
    }
   }
-  if(started){updatePendingOperation({phase:'needs_review'});toast('พบข้อผิดพลาดหลังเริ่มอัด กรุณาตรวจไฟล์และเครดิต')}
+  if(started){updatePendingOperation({phase:'needs_review'});if(activeBarcode&&!ending)void stopRecording('startup_error');toast('พบข้อผิดพลาดหลังเริ่มอัด กรุณาตรวจไฟล์และเครดิต')}
   else toast('เริ่มบันทึกไม่สำเร็จ: '+e.message+(pending()?' • กรุณาตรวจเครดิตจองค้าง':''));
   showRecovery();void refreshRemoteQuota().catch(()=>{});
  }finally{
