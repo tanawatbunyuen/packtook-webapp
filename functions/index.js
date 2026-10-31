@@ -626,10 +626,41 @@ exports.ownerAnalyticsCustomers=onCall(ownerOptions,async req=>{
  let query=collection.orderBy(admin.firestore.FieldPath.documentId()).limit(26);
  if(afterId)query=query.startAfter(afterId);
  const snap=await query.get(),items=snap.docs.slice(0,25);
+ // Firebase Authentication is the canonical email directory. Only the server
+ // can read these cross-tenant identities, after enforcing the platform-owner claim.
+ let userByUid=new Map();
+ if(items.length){
+  try{
+   const directory=await admin.auth().getUsers(items.map(doc=>({uid:doc.id})));
+   userByUid=new Map(directory.users.map(user=>[user.uid,user]));
+  }catch(e){
+   console.error("Owner customer directory lookup failed",{code:e.code||"unknown"});
+   throw new HttpsError("unavailable","Cannot load customer email directory. Retry later.");
+  }
+ }
  const customers=items.map(doc=>{
-  const a=doc.data(),state=subscriptionState(a);
-  return {accountId:doc.id,plan:a.plan||"Unknown",status:state,
-   joinedAt:ownerTimestamp(a.createdAt)?new Date(ownerTimestamp(a.createdAt)).toISOString():null,
+  const a=doc.data(),state=subscriptionState(a),joined=ownerTimestamp(a.createdAt);
+  const paidExpired=state==="expired",unlimited=limits[a.plan]===null&&!paidExpired;
+  let remainingCredits=null,creditsStatus="review";
+  if(paidExpired){
+   // An expired paid plan cannot start new recordings, even if its stored
+   // wallet balance has not been transferred or reset yet.
+   remainingCredits=0;creditsStatus="expired";
+  }else if(state==="free"||state==="active"){
+   try{
+    remainingCredits=unlimited?null:creditAvailable(a);
+    creditsStatus=unlimited?"unlimited":"available";
+   }catch(e){
+    // Corrupt wallet/quota fields must not hide other customer records or
+    // misrepresent uncertain balances as zero.
+    console.warn("Owner analytics credit calculation requires review",{accountId:doc.id,code:e.code||"unknown"});
+   }
+  }else creditsStatus="inactive";
+  return {accountId:doc.id,email:userByUid.get(doc.id)?.email||null,
+   plan:a.plan||"Unknown",status:state,
+   creditsRemaining:remainingCredits,creditsUnlimited:unlimited,
+   creditsStatus,reservedCredits:pendingReservations(a),
+   joinedAt:joined?new Date(joined).toISOString():null,
    expiresAt:typeof a.planExpiresAt==="string"?a.planExpiresAt:null,
    hasBilling:!!a.lastPaidAt};
  });
