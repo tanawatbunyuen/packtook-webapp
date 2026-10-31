@@ -60,6 +60,9 @@ function renderSummary(data){
  const partial=$("partialNotice");
  partial.hidden=!data.truncated;
  partial.textContent=data.truncated?"รายงานนี้เป็นข้อมูลบางส่วน: สแกนได้ "+fmt.format(data.scannedAccounts)+" บัญชี จากขีดจำกัด "+fmt.format(data.maxScannedAccounts)+" บัญชี กรุณาพัฒนาระบบสรุปยอดแบบรายวันก่อนใช้กับฐานลูกค้าขนาดใหญ่":"";
+ const unclassified=$("unclassifiedNotice");
+ unclassified.hidden=!(t.unknownPayments>0);
+ unclassified.textContent=t.unknownPayments>0?"พบ "+fmt.format(t.unknownPayments)+" ธุรกรรมเก่าที่ยืนยันโหมด Omise ไม่ได้ (ยอด "+baht.format(t.unknownSalesTHB||0)+") — ไม่นับรวมในยอดทดสอบหรือยอดเงินจริง":"";
  renderCharts();
  renderPlanTable(data.plans||[]);
 }
