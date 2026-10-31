@@ -169,8 +169,9 @@ async function renderSubscriptionRequests(){
   box.append(status);
   const note=document.createElement('p');note.textContent='ชำระผ่าน PromptPay QR Code (Omise Test Mode) เท่านั้น ระบบยืนยันยอดจาก Omise ก่อนเปิดแพ็กเกจ';box.append(note);
  const activePaid=details.status==='active'&&details.plan!=='Free';
- if(activePaid){const warning=document.createElement('div');warning.className='subscription-lock';warning.textContent='🔒 แพ็กเกจ '+details.plan+' ยังใช้งานอยู่จนถึง '+new Date(details.expiresAt).toLocaleDateString('th-TH')+' — ระบบปิดการซื้อแพ็กเกจใหม่และการ Downgrade จนกว่าจะหมดอายุ';box.append(warning)}
-  for(const x of details.requests){const line=document.createElement('div');line.style.margin='10px 0';const name=document.createElement('span');name.textContent=x.plan+' — '+({pending_payment_setup:'รอชำระเงิน',checkout_created:'สร้างหน้าชำระเงินแล้ว',creating_charge:'กำลังสร้างรายการชำระเงิน',payment_pending:'รอการชำระเงิน',failed:'ชำระเงินไม่สำเร็จ — แพ็กเกจไม่เปลี่ยน',expired:'รายการชำระเงินหมดอายุ — แพ็กเกจไม่เปลี่ยน',paid:'ชำระแล้ว',payment_review:'ชำระแล้ว — รอเจ้าหน้าที่ตรวจสอบ (ไม่เปลี่ยนแพ็กเกจ)'}[x.status]||x.status)+' — '+(x.createdAt?new Date(x.createdAt).toLocaleDateString('th-TH'):'');line.append(name);
+ if(activePaid){const warning=document.createElement('div');warning.className='subscription-lock';const allowed=details.purchaseWindow?.allowed;const kind=details.purchaseWindow?.kind;warning.textContent=allowed?(kind==='exhausted_topup'?'🎥 เครดิตวิดีโอหมดแล้ว! ซื้อแพ็กเกจเดิมหรือระดับสูงกว่าเพื่อเติมโควตาทันที และเพิ่มวันใช้งานอีก 30 วัน':'🔔 แพ็กเกจ '+details.plan+' ใกล้หมดอายุ สามารถต่ออายุแพ็กเกจเดิมล่วงหน้าได้ 7 วัน'):'🔒 แพ็กเกจ '+details.plan+' ยังใช้งานอยู่ ไม่อนุญาตให้เปลี่ยนแพ็กเกจจนกว่าเครดิตหมดหรือเหลืออายุไม่เกิน 7 วัน';box.append(warning)}
+ if(details.openBillingRequestId){const open=document.createElement('p');open.className='subscription-lock';open.textContent='⚠ มีคำขอชำระเงินค้างอยู่ กรุณาชำระ ตรวจสอบสถานะ หรือยกเลิกคำขอที่ยังไม่สร้าง QR ก่อนสมัครใหม่';box.append(open)}
+  for(const x of details.requests){const line=document.createElement('div');line.style.margin='10px 0';const name=document.createElement('span');const kindLabel={renewal:'ต่ออายุ',exhausted_topup:'เติมเครดิต / ขยายแพ็กเกจ',new:'สมัคร'};name.textContent=(kindLabel[x.purchaseKind]||'สมัคร')+' '+x.plan+' — '+({pending_payment_setup:'รอชำระเงิน',checkout_created:'สร้างหน้าชำระเงินแล้ว',creating_charge:'กำลังสร้างรายการชำระเงิน',payment_pending:'รอการชำระเงิน',failed:'ชำระเงินไม่สำเร็จ — แพ็กเกจไม่เปลี่ยน',expired:'รายการชำระเงินหมดอายุ — แพ็กเกจไม่เปลี่ยน',paid:'ชำระแล้ว',cancelled:'ยกเลิกคำขอแล้ว',payment_review:'ชำระแล้ว — รอเจ้าหน้าที่ตรวจสอบ (ไม่เปลี่ยนแพ็กเกจ)'}[x.status]||x.status)+' — '+(x.createdAt?new Date(x.createdAt).toLocaleDateString('th-TH'):'');line.append(name);
  if(['failed','expired'].includes(x.status)){const failed=document.createElement('p');failed.textContent='รายการนี้ไม่ทำให้เปลี่ยนแพ็กเกจ หากต้องการลองอีกครั้งให้สร้างคำขอใหม่';failed.style.color='#9b3444';line.append(failed)}
  if(x.status==='paid'){
   const test=document.createElement('button');test.type='button';test.className='secondary';test.style.marginLeft='10px';
@@ -184,7 +185,7 @@ async function renderSubscriptionRequests(){
  const controls=document.createElement('div');controls.style.marginTop='8px';
  if(x.status==='pending_payment_setup'){
   const qr=document.createElement('button');qr.type='button';qr.className='secondary';qr.textContent='PromptPay QR (Test)';
-  qr.disabled=activePaid;qr.title=activePaid?'มีแพ็กเกจใช้งานอยู่ กรุณารอหมดอายุ':'';qr.onclick=()=>startOmiseUI(x.id,'promptpay',x.amountTHB);controls.append(qr);
+  qr.disabled=activePaid&&!(details.purchaseWindow?.allowed);qr.title=qr.disabled?'ยังไม่ถึงเงื่อนไขต่ออายุหรือเติมเครดิต':'';qr.onclick=()=>startOmiseUI(x.id,'promptpay',x.amountTHB);controls.append(qr);const cancel=document.createElement('button');cancel.type='button';cancel.className='secondary';cancel.textContent='ยกเลิกคำขอนี้';cancel.onclick=async()=>{if(!confirm('ยกเลิกคำขอ '+x.plan+' ที่ยังไม่ได้สร้าง QR?'))return;cancel.disabled=true;try{await credit().cancelUnpaidPlanRequest(x.id);await refreshRemoteQuota();await renderSubscriptionRequests();renderPlans()}catch(e){toast(e.message);cancel.disabled=false}};controls.append(cancel);
  }else{
   if(x.status==='creating_charge'){
    const recover=document.createElement('button');recover.type='button';recover.className='secondary';recover.textContent='กู้คืน Charge จาก Omise';
@@ -198,28 +199,39 @@ async function renderSubscriptionRequests(){
 }box.append(line)}
  }catch(e){const p=document.createElement('p');p.textContent='โหลดข้อมูลสมาชิกไม่สำเร็จ: '+e.message;box.append(p)}
 }
+function planBuyStatus(plan){
+ if(!remoteQuota||plan==='Free')return {allowed:false,label:plan==='Free'?'แผนใช้ฟรี':'กำลังโหลด'};
+ const current=remoteQuota.plan===plan,active=remoteQuota.subscriptionStatus==='active'&&remoteQuota.plan!=='Free';
+ const open=remoteQuota.openBillingRequestId;
+ if(open)return {allowed:false,label:'มีคำขอชำระค้าง'};
+ if(!active)return {allowed:true,label:'สมัครแพ็กเกจ'};
+ const index=plans.findIndex(x=>x[0]===plan),currentIndex=plans.findIndex(x=>x[0]===remoteQuota.plan);
+ if(remoteQuota.purchaseReason==='exhausted_topup'&&index>=currentIndex)return {allowed:true,label:current?'เติมเครดิต + ต่ออายุ':'ซื้อแพ็กเกจเพิ่ม'};
+ if(remoteQuota.purchaseReason==='renewal'&&current)return {allowed:true,label:'ต่ออายุล่วงหน้า'};
+ return {allowed:false,label:current?'แพ็กเกจปัจจุบัน':'ยังไม่สามารถซื้อ'};
+}
 function renderPlans(){
- const activePaid=remoteQuota?.plan!=='Free'&&remoteQuota?.subscriptionStatus==='active';
  const cards=plans.map(p=>{
-  const current=remoteQuota?.plan===p[0];
-  const disabled=current||p[0]==='Free'||activePaid||!remoteQuota;
-  const label=current?'แพ็กเกจปัจจุบัน':activePaid?'รอแพ็กเกจเดิมหมดอายุ':p[0]==='Free'?'แผนใช้ฟรี':'เลือกแพ็กเกจ';
+  const current=remoteQuota?.plan===p[0],buy=planBuyStatus(p[0]);
   return `<article class="plan ${current?'selected':''}">
    <div class="plan-heading"><span class="plan-icon" role="img" aria-label="${p[5]}">${p[4]}</span><span class="plan-name"><h4>${p[0]}</h4><small>${p[5]}</small></span>${current?'<span class="plan-current">ใช้งานอยู่</span>':''}</div>
-   <div class="price">฿${p[1].toLocaleString('th-TH')}<small>/เดือน</small></div>
+   <div class="price">฿${p[1].toLocaleString('th-TH')}<small>/30 วัน</small></div>
    <p class="plan-feature">🎥 ${Number.isFinite(p[2])?p[2].toLocaleString('th-TH'):'ไม่จำกัด'} วิดีโอ / เดือน</p>
    <p class="plan-feature">🖥️ ${p[3]} เครื่อง</p>
-   <button type="button" class="secondary" data-plan-request="${p[0]}" ${disabled?'disabled':''}>${label}</button>
+   <button type="button" class="secondary" data-plan-request="${p[0]}" ${buy.allowed?'':'disabled'}>${buy.label}</button>
   </article>`;
  });
  $('planGrid').innerHTML=cards.join('');
  document.querySelectorAll('[data-plan-request]').forEach(button=>button.addEventListener('click',async()=>{
   const p=button.dataset.planRequest;
-  await refreshRemoteQuota();
-  if(remoteQuota?.subscriptionStatus==='active'&&remoteQuota.plan!=='Free'){alert('แพ็กเกจ '+remoteQuota.plan+' ยังไม่หมดอายุ ('+new Date(remoteQuota.planExpiresAt).toLocaleDateString('th-TH')+') จึงไม่สามารถซื้อแพ็กเกจใหม่ได้');renderPlans();return}
-  if(!confirm('สร้างคำขอแพ็กเกจ '+p+'? ยังไม่เก็บเงินจริงจนกว่าจะยืนยันชำระผ่าน Omise Test Mode'))return;
+  try{await refreshRemoteQuota()}catch(e){toast('ตรวจสอบสิทธิ์ไม่สำเร็จ: '+e.message);return}
+  const buy=planBuyStatus(p);
+  if(!buy.allowed){toast('ไม่สามารถซื้อได้ในขณะนี้: '+buy.label);renderPlans();return}
+  const kind=remoteQuota.purchaseReason;
+  const note=kind==='exhausted_topup'?'หลังชำระสำเร็จ โควตาจะเริ่มใหม่ทันทีและต่อวันหมดอายุเดิมอีก 30 วัน':kind==='renewal'?'หลังชำระสำเร็จ จะต่ออายุแพ็กเกจเดิมอีก 30 วัน โดยไม่รีเซ็ตโควตาที่เหลือ':'หลังชำระสำเร็จ จะเปิดแพ็กเกจ 30 วัน';
+  if(!confirm('สร้างคำขอ '+p+' ผ่าน Omise Test Mode?\\n'+note))return;
   button.disabled=true;
-  try{const result=await credit().requestPlanChange(p);toast('บันทึกคำขอ '+result.plan+' แล้ว โปรดเลือกชำระเงินในประวัติคำขอ');await renderSubscriptionRequests()}catch(e){toast('ส่งคำขอไม่สำเร็จ: '+e.message)}finally{button.disabled=false}
+  try{const result=await credit().requestPlanChange(p);toast('บันทึกคำขอ '+result.plan+' แล้ว โปรดชำระในประวัติคำขอ');await refreshRemoteQuota();renderPlans()}catch(e){toast('ส่งคำขอไม่สำเร็จ: '+e.message);renderPlans()}
  }));
  void renderSubscriptionRequests();
 }
