@@ -56,7 +56,7 @@ exports.usageStatus=onCall(options,async req=>{
  if(!snap.exists)throw new HttpsError("failed-precondition","Account not provisioned");
  const a=snap.data(),limit=limits[a.plan];if(limit===undefined)throw new HttpsError("failed-precondition","Invalid plan");
  const current=periodId(Date.now()),used=a.period===current?a.used||0:0,reserved=a.period===current?a.reserved||0:0;
- return {plan:a.plan,limit,used,reserved,remaining:limit===null?null:Math.max(0,limit-used-reserved),period:current,canBuyMore:purchaseDecision(a,a.plan).allowed,purchaseReason:purchaseDecision(a,a.plan).kind||null,planExpiresAt:typeof a.planExpiresAt==="string"?a.planExpiresAt:null,subscriptionStatus:subscriptionState(a)};
+ return {plan:a.plan,limit,used,reserved,remaining:limit===null?null:Math.max(0,limit-used-reserved),period:current,openBillingRequestId:a.openBillingRequestId||null,canBuyMore:purchaseDecision(a,a.plan).allowed,purchaseReason:purchaseDecision(a,a.plan).kind||null,planExpiresAt:typeof a.planExpiresAt==="string"?a.planExpiresAt:null,subscriptionStatus:subscriptionState(a)};
 });
 exports.reserveCredit=onCall(options,async req=>{
  const id=uid(req),body=data(req),op=body.operationId,barcode=body.barcode;
@@ -229,6 +229,7 @@ async function reconcileCharge(accountId,requestId,chargeId){
   const item=tSnap.data(),a=aSnap.data();
   if(item.omiseChargeId!==chargeId||item.requestedBy!==accountId||charge.id!==chargeId||charge.currency.toLowerCase()!=="thb"||charge.amount!==item.amountTHB*100||item.amountTHB!==pricesTHB[item.plan]||charge.metadata?.requestId!==requestId||charge.metadata?.uid!==accountId||charge.livemode!==false)throw Error("Charge mismatch");
   if(item.status==="paid")return {status:"paid",plan:item.plan,alreadyApplied:true};
+  if(item.status==="payment_review")return {status:"payment_review",requiresSupport:true};
   if(charge.status==="successful"&&charge.paid===true){
    const legacy=!item.purchaseKind;
    const sameRevision=(a.billingVersion||0)===(item.baseBillingVersion||0);
@@ -246,7 +247,11 @@ async function reconcileCharge(accountId,requestId,chargeId){
    const base=Number.isFinite(currentEnd)&&currentEnd>Date.now()&&item.purchaseKind!=="new"?currentEnd:Date.now();
    const expiresAt=new Date(base+30*86400000).toISOString();
    const reset=item.purchaseKind==="exhausted_topup";
-   if(reset&&(a.period===periodId(Date.now())?(a.reserved||0):0)>0)throw new HttpsError("failed-precondition","Pending recordings must be finalized before quota reset");
+   if(reset&&(a.period===periodId(Date.now())?(a.reserved||0):0)>0){
+    tx.update(ref,{status:"payment_review",reviewReason:"pending_recordings_prevent_quota_reset",reviewRequiredAt:FieldValue.serverTimestamp()});
+    tx.create(acc.collection("audit").doc(),{action:"payment_requires_manual_review",billingRequestId:requestId,omiseChargeId:chargeId,createdAt:FieldValue.serverTimestamp()});
+    return {status:"payment_review",requiresSupport:true};
+   }
    tx.update(acc,{plan:item.plan,planExpiresAt:expiresAt,lastPaidAt:FieldValue.serverTimestamp(),billingVersion:FieldValue.increment(1),...(reset?{period:periodId(Date.now()),used:0,reserved:0}:{}),...(lockOk?{openBillingRequestId:FieldValue.delete()}:{}),updatedAt:FieldValue.serverTimestamp()});
    tx.update(ref,{status:"paid",paidAt:FieldValue.serverTimestamp(),paymentProvider:"omise",activationExpiresAt:expiresAt,quotaReset:reset});
    tx.create(acc.collection("audit").doc(),{action:reset?"subscription_quota_refilled":"subscription_paid",billingRequestId:requestId,omiseChargeId:chargeId,plan:item.plan,createdAt:FieldValue.serverTimestamp()});
