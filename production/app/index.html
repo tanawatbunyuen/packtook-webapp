@@ -1,11 +1,39 @@
 <!doctype html>
-<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="th">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow"><meta name="color-scheme" content="dark">
-<title>PACKTOOK | Customer Workspace — Preparation</title>
-<style>:root{font-family:Inter,"Noto Sans Thai","Segoe UI",sans-serif;color:#eaf6ff;background:#06162e}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;background:radial-gradient(circle at 25% 10%,#1960a852,transparent 35%),#06162e}.panel{width:min(580px,100%);padding:clamp(24px,5vw,45px);border:1px solid #3a6686;border-radius:24px;background:#0d2444;box-shadow:0 35px 80px #0005}.brand{font-weight:900;letter-spacing:-.07em;font-size:30px}.brand span{color:#39c8e8}.tag{color:#5ae0c0;font-size:12px;font-weight:800;letter-spacing:.15em;margin-top:24px}h1{font-size:clamp(24px,4vw,37px);line-height:1.25}p{color:#bfd4e8;line-height:1.8}a{color:#65d8ed}.note{border-left:3px solid #5ae0c0;padding-left:15px;font-size:14px}</style></head>
-<body><main class="panel"><div class="brand">PACK<span>TOOK</span></div><p class="tag">PRODUCTION FOUNDATION · V6.0</p>
-<h1>Customer Workspace<br>กำลังเตรียมเปิดให้บริการ</h1>
-<p>Production ของ PACKTOOK ถูกแยกจากระบบทดสอบแล้ว แต่ยังไม่เปิดให้สมัครสมาชิก บันทึกวิดีโอ หรือชำระเงินจริงในขั้นตอนนี้</p>
-<p class="note">เพื่อความปลอดภัย เราจะเปิด Customer App หลังผ่านการทดสอบเครดิต วิดีโอ และ Live Payment ครบถ้วนเท่านั้น</p>
-<p>เว็บไซต์หลักและโดเมนอย่างเป็นทางการจะแจ้งก่อนเปิดบริการ</p>
-</main></body></html>
+<title>PACKTOOK | Production Customer Portal</title>
+<link rel="stylesheet" href="/auth.css?v=6.0.0">
+</head>
+<body>
+<main class="shell">
+ <div class="brand">PACK<span>TOOK</span></div>
+ <p class="tag">PRODUCTION FOUNDATION · V6.0</p>
+ <section id="closedPanel" class="panel">
+  <h1>Customer Workspace<br>กำลังเตรียมเปิดให้บริการ</h1>
+  <p>Production ของ PACKTOOK แยกจาก Staging แล้ว และยังไม่เปิดรับสมัครสมาชิกหรือชำระเงินจริงจนกว่าจะผ่านการทดสอบก่อนเปิดบริการ</p>
+  <p class="note">ข้อมูลทดสอบและบัญชี Staging จะไม่ถูกนำมาใช้ในระบบ Production โดยอัตโนมัติ</p>
+  <small id="closedReason">Customer registration is closed for production foundation.</small>
+ </section>
+ <section id="authPanel" class="panel" hidden>
+  <h1 id="formTitle">เข้าสู่ระบบ PACKTOOK</h1>
+  <p id="formIntro">เฉพาะบัญชี Production ที่ได้รับอนุญาต</p>
+  <form id="authForm">
+   <label for="email">อีเมล</label><input type="email" id="email" autocomplete="username" required>
+   <div id="passwordField"><label for="password">รหัสผ่าน</label><input type="password" id="password" autocomplete="current-password" minlength="12" required></div>
+   <label id="agreement" class="agreement" hidden><input id="agree" type="checkbox"> ยอมรับนโยบายความเป็นส่วนตัวและข้อกำหนดบริการที่เผยแพร่แล้ว</label>
+   <button type="submit" class="primary" id="submitButton">เข้าสู่ระบบ</button>
+  </form>
+  <div class="actions"><button type="button" data-mode="login">Login</button><button type="button" data-mode="signup">สมัครสมาชิก</button><button type="button" data-mode="reset">ลืมรหัสผ่าน</button></div>
+  <p role="status" id="message" aria-live="polite"></p>
+ </section>
+ <section id="signedPanel" class="panel" hidden>
+   <h1>ยืนยันตัวตนสำเร็จ</h1>
+   <p id="signedEmail"></p><p>ระบบบันทึกวิดีโอและการชำระเงินยังไม่ได้เปิดให้บริการบน Production V6.0</p>
+   <button id="signoutButton" class="primary">ออกจากระบบ</button>
+ </section>
+ <footer>PACKTOOK · Production isolated from Staging · No Live Payment</footer>
+</main>
+<script src="/runtime-config.js"></script>
+<script type="module" src="/auth.js?v=6.0.0"></script>
+</body></html>
