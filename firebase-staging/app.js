@@ -80,8 +80,41 @@ function updateUsersSummary(){
 async function refreshRemoteQuota(){if(!remoteUser)return;remoteQuota=await credit().usage();updateQuota();updateUsersSummary()}
 
 function read(){try{return JSON.parse(localStorage.getItem(KEY))||{plan:'Free',logs:[]}}catch{return {plan:'Free',logs:[]}}}
-let store=read(), stream=null,recorder=null,parts=[],folder=null,activeBarcode='',startMs=0,ticker=null,ending=false, reservation=false, recordingFailure='', currentWritable=null, lastVideoUrl=null, healthTimer=null, stopPromise=null, lastFrameTime=0, lastFrameSignature='', recoveryBusy=false;
+let store=read(), stream=null,recorder=null,videoWriter=null,folder=null,activeBarcode='',startMs=0,ticker=null,ending=false, reservation=false, recordingFailure='', currentWritable=null, lastVideoUrl=null, healthTimer=null, stopPromise=null, lastFrameTime=0, lastFrameSignature='', recoveryBusy=false;
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(store))}catch(e){toast('บันทึกประวัติ Browser ไม่สำเร็จ: '+e.message)}}
+
+let historyReady=null,historyCursor=null,historyQueryId=0,historyLoading=false;
+async function ensureVideoHistory(){
+ if(!historyReady){
+  historyReady=(async()=>{
+   await window.PACKTOOK_VIDEO_HISTORY.connect();
+   // Keep the legacy data untouched until the whole IndexedDB transaction commits.
+   const previous=Array.isArray(store.logs)?store.logs:[];
+   if(previous.length){await window.PACKTOOK_VIDEO_HISTORY.putMany(previous);store.logs=[];persist()}
+  })().catch(e=>{historyReady=null;throw e});
+ }
+ return historyReady;
+}
+async function saveVideoHistory(row){
+ try{await ensureVideoHistory();await window.PACKTOOK_VIDEO_HISTORY.put(row)}
+ catch(e){
+  console.error('IndexedDB history failure',e);
+  // Emergency metadata fallback; never lose the file reference after credit finalization.
+  store.logs=Array.isArray(store.logs)?store.logs:[];
+  if(!store.logs.some(x=>x.filename===row.filename))store.logs.push(row);
+  persist();
+  toast('⚠ บันทึกประวัติ IndexedDB ไม่สำเร็จ: เก็บข้อมูลสำรองใน Browser แล้ว');
+ }
+}
+function setPendingOperation(operationId,barcode,phase,filename){
+ const key=pendingKey();if(!key)throw Error('ไม่พบบัญชีผู้ใช้สำหรับบันทึกสถานะ');
+ localStorage.setItem(key,JSON.stringify({operationId,barcode,phase,filename,createdAt:Date.now()}));
+}
+function updatePendingOperation(patch){
+ const p=pending(),key=pendingKey();
+ if(p&&key)localStorage.setItem(key,JSON.stringify({...p,...patch}));
+}
+
 function toast(message){$('toast').textContent=message;$('toast').classList.add('show');clearTimeout(window._toastTimer);window._toastTimer=setTimeout(()=>$('toast').classList.remove('show'),3800)}
 
 const DB_NAME='packtook-v34-handles';
@@ -99,7 +132,6 @@ function closePlayback(){const v=$('historyVideo');v.pause();v.removeAttribute('
 async function playHistory(log){closePlayback();try{if(!folder)await restoreFolder(false);if(!folder)throw Error('กรุณาเลือกโฟลเดอร์ที่มีวิดีโอก่อน');let perm=await folder.queryPermission({mode:'read'});if(perm!=='granted'){perm=await folder.requestPermission({mode:'read'});if(perm!=='granted')throw Error('ไม่ได้รับอนุญาตอ่านวิดีโอ')}const handle=await folder.getFileHandle(log.filename);const file=await handle.getFile();if(file.size<1000)throw Error('ไฟล์วิดีโอไม่มีข้อมูล');lastVideoUrl=URL.createObjectURL(file);$('historyVideo').src=lastVideoUrl;$('videoHeading').textContent='Video — '+log.barcode;$('videoInfo').textContent=log.filename+' • '+Math.round(file.size/1024/1024*100)/100+' MB';$('videoPanel').hidden=false;$('videoPanel').scrollIntoView({behavior:'smooth',block:'nearest'});await $('historyVideo').play().catch(()=>{})}catch(e){toast('เปิดวิดีโอไม่สำเร็จ: '+e.message+' — ตรวจสอบโฟลเดอร์และไฟล์เดิม')}}
 
 function monthKey(date=new Date()){return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`}
-function used(){return store.logs.filter(v=>v.month===monthKey()).length}
 function plan(){return plans.find(p=>p[0]===store.plan)||plans[0]}
 function updateQuota(){const q=remoteQuota;const p=q?plans.find(x=>x[0]===q.plan)||plans[0]:plans[0];const u=q?.used??0,unlimited=q?.limit===null;const left=q?.remaining??0;$('planName').textContent=p[0].toUpperCase();$('usedCount').textContent=u.toLocaleString();$('remainingCount').textContent=unlimited?'∞':left.toLocaleString();$('limitLabel').textContent=unlimited?'ไม่จำกัดวิดีโอ':q?.walletEnabled?'เครดิตสะสมที่ใช้ได้':'เครดิตคงเหลือในเดือนนี้';$('quotaText').textContent=unlimited?'เครดิตไม่จำกัด':q?.walletEnabled?`เครดิตสะสมคงเหลือ ${left.toLocaleString('th-TH')} วิดีโอ จาก ${Number(q.walletStartingCredits||left).toLocaleString('th-TH')} เครดิตหลังซื้อล่าสุด`:`ใช้แล้ว ${u.toLocaleString('th-TH')} / ${(q?.limit??20).toLocaleString('th-TH')}`;$('quotaProgress').style.width=unlimited?'0%':q?.walletEnabled?`${Math.min(100,100*left/Math.max(1,q.walletStartingCredits||left||1))}%`:`${Math.min(100,u/(q?.limit||20)*100)}%`}
 
@@ -504,32 +536,71 @@ async function deleteRecordedVideo(log,ask=true){
  let perm=await folder.queryPermission({mode:'readwrite'});
  if(perm!=='granted')perm=await folder.requestPermission({mode:'readwrite'});
  if(perm!=='granted'){toast('ไม่ได้รับสิทธิ์ลบไฟล์');return false}
- try{await folder.removeEntry(log.filename)}
- catch(e){toast('ลบไฟล์ไม่สำเร็จ: '+e.message);return false}
+ try{await folder.removeEntry(log.filename)}catch(e){toast('ลบไฟล์ไม่สำเร็จ: '+e.message);return false}
  if(!$('videoPanel').hidden)closePlayback();
- log.deleted=true;log.deletedAt=Date.now();persist();renderHistory();updateQuota();
- toast('ลบไฟล์แล้ว (ไม่คืนโควตา)');return true
+ try{await ensureVideoHistory();await window.PACKTOOK_VIDEO_HISTORY.remove(log.filename)}
+ catch(e){console.error('Failed to remove video metadata',e);store.logs=Array.isArray(store.logs)?store.logs:[];const old=store.logs.find(x=>x.filename===log.filename);if(old)old.deleted=true;persist();toast('ไฟล์ถูกลบแล้ว แต่ IndexedDB มีปัญหา กรุณาตรวจสอบประวัติอีกครั้ง')}
+ await renderHistory();toast('ลบไฟล์แล้ว (ไม่คืนโควตา)');return true
 }
 let cleanupRunning=false;
 async function runRetention(force=false){
  if(cleanupRunning||activeBarcode||ending)return;
  const days=Number(store.retentionDays||0);
- $('retentionStatus').textContent=days?('ตั้งค่าลบอัตโนมัติเมื่อเกิน '+days+' วัน; ทำงานเมื่อเปิดหน้า Dashboard และมีสิทธิ์โฟลเดอร์'):'ไม่ลบอัตโนมัติ';
+ $('retentionStatus').textContent=days?'ลบไฟล์ที่เกิน '+days+' วัน เฉพาะเมื่อเปิดเว็บและให้สิทธิ์โฟลเดอร์':'ไม่ลบอัตโนมัติ';
  if(!days)return;
- const cutoff=Date.now()-days*86400000;
- const expired=store.logs.filter(x=>!x.deleted&&Number(x.timestamp)<cutoff);
+ let expired;
+ try{await ensureVideoHistory();expired=await window.PACKTOOK_VIDEO_HISTORY.expired(Date.now()-days*86400000,100)}
+ catch(e){toast('อ่านประวัติลบไฟล์ไม่ได้: '+e.message);return}
  if(!expired.length){if(force)toast('ไม่พบวิดีโอหมดอายุ');return}
  if(!folder)await restoreFolder(false);
  if(!folder){toast('ต้องเชื่อมโฟลเดอร์เก็บวิดีโอเพื่อทำความสะอาด');return}
- if(force&&!confirm('ลบวิดีโอหมดอายุ '+expired.length+' ไฟล์อย่างถาวร? ไม่สามารถกู้คืนได้'))return;
+ if(force&&!confirm('ลบวิดีโอหมดอายุ '+expired.length+' รายการอย่างถาวร? (สูงสุด 100 รายการต่อครั้ง)'))return;
  cleanupRunning=true;let removed=0;
- try{let perm=await folder.queryPermission({mode:'readwrite'});if(perm!=='granted'){if(force)perm=await folder.requestPermission({mode:'readwrite'});else{toast('กรุณากดเชื่อมโฟลเดอร์ เพื่ออนุญาตลบอัตโนมัติ');return}}
- if(perm!=='granted')return;
- for(const log of expired){try{await folder.removeEntry(log.filename);log.deleted=true;log.deletedAt=Date.now();removed++}catch(e){console.warn('Cleanup skipped',log.filename,e)}}
- persist();renderHistory();if(removed)toast('ลบวิดีโอหมดอายุแล้ว '+removed+' ไฟล์')
+ try{
+  let perm=await folder.queryPermission({mode:'readwrite'});
+  if(perm!=='granted'){
+   if(force)perm=await folder.requestPermission({mode:'readwrite'});
+   else{toast('กรุณากดเชื่อมโฟลเดอร์ เพื่ออนุญาตลบอัตโนมัติ');return}
+  }
+  if(perm!=='granted')return;
+  for(const log of expired){
+   try{
+    await folder.removeEntry(log.filename);
+    await window.PACKTOOK_VIDEO_HISTORY.remove(log.filename);
+    removed++;
+   }catch(e){console.warn('Cleanup skipped',log.filename,e)}
+  }
+  await renderHistory();
+  if(removed)toast('ลบวิดีโอหมดอายุแล้ว '+removed+' ไฟล์');
  }finally{cleanupRunning=false}
 }
-function renderHistory(){const date=$('dateFilter').value;const barcode=($('barcodeFilter').value||'').trim().toLowerCase();$('allVideos').textContent=store.logs.filter(x=>!x.deleted).length.toLocaleString();$('monthVideos').textContent=used().toLocaleString();const rows=store.logs.filter(x=>!x.deleted&&(!date||x.day===date)&&(!barcode||x.barcode.toLowerCase().includes(barcode))).sort((a,b)=>b.timestamp-a.timestamp);$('historyRows').replaceChildren();if(!rows.length){const tr=document.createElement('tr');const td=document.createElement('td');td.colSpan=5;td.textContent='ยังไม่มีวิดีโอที่ตรงกับเงื่อนไข';tr.append(td);$('historyRows').append(tr);return}rows.forEach(r=>{const tr=document.createElement('tr');[new Date(r.timestamp).toLocaleString('th-TH'),r.barcode,r.worker,`${r.seconds} วินาที`].forEach(t=>{const td=document.createElement('td');td.textContent=t;tr.append(td)});const td=document.createElement('td');const b=document.createElement('button');b.className='video-action';b.type='button';b.textContent='▶ เปิดวิดีโอ';b.title=r.filename;b.addEventListener('click',()=>playHistory(r));td.append(b);const del=document.createElement('button');del.type='button';del.className='video-delete';del.textContent='ลบไฟล์';del.addEventListener('click',()=>deleteRecordedVideo(r));td.append(' ',del);tr.append(td);$('historyRows').append(tr)})}
+async function renderHistory(next=false){
+ const rows=$('historyRows'),button=$('historyNext');
+ if(historyLoading)return;
+ const queryId=next?historyQueryId:++historyQueryId;
+ if(!next){historyCursor=null;rows.replaceChildren()}
+ historyLoading=true;if(button){button.disabled=true;button.hidden=true}
+ try{
+  await ensureVideoHistory();
+  const date=$('dateFilter').value,barcode=($('barcodeFilter').value||'').trim().toLowerCase();
+  const [counts,page]=await Promise.all([
+   next?Promise.resolve(null):window.PACKTOOK_VIDEO_HISTORY.counts(monthKey()),
+   window.PACKTOOK_VIDEO_HISTORY.page({day:date,barcode,after:next?historyCursor:null,limit:50})
+  ]);
+  if(queryId!==historyQueryId)return;
+  if(counts){$('allVideos').textContent=counts.total.toLocaleString('th-TH');$('monthVideos').textContent=counts.current.toLocaleString('th-TH')}
+  for(const r of page.items){
+   const tr=document.createElement('tr');
+   [new Date(r.timestamp).toLocaleString('th-TH'),r.barcode,r.worker,`${r.seconds} วินาที`].forEach(t=>{const td=document.createElement('td');td.textContent=t;tr.append(td)});
+   const td=document.createElement('td'),play=document.createElement('button');play.className='video-action';play.type='button';play.textContent='▶ เปิดวิดีโอ';play.title=r.filename;play.addEventListener('click',()=>playHistory(r));td.append(play);
+   const del=document.createElement('button');del.type='button';del.className='video-delete';del.textContent='ลบไฟล์';del.addEventListener('click',()=>deleteRecordedVideo(r));td.append(' ',del);tr.append(td);rows.append(tr);
+  }
+  if(!rows.childElementCount){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=5;td.textContent='ยังไม่มีวิดีโอที่ตรงกับเงื่อนไข';tr.append(td);rows.append(tr)}
+  historyCursor=page.nextCursor;
+  if(button){button.hidden=!historyCursor;button.disabled=false}
+ }catch(e){console.error('Video history failed',e);toast('โหลดประวัติวิดีโอไม่ได้: '+e.message);if(button)button.hidden=true}
+ finally{historyLoading=false}
+}
 function safeFilename(s){return (s||'order').replace(/[^\w\-ก-๙]/g,'_').slice(0,70)}
 function fmtSec(s){return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
 function cameraState(on){$('noCam').hidden=on;$('cameraBtn').textContent=on?'ปิดกล้อง':'เปิดกล้อง';if(!activeBarcode)$('recBadge').textContent=on?'● CAMERA ON':'● CAMERA OFF'}
