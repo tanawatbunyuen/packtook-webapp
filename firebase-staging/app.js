@@ -171,9 +171,9 @@ async function renderSubscriptionRequests(){
   const note=document.createElement('p');note.textContent='ชำระผ่าน PromptPay QR Code (Omise Test Mode) เท่านั้น ระบบยืนยันยอดจาก Omise ก่อนเปิดแพ็กเกจ';box.append(note);
   const balanceInfo=document.createElement('p');balanceInfo.className='subscription-credit-transfer';balanceInfo.textContent=details.remaining===null?'🎥 เครดิตวิดีโอ: ไม่จำกัด':'🎥 เครดิตคงเหลือปัจจุบัน: '+Number(details.remaining||0).toLocaleString('th-TH')+' วิดีโอ • เมื่อซื้อแพ็กเกจใหม่ก่อนหมดอายุ เครดิตคงเหลือจะสะสมเพิ่ม ไม่ถูกตัดทิ้ง';box.append(balanceInfo);
  const activePaid=details.status==='active'&&details.plan!=='Free';
- if(activePaid){const warning=document.createElement('div');warning.className='subscription-lock';const allowed=details.purchaseWindow?.allowed;const kind=details.purchaseWindow?.kind;warning.textContent=allowed?(kind==='exhausted_topup'?'🎥 เครดิตหมดแล้ว! ซื้อแพ็กเกจเดิมหรือสูงกว่าเพื่อรับเครดิตใหม่ พร้อมสะสมวันใช้งานเดิมอีก 30 วัน':'🔔 ใกล้หมดอายุ: ต่ออายุแพ็กเกจเดิมได้แล้ว เครดิตที่เหลือจะโอนมารวมกับเครดิตใหม่ และวันหมดอายุจะต่อจากวันเดิม'):'🔒 แพ็กเกจ '+details.plan+' ยังใช้งานอยู่ ไม่อนุญาตให้เปลี่ยนแพ็กเกจจนกว่าเครดิตหมดหรือเหลืออายุไม่เกิน 7 วัน';box.append(warning)}
+ if(activePaid){const warning=document.createElement('div');warning.className='subscription-lock';const allowed=details.purchaseWindow?.allowed;const kind=details.purchaseWindow?.kind;warning.textContent=allowed?(kind==='exhausted_topup'?'🎥 เครดิตหมดแล้ว! ซื้อแพ็กเกจเดิมหรืออัปเกรดได้ และต่อวันใช้งานเดิมอีก 30 วัน':'🔔 ใกล้หมดอายุ: ต่ออายุแพ็กเกจเดิมหรืออัปเกรดได้ เครดิตที่เหลือจะโอนมา และวันหมดอายุจะต่อจากวันเดิม'):'⬆️ แพ็กเกจ '+details.plan+' ยังใช้งานอยู่: สามารถอัปเกรดเป็นแพ็กเกจที่สูงกว่าได้ทันที พร้อมโอนเครดิตคงเหลือและบวกวันหมดอายุอีก 30 วัน • แพ็กเกจเดิมต่ออายุได้เมื่อเครดิตหมดหรือใกล้หมดอายุ 7 วัน';box.append(warning)}
  if(details.openBillingRequestId){const open=document.createElement('p');open.className='subscription-lock';open.textContent='⚠ มีคำขอชำระเงินค้างอยู่ กรุณาชำระ ตรวจสอบสถานะ หรือยกเลิกคำขอที่ยังไม่สร้าง QR ก่อนสมัครใหม่';box.append(open)}
-  for(const x of details.requests){const line=document.createElement('div');line.style.margin='10px 0';const name=document.createElement('span');const kindLabel={renewal:'ต่ออายุ',exhausted_topup:'เติมเครดิต / ขยายแพ็กเกจ',new:'สมัคร'};name.textContent=(kindLabel[x.purchaseKind]||'สมัคร')+' '+x.plan+' — '+({pending_payment_setup:'รอชำระเงิน',checkout_created:'สร้างหน้าชำระเงินแล้ว',creating_charge:'กำลังสร้างรายการชำระเงิน',payment_pending:'รอการชำระเงิน',failed:'ชำระเงินไม่สำเร็จ — แพ็กเกจไม่เปลี่ยน',expired:'รายการชำระเงินหมดอายุ — แพ็กเกจไม่เปลี่ยน',paid:'ชำระแล้ว',cancelled:'ยกเลิกคำขอแล้ว',payment_review:'ชำระแล้ว — รอเจ้าหน้าที่ตรวจสอบ (ไม่เปลี่ยนแพ็กเกจ)'}[x.status]||x.status)+' — '+(x.createdAt?new Date(x.createdAt).toLocaleDateString('th-TH'):'');line.append(name);
+  for(const x of details.requests){const line=document.createElement('div');line.style.margin='10px 0';const name=document.createElement('span');const kindLabel={renewal:'ต่ออายุ',exhausted_topup:'เติมเครดิต / ขยายแพ็กเกจ',upgrade:'อัปเกรด',new:'สมัคร'};name.textContent=(kindLabel[x.purchaseKind]||'สมัคร')+' '+x.plan+' — '+({pending_payment_setup:'รอชำระเงิน',checkout_created:'สร้างหน้าชำระเงินแล้ว',creating_charge:'กำลังสร้างรายการชำระเงิน',payment_pending:'รอการชำระเงิน',failed:'ชำระเงินไม่สำเร็จ — แพ็กเกจไม่เปลี่ยน',expired:'รายการชำระเงินหมดอายุ — แพ็กเกจไม่เปลี่ยน',paid:'ชำระแล้ว',cancelled:'ยกเลิกคำขอแล้ว',payment_review:'ชำระแล้ว — รอเจ้าหน้าที่ตรวจสอบ (ไม่เปลี่ยนแพ็กเกจ)'}[x.status]||x.status)+' — '+(x.createdAt?new Date(x.createdAt).toLocaleDateString('th-TH'):'');line.append(name);
  if(['failed','expired'].includes(x.status)){const failed=document.createElement('p');failed.textContent='รายการนี้ไม่ทำให้เปลี่ยนแพ็กเกจ หากต้องการลองอีกครั้งให้สร้างคำขอใหม่';failed.style.color='#9b3444';line.append(failed)}
  if(x.status==='paid'){
   if(x.creditsPurchased!==null){const carry=document.createElement('p');carry.className='subscription-credit-transfer';carry.textContent=x.creditsPurchased===null?'เครดิตไม่จำกัด':'เครดิตใหม่ '+Number(x.creditsPurchased).toLocaleString('th-TH')+' + โอนเครดิตเดิม '+Number(x.transferredCredits||0).toLocaleString('th-TH')+' = '+Number(x.balanceAfter||0).toLocaleString('th-TH')+' วิดีโอ • หมดอายุ '+(x.activationExpiresAt?new Date(x.activationExpiresAt).toLocaleDateString('th-TH'):'—');line.append(carry)}
@@ -207,9 +207,11 @@ function planBuyStatus(plan){
  const current=remoteQuota.plan===plan,active=remoteQuota.subscriptionStatus==='active'&&remoteQuota.plan!=='Free';
  const open=remoteQuota.openBillingRequestId;
  if(open)return {allowed:false,label:'มีคำขอชำระค้าง'};
+ if((remoteQuota.reserved||0)>0)return {allowed:false,label:'มีวิดีโอค้างบันทึก'};
  if(!active)return {allowed:true,label:'สมัครแพ็กเกจ'};
  const index=plans.findIndex(x=>x[0]===plan),currentIndex=plans.findIndex(x=>x[0]===remoteQuota.plan);
- if(remoteQuota.purchaseReason==='exhausted_topup'&&index>=currentIndex)return {allowed:true,label:current?'เติมเครดิต + ต่ออายุ':'ซื้อแพ็กเกจเพิ่ม'};
+ if(index>currentIndex)return {allowed:true,label:'อัปเกรดแพ็กเกจ'};
+ if(remoteQuota.purchaseReason==='exhausted_topup'&&current)return {allowed:true,label:'เติมเครดิต + ต่ออายุ'};
  if(remoteQuota.purchaseReason==='renewal'&&current)return {allowed:true,label:'ต่ออายุล่วงหน้า'};
  return {allowed:false,label:current?'แพ็กเกจปัจจุบัน':'ยังไม่สามารถซื้อ'};
 }
@@ -230,8 +232,9 @@ function renderPlans(){
   try{await refreshRemoteQuota()}catch(e){toast('ตรวจสอบสิทธิ์ไม่สำเร็จ: '+e.message);return}
   const buy=planBuyStatus(p);
   if(!buy.allowed){toast('ไม่สามารถซื้อได้ในขณะนี้: '+buy.label);renderPlans();return}
-  const kind=remoteQuota.purchaseReason;
-  const note=kind==='exhausted_topup'?'หลังชำระสำเร็จ จะเพิ่มเครดิตแพ็กเกจใหม่ให้ยอดสะสม และเพิ่มวันหมดอายุจากวันเดิมอีก 30 วัน':kind==='renewal'?'เครดิตที่ยังเหลือจะโอนมารวมกับเครดิตใหม่ และวันหมดอายุจะเพิ่มจากวันเดิมอีก 30 วัน':'หลังชำระสำเร็จ จะเปิดแพ็กเกจ 30 วัน โดยโอนเครดิต Free ที่ยังเหลือ (ถ้ามี) มารวมกับเครดิตใหม่';
+  const upgrading=remoteQuota?.subscriptionStatus==='active'&&remoteQuota.plan!=='Free'&&plans.findIndex(x=>x[0]===p)>plans.findIndex(x=>x[0]===remoteQuota.plan);
+  const kind=upgrading?'upgrade':remoteQuota.purchaseReason;
+  const note=kind==='upgrade'?'อัปเกรด '+remoteQuota.plan+' เป็น '+p+' โดยชำระราคาแพ็กเกจใหม่เต็มจำนวน เครดิตเดิมที่เหลือจะโอนมารวมกับเครดิต '+(plans.find(x=>x[0]===p)?.[2]===Infinity?'ไม่จำกัด':plans.find(x=>x[0]===p)?.[2])+' ของแพ็กเกจใหม่ และวันหมดอายุเดิมบวกเพิ่มอีก 30 วัน':kind==='exhausted_topup'?'หลังชำระสำเร็จ จะเพิ่มเครดิตแพ็กเกจใหม่ให้ยอดสะสม และเพิ่มวันหมดอายุจากวันเดิมอีก 30 วัน':kind==='renewal'?'เครดิตที่ยังเหลือจะโอนมารวมกับเครดิตใหม่ และวันหมดอายุจะเพิ่มจากวันเดิมอีก 30 วัน':'หลังชำระสำเร็จ จะเปิดแพ็กเกจ 30 วัน โดยโอนเครดิต Free ที่ยังเหลือ (ถ้ามี) มารวมกับเครดิตใหม่';
   if(!confirm('สร้างคำขอ '+p+' ผ่าน Omise Test Mode?\\n'+note))return;
   button.disabled=true;
   try{const result=await credit().requestPlanChange(p);toast('บันทึกคำขอ '+result.plan+' แล้ว โปรดชำระในประวัติคำขอ');await refreshRemoteQuota();renderPlans()}catch(e){toast('ส่งคำขอไม่สำเร็จ: '+e.message);renderPlans()}
