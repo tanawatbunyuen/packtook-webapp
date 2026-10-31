@@ -34,6 +34,7 @@ window.PACKTOOK_FIREBASE={
  async recoverOmiseCharge(requestId){return (await api("recoverOmiseCharge")({requestId})).data},
  async paymentAudit(requestId){return (await api("paymentAudit")({requestId})).data},
  async omisePaymentStatus(requestId){return (await api("omisePaymentStatus")({requestId})).data},
+ async cancelUnpaidPlanRequest(requestId){return (await api("cancelUnpaidPlanRequest")({requestId})).data},
  async requestPlanChange(plan){return (await api("requestPlanChange")({plan})).data},
  async accountRole(){return (await api("accountRole")({})).data},
  async authorizeDuplicate(barcode,reason){return (await api("authorizeDuplicate")({barcode,reason})).data},
