@@ -276,6 +276,7 @@ exports.createOmisePayment=onCall(paymentSecrets,async req=>{
   const [snap,accountSnap]=await Promise.all([tx.get(ticket),tx.get(acc)]);
   if(!snap.exists||snap.data().requestedBy!==user)throw new HttpsError("not-found","Request not found");
   const item=snap.data();
+  if(!item.purchaseKind)throw new HttpsError("failed-precondition","This billing request was created before V5.0. Create a new request to purchase.");
   if(!accountSnap.exists)throw new HttpsError("not-found","Account missing");
   const purchase=purchaseDecision(accountSnap.data(),item.plan);
   if(!purchase.allowed||item.purchaseKind&&(!billingOpen(accountSnap.data())||accountSnap.data().openBillingRequestId!==id||(accountSnap.data().billingVersion||0)!==(item.baseBillingVersion||0)))throw new HttpsError("failed-precondition",purchase.reason||"Billing request is no longer valid");
