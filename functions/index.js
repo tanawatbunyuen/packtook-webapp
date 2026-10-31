@@ -214,8 +214,8 @@ exports.omisePaymentConfig=onCall({region,secrets:[omisePublicKey]},async req=>{
 });
 exports.createOmisePayment=onCall(paymentSecrets,async req=>{
  const user=uid(req),d=data(req),id=d.requestId,method=d.method;
- if(!validOp(id)||!["promptpay","card"].includes(method))throw new HttpsError("invalid-argument","Invalid request");
- if(method==="card"&&!(typeof d.token==="string"&&/^tokn_test_[a-zA-Z0-9]+$/.test(d.token)))throw new HttpsError("invalid-argument","Tokenize card in Omise.js first");
+ // V4.8.9: PromptPay-only launch. Re-enable cards in a future reviewed release.
+ if(!validOp(id)||method!=="promptpay")throw new HttpsError("invalid-argument","Only PromptPay QR payment is currently supported");
  const acc=await ensureAccount(user),ticket=acc.collection("billingRequests").doc(id);
  const claim=await db.runTransaction(async tx=>{
   const snap=await tx.get(ticket);
@@ -233,8 +233,7 @@ exports.createOmisePayment=onCall(paymentSecrets,async req=>{
  let charge;
  try{
   const form={amount:String(claim.amount*100),currency:"thb",description:"PACKTOOK "+claim.plan+" 30 days", "metadata[uid]":user,"metadata[requestId]":id};
-  if(method==="promptpay")form["source[type]"]="promptpay";
-  else{form.card=d.token;form.return_uri="https://packtook-staging.web.app/?payment=return"}
+  form["source[type]"]="promptpay";
   charge=await omiseAPI("/charges","POST",form);
   if(!charge.id||charge.livemode!==false)throw Error("Unexpected charge");
   await ticket.update({status:"payment_pending",omiseChargeId:charge.id,omiseStatus:charge.status,createdChargeAt:FieldValue.serverTimestamp()});
