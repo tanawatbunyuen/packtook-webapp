@@ -729,9 +729,11 @@ async function startRecording(barcode){
     if(out.status==='failed'){recordingOp=null;clearPending()}
    }catch(err){console.warn('Start reservation needs manual recovery',err)}
   }else if(!recordingOp&&attemptedOperationId&&pending()?.operationId===attemptedOperationId){
-   // A rejected/timeout callable is ambiguous. Check by operation ID, never
-   // issue a second reservation or silently return a possibly-used credit.
-   try{
+   // Deterministic server rejections did not create a reservation. Timeouts,
+   // internal errors and ambiguous transport failures must keep the operation ID.
+   const denied=['functions/resource-exhausted','functions/failed-precondition','functions/invalid-argument','functions/permission-denied','functions/unauthenticated','functions/already-exists'];
+   if(denied.includes(e.code))clearPending();
+   else try{
     const check=await credit().recordingStatus(attemptedOperationId);
     if(check.status==='reserved')recordingOp=attemptedOperationId;
     if(check.status==='failed')clearPending();
