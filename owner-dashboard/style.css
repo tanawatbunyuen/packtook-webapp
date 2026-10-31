@@ -17,3 +17,9 @@
  #customers table{min-width:1060px}
  #customers th,#customers td{padding:12px 10px}
 }
+
+
+/* V5.9 Owner-only customer adjustments */
+#customers table{min-width:1220px}
+#customers .manage-customer{min-height:36px;padding:6px 12px;font-size:13px;font-weight:800;border-radius:9px;white-space:nowrap}
+#customers .manage-customer:focus-visible{outline:3px solid #45b2eb;outline-offset:3px}
