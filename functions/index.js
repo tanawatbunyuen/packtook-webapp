@@ -621,7 +621,7 @@ exports.ownerAnalyticsSummary=onCall(ownerOptions,async req=>{
 exports.ownerAnalyticsCustomers=onCall(ownerOptions,async req=>{
  requirePlatformOwner(req);
  const d=data(req),afterId=d.afterId;
- if(afterId!==undefined&&afterId!==null&&(!validOp(afterId)||afterId.includes("/")))
+ if(afterId!==undefined&&afterId!==null&&(typeof afterId!=="string"||afterId.length<1||afterId.length>128||afterId.includes("/")))
   throw new HttpsError("invalid-argument","Invalid customer cursor");
  const collection=db.collection("accounts");
  let query=collection.orderBy(admin.firestore.FieldPath.documentId()).limit(26);
