@@ -3,6 +3,7 @@ import {initializeApp} from "https://www.gstatic.com/firebasejs/11.10.0/firebase
 import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 import {getFunctions,httpsCallable} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-functions.js";
 import {firebaseConfig} from "./firebase-config.js";
+import {openCustomerManager} from "./owner-management-v59.js?v=5.9.0";
 
 const firebase=initializeApp(firebaseConfig),auth=getAuth(firebase),functions=getFunctions(firebase,"asia-southeast1");
 const api=name=>httpsCallable(functions,name,{timeout:190000});
@@ -139,10 +140,34 @@ async function fetchCustomers(reset=false){
    row.append(element("td",Number.isSafeInteger(a.reservedCredits)?fmt.format(a.reservedCredits):"—","credit-reserved"));
    row.append(element("td",dateLabel(a.joinedAt)));
    row.append(element("td",dateLabel(a.expiresAt)));
+   const actions=element("td");
+   const manage=element("button","จัดการ","secondary manage-customer");
+   manage.type="button";
+   manage.setAttribute("aria-label","จัดการเครดิตและวันหมดอายุของ "+(a.email||a.accountId));
+   manage.addEventListener("click",async()=>{
+    if(!authorized||!ownerUser||document.querySelector(".pt59-overlay"))return;
+    try{
+     await openCustomerManager({
+      customerUid:a.accountId,
+      email:a.email||"",
+      call:async(name,data)=>(await api(name)(data)).data,
+      onSaved:async()=>{
+       if(!authorized)return;
+       await fetchCustomers(true);
+       await fetchSummary();
+      }
+     });
+    }catch(e){
+     console.error("Owner customer management failed",e?.code||"unknown");
+     alert("ไม่สามารถเปิดหน้าจัดการลูกค้า: "+errorMessage(e));
+    }
+   });
+   actions.append(manage);
+   row.append(actions);
    body.append(row);
   }
   if(!body.childElementCount){
-   const tr=document.createElement("tr"),td=element("td","ยังไม่มีข้อมูลบัญชี");td.colSpan=8;tr.append(td);body.append(tr);
+   const tr=document.createElement("tr"),td=element("td","ยังไม่มีข้อมูลบัญชี");td.colSpan=9;tr.append(td);body.append(tr);
   }
   cursor=result.nextCursor||null;
   more.hidden=!cursor;
