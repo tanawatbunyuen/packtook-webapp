@@ -221,3 +221,13 @@
 #appPage #subscriptionRequests>div{border-top:1px solid #eaf0f6;padding:14px 0;margin:0!important}
 #appPage #subscriptionRequests button{margin-top:6px;min-height:42px}
 @media(max-width:700px){#appPage .nav{font-size:14px}#appPage .plans{grid-template-columns:repeat(auto-fit,minmax(225px,1fr))}#appPage .plan{min-height:272px}#appPage .main{padding:20px 14px}}
+
+
+/* V5.2.1 — stalled video reservation recovery */
+#pendingReservationReview{border:1px solid #f0d5ab;background:#fffcf7}
+#pendingReservationReview h3{margin:0 0 8px;color:#7a4b16;font-size:20px}
+#pendingReservationReview>p{font-size:15px;line-height:1.7}
+#pendingReservationReview .pending-reservation-line{padding:14px 0;border-top:1px solid #eddcc4;display:flex;flex-direction:column;gap:7px;align-items:flex-start}
+#pendingReservationReview .pending-reservation-name{font-size:16px;font-weight:750;color:#213751;overflow-wrap:anywhere}
+#pendingReservationReview .pending-reservation-line p{font-size:14px;color:#7b5d39;margin:0}
+#pendingReservationReview button{font-size:15px;min-height:42px;max-width:100%;white-space:normal}
