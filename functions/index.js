@@ -246,7 +246,7 @@ async function reconcileCharge(accountId,requestId,chargeId){
    const currentEnd=Date.parse(a.planExpiresAt);
    const base=Number.isFinite(currentEnd)&&currentEnd>Date.now()&&item.purchaseKind!=="new"?currentEnd:Date.now();
    const expiresAt=new Date(base+30*86400000).toISOString();
-   const reset=item.purchaseKind==="exhausted_topup";
+   const reset=item.purchaseKind==="exhausted_topup"||item.purchaseKind==="new";
    if(reset&&(a.period===periodId(Date.now())?(a.reserved||0):0)>0){
     tx.update(ref,{status:"payment_review",reviewReason:"pending_recordings_prevent_quota_reset",reviewRequiredAt:FieldValue.serverTimestamp()});
     tx.create(acc.collection("audit").doc(),{action:"payment_requires_manual_review",billingRequestId:requestId,omiseChargeId:chargeId,createdAt:FieldValue.serverTimestamp()});
