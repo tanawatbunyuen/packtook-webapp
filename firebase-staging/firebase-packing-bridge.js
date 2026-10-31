@@ -31,6 +31,7 @@ window.PACKTOOK_FIREBASE={
  async approveDuplicateRequest(requestId){return (await api("approveDuplicateRequest")({requestId})).data},
  async operatorApprovalStatus(requestId){return (await api("operatorApprovalStatus")({requestId})).data},
  async subscriptionOverview(){return (await api("subscriptionOverview")({})).data},
+ async billingHistory(afterId=null){return (await api("billingHistory")({afterId})).data},
  async omiseConfig(){return (await api("omisePaymentConfig")({})).data},
  async startOmisePayment(requestId,method){if(method!=="promptpay")throw Error("ขณะนี้รองรับเฉพาะ PromptPay QR Code");return (await api("createOmisePayment")({requestId,method:"promptpay"})).data},
  async recoverOmiseCharge(requestId){return (await api("recoverOmiseCharge")({requestId})).data},
