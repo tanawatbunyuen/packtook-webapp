@@ -311,7 +311,7 @@ function subscriptionHero(details){
  heading.append(name);
  const status=subscriptionNode('span','sub-state-chip sub-state-'+(details.status==='active'?'paid':'pending'),subscriptionLabels[details.status]||details.status);
  const action=subscriptionButton('ดูแพ็กเกจทั้งหมด',()=>{
-  $('planGrid')?.scrollIntoView({behavior:'smooth',block:'start'});
+  ($('availablePlans')||$('planGrid'))?.scrollIntoView({behavior:'smooth',block:'start'});
  });
  top.append(heading,status,action);hero.append(top);
  const metrics=subscriptionNode('div','sub-summary-metrics');
@@ -417,7 +417,7 @@ async function subscriptionLoadHistory(){
 async function renderPendingReservationReview(){
  const page=$('plans');if(!page||page.hidden)return;
  let pane=$('pendingReservationReview');
- if(!pane){pane=document.createElement('section');pane.id='pendingReservationReview';pane.className='panel';pane.style.marginTop='18px';page.append(pane)}
+ if(!pane){pane=document.createElement('section');pane.id='pendingReservationReview';pane.className='panel';pane.style.marginTop='18px';const plansSection=$('availablePlans');if(plansSection)page.insertBefore(pane,plansSection);else page.append(pane)}
  pane.replaceChildren();
  if(!remoteQuota||(remoteQuota.reserved||0)<1){pane.hidden=true;return}
  pane.hidden=false;
