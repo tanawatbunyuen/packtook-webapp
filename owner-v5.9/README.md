@@ -115,3 +115,23 @@ firebase deploy --project packtook-staging --only hosting:owner
 - Idempotency assumes a unique new UUID per intentional operation. Retrying a failed/network-timeout request must reuse the same UUID.
 - If there is a failure, stop; use `.packtook-v59-backup-YYYYmmdd-HHMMSS/` in your Owner project for the original function entry, env, and HTML. Do not automatically roll back a successful credit adjustment by deleting audit history.
 - Test on staging before any Production implementation. **No production deployment is included.**
+
+
+## Verified PACKTOOK schema from current Cloud Shell (Oct 31, 2026)
+
+The user-provided `functions/index.js` audit shows **one Firestore account document**:
+
+| Installer prompt | Value |
+|---|---|
+| Credit document | `accounts/{uid}` |
+| Remaining field | `creditWalletRemaining` |
+| Expiry document | `accounts/{uid}` |
+| Expiry field | `planExpiresAt` |
+| Plan document | `accounts/{uid}` |
+| Plan field | `plan` |
+| Expiry storage | `iso` |
+
+The 2026-10-31 backend safeguards now require `creditWalletV1 === true` and reject manual credit adjustment during `openBillingRequestId`. Existing **Free/legacy non-wallet** accounts need deliberate migration before they can receive manual wallet credits. Manual expiry updates likewise reject pending billing requests. Pro unlimited plans cannot receive finite manual credits. Check the exact Owner Auth custom claim: these four endpoints require `packtookPlatformOwner === true`, which must match the live Owner authorization setup.
+
+Only backend code is in the current Cloud Shell project; the Owner Dashboard front-end source is not present there. Do **not** deploy that project's `firebase-staging` Hosting as Owner Hosting.
+
