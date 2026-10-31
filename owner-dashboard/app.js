@@ -126,15 +126,23 @@ async function fetchCustomers(reset=false){
   const result=res.data;
   for(const a of result.customers||[]){
    const row=document.createElement("tr");
+   row.append(element("td",a.email||"ไม่พบ Email ใน Firebase Auth",a.email?"customer-email":"muted"));
    row.append(element("td",a.accountId,"uid"));
    row.append(element("td",a.plan));
    const status=element("td");status.append(customerStatus(a.status));row.append(status);
+   let creditLabel="ตรวจสอบข้อมูล";
+   if(a.creditsStatus==="unlimited")creditLabel="∞ ไม่จำกัด";
+   else if(a.creditsStatus==="expired")creditLabel="0 (หมดอายุ)";
+   else if(a.creditsStatus==="available"&&Number.isSafeInteger(a.creditsRemaining))
+    creditLabel=fmt.format(a.creditsRemaining);
+   row.append(element("td",creditLabel,"credit-balance"));
+   row.append(element("td",Number.isSafeInteger(a.reservedCredits)?fmt.format(a.reservedCredits):"—","credit-reserved"));
    row.append(element("td",dateLabel(a.joinedAt)));
    row.append(element("td",dateLabel(a.expiresAt)));
    body.append(row);
   }
   if(!body.childElementCount){
-   const tr=document.createElement("tr"),td=element("td","ยังไม่มีข้อมูลบัญชี");td.colSpan=5;tr.append(td);body.append(tr);
+   const tr=document.createElement("tr"),td=element("td","ยังไม่มีข้อมูลบัญชี");td.colSpan=8;tr.append(td);body.append(tr);
   }
   cursor=result.nextCursor||null;
   more.hidden=!cursor;
