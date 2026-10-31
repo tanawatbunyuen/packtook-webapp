@@ -159,49 +159,260 @@ async function testPaidRecheck(requestId,button){
  }catch(e){alert('ทดสอบไม่สำเร็จ: '+e.message)}
  finally{button.disabled=false;button.textContent='ทดสอบตรวจซ้ำ 3 ครั้ง'}
 }
+
+const subscriptionLabels={
+ free:'Free Plan',active:'ใช้งานอยู่',expired:'หมดอายุ',
+ unconfigured:'ยังไม่ได้กำหนดวันหมดอายุ',invalid:'ตรวจสอบข้อมูลบัญชี'
+};
+const subscriptionRequestNames={new:'สมัคร',renewal:'ต่ออายุ',upgrade:'อัปเกรด',exhausted_topup:'เติมเครดิต'};
+const subscriptionRequestStates={
+ pending_payment_setup:['รอสร้าง QR','pending'],creating_charge:['กำลังสร้างรายการ','pending'],
+ payment_pending:['รอชำระเงิน','pending'],payment_review:['รอตรวจสอบ','review'],
+ paid:['ชำระแล้ว','paid'],failed:['ชำระเงินไม่สำเร็จ','muted'],
+ expired:['รายการชำระหมดอายุ','muted'],cancelled:['ยกเลิกแล้ว','muted']
+};
+let subscriptionDashboardData=null;
+let billingHistoryCursor=null,billingHistoryBusy=false;
+function subscriptionNode(tag,className,value){
+ const el=document.createElement(tag);
+ if(className)el.className=className;
+ if(value!==undefined&&value!==null)el.textContent=String(value);
+ return el;
+}
+function subscriptionButton(label,fn,extraClass='secondary'){
+ const b=subscriptionNode('button',extraClass,label);b.type='button';b.addEventListener('click',fn);return b;
+}
+function subscriptionDate(value){
+ if(!value)return 'ไม่ระบุ';
+ const parsed=new Date(value);
+ return Number.isFinite(parsed.getTime())?parsed.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'}):'ไม่ระบุ';
+}
+function subscriptionStatusBadge(status){
+ const state=subscriptionRequestStates[status]||[status||'ไม่ทราบสถานะ','muted'];
+ return subscriptionNode('span','sub-state-chip sub-state-'+state[1],state[0]);
+}
+function subscriptionAudit(id,button){
+ button.disabled=true;
+ return credit().paymentAudit(id).then(a=>{
+  const ok=a.status==='paid'&&a.providerStatus==='successful'&&a.providerPaid&&a.providerTest&&a.amountMatches;
+  const msg=[
+   'PAYMENT AUDIT: '+(ok?'PASS':'REVIEW'),
+   'แพ็กเกจ: '+(a.plan||'—'),
+   'สถานะ Omise: '+(a.providerStatus||'—'),
+   'ยอดเงินตรงกัน: '+a.amountMatches,
+   'ชำระเมื่อ: '+(a.paidAt||'ไม่ทราบ'),
+   'เครดิตใหม่: '+(a.creditsPurchased??'ไม่มีข้อมูล'),
+   'เครดิตเดิมที่โอนมา: '+(a.transferredCredits??'ไม่มีข้อมูล'),
+   'เครดิตรวมหลังซื้อ: '+(a.balanceAfter??'ไม่มีข้อมูล'),
+   'วันหมดอายุก่อนซื้อ: '+(a.expiryBefore||'ไม่มีข้อมูล'),
+   'วันหมดอายุหลังซื้อ: '+(a.activationExpiresAt||'ไม่มี Snapshot ธุรกรรมเก่า'),
+   'แพ็กเกจปัจจุบัน: '+(a.currentPlan||'—'),
+   'วันหมดอายุปัจจุบัน: '+(a.currentExpiresAt||'—')
+  ];
+  alert(msg.join('\n'));
+ }).catch(e=>toast('Payment Audit: '+e.message)).finally(()=>{button.disabled=false});
+}
+async function subscriptionRefreshAfterAction(){
+ await refreshRemoteQuota();
+ renderPlans();
+}
+function subscriptionRequestActions(x,details){
+ const wrap=subscriptionNode('div','sub-entry-actions');
+ if(x.status==='paid'){
+  const audit=subscriptionButton('ตรวจ Payment Audit',()=>subscriptionAudit(x.id,audit));
+  const test=subscriptionButton('ตรวจซ้ำ 3 ครั้ง',()=>testPaidRecheck(x.id,test));
+  wrap.append(audit,test);
+ }
+ if(x.status==='payment_review'){
+  wrap.append(subscriptionNode('p','sub-review-note','Omise ยืนยันการชำระแล้ว แต่ยังไม่ได้เปิดสิทธิ์ กรุณาติดต่อผู้ดูแลเพื่อตรวจสอบรายการนี้และการคืนเงิน'));
+ }
+ if(x.status==='pending_payment_setup'){
+  const qr=subscriptionButton('PromptPay QR (Test)',()=>startOmiseUI(x.id,'promptpay',x.amountTHB),'sub-primary-action');
+  const allowed=details?.openBillingRequestId===x.id&&(details.status!=='active'||!!details.purchaseWindow?.allowed||x.purchaseKind==='upgrade');
+  qr.disabled=!allowed;
+  if(!allowed)qr.title='คำขอนี้ยังไม่ผ่านเงื่อนไขการซื้อ โปรดตรวจสอบสถานะสมาชิก';
+  const cancel=subscriptionButton('ยกเลิกคำขอ',async()=>{
+   if(!confirm('ยืนยันยกเลิกคำขอ '+x.plan+' ที่ยังไม่สร้าง QR?'))return;
+   cancel.disabled=true;
+   try{await credit().cancelUnpaidPlanRequest(x.id);await subscriptionRefreshAfterAction();if($('subscriptionHistoryDialog')?.open)await subscriptionReloadHistory();toast('ยกเลิกคำขอเรียบร้อย')}
+   catch(e){toast('ยกเลิกไม่ได้: '+e.message);cancel.disabled=false}
+  });
+  wrap.append(qr,cancel);
+ }
+ if(x.status==='creating_charge'){
+  const recover=subscriptionButton('กู้คืน Charge',async()=>{
+   recover.disabled=true;
+   try{
+    const response=await credit().recoverOmiseCharge(x.id);
+    if(response.qrImage)displayOmiseQR(response.qrImage);
+    if(!response.found)alert(response.matchCount>1?'พบหลาย Charge กรุณาตรวจสอบกับผู้ดูแล':'ไม่พบ Charge กรุณาตรวจ Omise Test Dashboard ก่อนสร้างคำขอใหม่');
+    else toast('สถานะรายการ: '+response.status);
+    await subscriptionRefreshAfterAction();
+    if($('subscriptionHistoryDialog')?.open)await subscriptionReloadHistory();
+   }catch(e){toast('กู้คืน Charge ไม่สำเร็จ: '+e.message)}finally{recover.disabled=false}
+  });
+  wrap.append(recover);
+ }
+ if(x.status==='creating_charge'||x.status==='payment_pending'){
+  const check=subscriptionButton('ตรวจสถานะ Omise',async()=>{
+   check.disabled=true;
+   try{
+    const result=await credit().omisePaymentStatus(x.id);
+    if(result.qrImage)displayOmiseQR(result.qrImage);
+    if(result.needsReconciliation)toast('กรุณากู้คืน Charge เพื่อค้นหารายการ');
+    else toast('สถานะ Omise: '+result.status);
+    await subscriptionRefreshAfterAction();
+    if($('subscriptionHistoryDialog')?.open)await subscriptionReloadHistory();
+   }catch(e){toast('ตรวจสถานะไม่ได้: '+e.message)}finally{check.disabled=false}
+  });
+  wrap.append(check);
+ }
+ return wrap;
+}
+function subscriptionRequestRow(x,details,compact=false){
+ const row=subscriptionNode('article','sub-entry'+(compact?' sub-entry-compact':''));
+ const header=subscriptionNode('div','sub-entry-top');
+ const title=subscriptionNode('div','sub-entry-title',(subscriptionRequestNames[x.purchaseKind]||'สมัคร')+' '+(x.plan||'—'));
+ const info=subscriptionNode('div','sub-entry-info');
+ info.append(subscriptionNode('span','',subscriptionDate(x.createdAt)));
+ if(x.amountTHB!==null&&x.amountTHB!==undefined)info.append(subscriptionNode('span','',Number(x.amountTHB).toLocaleString('th-TH')+' บาท'));
+ const labels=subscriptionNode('div','sub-entry-labels');labels.append(title,info);
+ header.append(labels,subscriptionStatusBadge(x.status));row.append(header);
+ if(x.status==='paid'&&x.creditsPurchased!==null&&x.creditsPurchased!==undefined){
+  const credits=subscriptionNode('div','sub-entry-credits');
+  credits.textContent='เครดิตใหม่ '+Number(x.creditsPurchased).toLocaleString('th-TH')+' + เดิม '+Number(x.transferredCredits||0).toLocaleString('th-TH')+' = '+Number(x.balanceAfter||0).toLocaleString('th-TH')+' วิดีโอ';
+  row.append(credits);
+ }else if(x.status==='paid'&&x.balanceAfter===null){
+  row.append(subscriptionNode('div','sub-entry-credits','รายละเอียดเครดิตของรายการเก่าอาจไม่ครบ'));
+ }
+ if(x.status==='paid'&&x.activationExpiresAt)row.append(subscriptionNode('div','sub-entry-expiry','สิทธิ์ถึง '+subscriptionDate(x.activationExpiresAt)));
+ if(['failed','expired'].includes(x.status))row.append(subscriptionNode('p','sub-entry-muted','รายการนี้ไม่เปลี่ยนแพ็กเกจหรือเครดิต'));
+ if(compact){
+  const detailsBlock=subscriptionNode('div','sub-entry-expanded');
+  detailsBlock.hidden=true;detailsBlock.append(subscriptionRequestActions(x,details));
+  const toggle=subscriptionButton('ดูรายละเอียด',()=>{
+   detailsBlock.hidden=!detailsBlock.hidden;
+   toggle.textContent=detailsBlock.hidden?'ดูรายละเอียด':'ซ่อนรายละเอียด';
+   toggle.setAttribute('aria-expanded',String(!detailsBlock.hidden));
+  },'sub-expand-btn');
+  toggle.setAttribute('aria-expanded','false');
+  row.append(toggle,detailsBlock);
+ }else row.append(subscriptionRequestActions(x,details));
+ return row;
+}
+function subscriptionHero(details){
+ const hero=subscriptionNode('section','sub-summary-card');
+ const top=subscriptionNode('div','sub-summary-head');
+ const heading=subscriptionNode('div','sub-summary-title');
+ const planDef=plans.find(p=>p[0]===details.plan);
+ heading.append(subscriptionNode('div','sub-summary-eyebrow','สมาชิกปัจจุบัน'));
+ const name=subscriptionNode('div','sub-summary-plan');
+ name.append(subscriptionNode('span','sub-summary-icon',planDef?.[4]||'🎥'),subscriptionNode('strong','',details.plan||'—'));
+ heading.append(name);
+ const status=subscriptionNode('span','sub-state-chip sub-state-'+(details.status==='active'?'paid':'pending'),subscriptionLabels[details.status]||details.status);
+ const action=subscriptionButton('ดูแพ็กเกจทั้งหมด',()=>{
+  $('planGrid')?.scrollIntoView({behavior:'smooth',block:'start'});
+ });
+ top.append(heading,status,action);hero.append(top);
+ const metrics=subscriptionNode('div','sub-summary-metrics');
+ const days=details.expiresAt&&Number.isFinite(Date.parse(details.expiresAt))?Math.max(0,Math.ceil((Date.parse(details.expiresAt)-Date.now())/86400000)):null;
+ const metricValues=[
+  ['เครดิตพร้อมใช้',details.remaining===null?'∞':Number(details.remaining||0).toLocaleString('th-TH'),'วิดีโอที่ยังใช้ได้'],
+  ['วันหมดอายุ',details.expiresAt?subscriptionDate(details.expiresAt):'ไม่กำหนด',days===null?'':days+' วันคงเหลือ'],
+  ['ใช้แล้วเดือนนี้',Number(details.used||0).toLocaleString('th-TH'),'จองอยู่ '+Number(details.reserved||0).toLocaleString('th-TH')]
+ ];
+ for(const m of metricValues){
+  const card=subscriptionNode('div','sub-summary-metric');
+  card.append(subscriptionNode('small','',m[0]),subscriptionNode('strong','',m[1]),subscriptionNode('span','',m[2]));metrics.append(card);
+ }
+ hero.append(metrics);
+ hero.append(subscriptionNode('p','sub-summary-foot','ชำระผ่าน PromptPay QR (Omise Test Mode) • อัปเกรดแล้วโอนเครดิตที่เหลือและวันหมดอายุเดิมต่อเนื่อง'));
+ return hero;
+}
+function subscriptionNotice(details){
+ if(details.openBillingRequestId)return subscriptionNode('div','sub-notice sub-notice-attention','มีคำขอชำระเงินที่ต้องจัดการก่อนซื้อแพ็กเกจใหม่ กรุณาดูรายการด้านล่าง');
+ if(details.status!=='active'||details.plan==='Free')return null;
+ if(details.reserved>0)return subscriptionNode('div','sub-notice sub-notice-attention','มีวิดีโอจองเครดิตค้างอยู่ โปรดตรวจสอบส่วนรายการจองค้างก่อนอัปเกรดแพ็กเกจ');
+ if(details.purchaseWindow?.kind==='exhausted_topup')return subscriptionNode('div','sub-notice sub-notice-attention','เครดิตหมดแล้ว สามารถซื้อแพ็กเกจเดิมหรืออัปเกรดเป็นระดับสูงกว่าได้');
+ if(details.purchaseWindow?.kind==='renewal')return subscriptionNode('div','sub-notice','แพ็กเกจใกล้หมดอายุ สามารถต่ออายุหรืออัปเกรดได้ โดยเครดิตเดิมไม่สูญหาย');
+ return null;
+}
+function subscriptionSection(title,subtitle){
+ const section=subscriptionNode('section','sub-content-card');
+ const head=subscriptionNode('div','sub-content-head');
+ const labels=subscriptionNode('div','');
+ labels.append(subscriptionNode('h3','',title),subscriptionNode('p','',subtitle));
+ head.append(labels);section.append(head);
+ return {section,head};
+}
 async function renderSubscriptionRequests(){
- const box=$('subscriptionRequests');if(!box)return;box.replaceChildren();
+ const host=$('subscriptionRequests');if(!host)return;
+ host.replaceChildren();
+ host.append(subscriptionNode('p','sub-loading','กำลังโหลดสถานะสมาชิก…'));
  try{
   const details=await credit().subscriptionOverview();
-  const heading=document.createElement('h3');heading.textContent='สถานะสมาชิกและคำขอแพ็กเกจ';box.append(heading);
-  const status=document.createElement('p');
-  const labels={free:'Free Plan',active:'ใช้งานอยู่',expired:'หมดอายุ',unconfigured:'ยังไม่ได้ตั้งวันหมดอายุ',invalid:'ข้อมูลสมาชิกไม่ถูกต้อง'};
-  status.textContent='แพ็กเกจปัจจุบัน: '+details.plan+' • '+(labels[details.status]||details.status)+' • หมดอายุ: '+(details.expiresAt?new Date(details.expiresAt).toLocaleDateString('th-TH'):'ยังไม่กำหนด');
-  box.append(status);
-  const note=document.createElement('p');note.textContent='ชำระผ่าน PromptPay QR Code (Omise Test Mode) เท่านั้น ระบบยืนยันยอดจาก Omise ก่อนเปิดแพ็กเกจ';box.append(note);
-  const balanceInfo=document.createElement('p');balanceInfo.className='subscription-credit-transfer';balanceInfo.textContent=details.remaining===null?'🎥 เครดิตวิดีโอ: ไม่จำกัด':'🎥 เครดิตคงเหลือปัจจุบัน: '+Number(details.remaining||0).toLocaleString('th-TH')+' วิดีโอ • เมื่อซื้อแพ็กเกจใหม่ก่อนหมดอายุ เครดิตคงเหลือจะสะสมเพิ่ม ไม่ถูกตัดทิ้ง';box.append(balanceInfo);
- const activePaid=details.status==='active'&&details.plan!=='Free';
- if(activePaid){const warning=document.createElement('div');warning.className='subscription-lock';const allowed=details.purchaseWindow?.allowed;const kind=details.purchaseWindow?.kind;warning.textContent=allowed?(kind==='exhausted_topup'?'🎥 เครดิตหมดแล้ว! ซื้อแพ็กเกจเดิมหรืออัปเกรดได้ และต่อวันใช้งานเดิมอีก 30 วัน':'🔔 ใกล้หมดอายุ: ต่ออายุแพ็กเกจเดิมหรืออัปเกรดได้ เครดิตที่เหลือจะโอนมา และวันหมดอายุจะต่อจากวันเดิม'):'⬆️ แพ็กเกจ '+details.plan+' ยังใช้งานอยู่: สามารถอัปเกรดเป็นแพ็กเกจที่สูงกว่าได้ทันที พร้อมโอนเครดิตคงเหลือและบวกวันหมดอายุอีก 30 วัน • แพ็กเกจเดิมต่ออายุได้เมื่อเครดิตหมดหรือใกล้หมดอายุ 7 วัน';box.append(warning)}
- if(details.openBillingRequestId){const open=document.createElement('p');open.className='subscription-lock';open.textContent='⚠ มีคำขอชำระเงินค้างอยู่ กรุณาชำระ ตรวจสอบสถานะ หรือยกเลิกคำขอที่ยังไม่สร้าง QR ก่อนสมัครใหม่';box.append(open)}
-  for(const x of details.requests){const line=document.createElement('div');line.style.margin='10px 0';const name=document.createElement('span');const kindLabel={renewal:'ต่ออายุ',exhausted_topup:'เติมเครดิต / ขยายแพ็กเกจ',upgrade:'อัปเกรด',new:'สมัคร'};name.textContent=(kindLabel[x.purchaseKind]||'สมัคร')+' '+x.plan+' — '+({pending_payment_setup:'รอชำระเงิน',checkout_created:'สร้างหน้าชำระเงินแล้ว',creating_charge:'กำลังสร้างรายการชำระเงิน',payment_pending:'รอการชำระเงิน',failed:'ชำระเงินไม่สำเร็จ — แพ็กเกจไม่เปลี่ยน',expired:'รายการชำระเงินหมดอายุ — แพ็กเกจไม่เปลี่ยน',paid:'ชำระแล้ว',cancelled:'ยกเลิกคำขอแล้ว',payment_review:'ชำระแล้ว — รอเจ้าหน้าที่ตรวจสอบ (ไม่เปลี่ยนแพ็กเกจ)'}[x.status]||x.status)+' — '+(x.createdAt?new Date(x.createdAt).toLocaleDateString('th-TH'):'');line.append(name);
- if(['failed','expired'].includes(x.status)){const failed=document.createElement('p');failed.textContent='รายการนี้ไม่ทำให้เปลี่ยนแพ็กเกจ หากต้องการลองอีกครั้งให้สร้างคำขอใหม่';failed.style.color='#9b3444';line.append(failed)}
- if(x.status==='paid'){
-  if(x.creditsPurchased!==null){const carry=document.createElement('p');carry.className='subscription-credit-transfer';carry.textContent=x.creditsPurchased===null?'เครดิตไม่จำกัด':'เครดิตใหม่ '+Number(x.creditsPurchased).toLocaleString('th-TH')+' + โอนเครดิตเดิม '+Number(x.transferredCredits||0).toLocaleString('th-TH')+' = '+Number(x.balanceAfter||0).toLocaleString('th-TH')+' วิดีโอ • หมดอายุ '+(x.activationExpiresAt?new Date(x.activationExpiresAt).toLocaleDateString('th-TH'):'—');line.append(carry)}
-  const test=document.createElement('button');test.type='button';test.className='secondary';test.style.marginLeft='10px';
-  test.textContent='ทดสอบตรวจซ้ำ 3 ครั้ง';test.onclick=()=>testPaidRecheck(x.id,test);line.append(test);
-  const audit=document.createElement('button');audit.type='button';audit.className='secondary';audit.style.marginLeft='8px';audit.textContent='ตรวจ Payment Audit';
-  audit.onclick=async()=>{audit.disabled=true;try{const a=await credit().paymentAudit(x.id);const ok=a.status==='paid'&&a.providerStatus==='successful'&&a.providerPaid&&a.providerTest&&a.amountMatches;const historicalExpiry=a.activationExpiresAt||'ไม่มี Snapshot ในรายการชำระเก่า';const currentExpiry=a.currentExpiresAt||'ไม่พบวันหมดอายุปัจจุบัน';const note=!a.activationExpiresAt?'\\nหมายเหตุ: ข้อมูลธุรกรรมเก่าไม่มี Snapshot วันหมดอายุ โปรดตรวจสอบข้อมูลบัญชีปัจจุบัน':' ';alert('PAYMENT AUDIT: '+(ok?'PASS':'REVIEW')+'\\nแพ็กเกจที่ชำระ: '+a.plan+'\\nOmise: '+a.providerStatus+'\\nยอดเงินตรงกัน: '+a.amountMatches+'\\nเวลาชำระ: '+a.paidAt+'\\nวันหมดอายุจากธุรกรรม: '+historicalExpiry+'\\nแพ็กเกจปัจจุบัน: '+(a.currentPlan||'ไม่ทราบ')+'\\nวันหมดอายุบัญชีปัจจุบัน: '+currentExpiry+'\\nวันหมดอายุก่อนซื้อ: '+(a.expiryBefore||'ไม่มีข้อมูล')+'\\nเครดิตใหม่ที่ซื้อ: '+(a.creditsPurchased??'ไม่ระบุ')+'\\nเครดิตเดิมที่โอนมา: '+(a.transferredCredits??'ไม่ระบุ')+'\\nเครดิตรวมหลังซื้อ: '+(a.balanceAfter??'ไม่ระบุ')+note);}catch(e){toast('Audit: '+e.message)}finally{audit.disabled=false}};
-  line.append(audit);
- }
- if(x.status==='payment_review'){const warn=document.createElement('p');warn.className='subscription-lock';warn.textContent='⚠️ Omise ยืนยันการชำระแล้ว แต่มีแพ็กเกจอื่นที่ยัง Active ระบบไม่ได้เปลี่ยนสิทธิ์ กรุณาติดต่อผู้ดูแลเพื่อตรวจสอบรายการและการคืนเงิน';line.append(warn)}
- if(['pending_payment_setup','creating_charge','payment_pending'].includes(x.status)){
- const controls=document.createElement('div');controls.style.marginTop='8px';
- if(x.status==='pending_payment_setup'){
-  const qr=document.createElement('button');qr.type='button';qr.className='secondary';qr.textContent='PromptPay QR (Test)';
-  const isCurrentRequest=details.openBillingRequestId===x.id;const purchaseAllowed=details.status!=='active'||!!details.purchaseWindow?.allowed||x.purchaseKind==='upgrade';qr.disabled=!isCurrentRequest||!purchaseAllowed;qr.title=qr.disabled?'กรุณาตรวจสอบสิทธิ์หรือสร้างคำขอใหม่หลังจัดการคำขอเดิม':'';qr.onclick=()=>startOmiseUI(x.id,'promptpay',x.amountTHB);controls.append(qr);const cancel=document.createElement('button');cancel.type='button';cancel.className='secondary';cancel.textContent='ยกเลิกคำขอนี้';cancel.onclick=async()=>{if(!confirm('ยกเลิกคำขอ '+x.plan+' ที่ยังไม่ได้สร้าง QR?'))return;cancel.disabled=true;try{await credit().cancelUnpaidPlanRequest(x.id);await refreshRemoteQuota();await renderSubscriptionRequests();renderPlans()}catch(e){toast(e.message);cancel.disabled=false}};controls.append(cancel);
- }else{
-  if(x.status==='creating_charge'){
-   const recover=document.createElement('button');recover.type='button';recover.className='secondary';recover.textContent='กู้คืน Charge จาก Omise';
-   recover.onclick=async()=>{recover.disabled=true;try{const result=await credit().recoverOmiseCharge(x.id);if(result.qrImage)displayOmiseQR(result.qrImage);if(!result.found)alert(result.matchCount>1?'พบรายการชำระเงินมากกว่าหนึ่งรายการ ต้องตรวจสอบกับผู้ดูแล':'ไม่พบ Charge ที่ตรงกับคำขอในการค้นหาอัตโนมัติ กรุณาตรวจสอบ Omise Test Dashboard ก่อนสร้างคำขอใหม่');else toast('กู้คืนรายการแล้ว: '+result.status);await renderSubscriptionRequests()}catch(e){toast('กู้คืน Charge ไม่สำเร็จ: '+e.message)}finally{recover.disabled=false}};
-   controls.append(recover);
+  subscriptionDashboardData=details;
+  host.replaceChildren();
+  const page=subscriptionNode('div','subscription-dashboard');
+  page.append(subscriptionHero(details));
+  const notice=subscriptionNotice(details);if(notice)page.append(notice);
+  const actionStates=new Set(['pending_payment_setup','creating_charge','payment_pending','payment_review']);
+  const actions=details.requests.filter(x=>actionStates.has(x.status));
+  const recent=details.requests.filter(x=>x.status==='paid').slice(0,3);
+  const lower=subscriptionNode('div','sub-content-grid'+(actions.length?'':' sub-grid-single'));
+  if(actions.length){
+   const actionSection=subscriptionSection('ต้องดำเนินการ','รายการที่ยังไม่เสร็จสิ้น');
+   actionSection.section.classList.add('sub-attention-card');
+   for(const x of actions)actionSection.section.append(subscriptionRequestRow(x,details));
+   lower.append(actionSection.section);
   }
-  const check=document.createElement('button');check.type='button';check.className='secondary';check.textContent='ตรวจสอบสถานะจาก Omise';
-  check.onclick=async()=>{try{const st=await credit().omisePaymentStatus(x.id);if(st.qrImage)displayOmiseQR(st.qrImage);if(st.needsReconciliation)toast('กรุณากด กู้คืน Charge เพื่อค้นหารายการจาก Omise');toast('สถานะ: '+st.status);await refreshRemoteQuota();await renderSubscriptionRequests()}catch(e){toast(e.message)}};controls.append(check);
- }
- line.append(controls)
-}box.append(line)}
- }catch(e){const p=document.createElement('p');p.textContent='โหลดข้อมูลสมาชิกไม่สำเร็จ: '+e.message;box.append(p)}
+  const historySection=subscriptionSection('ประวัติแพ็กเกจล่าสุด','แสดงรายการชำระสำเร็จ 3 รายการล่าสุด');
+  for(const x of recent)historySection.section.append(subscriptionRequestRow(x,details,true));
+  if(!recent.length)historySection.section.append(subscriptionNode('p','sub-empty','ยังไม่มีรายการชำระเงินสำเร็จ'));
+  const more=subscriptionButton('ดูประวัติทั้งหมด',()=>subscriptionOpenHistory(),'sub-history-more');
+  historySection.section.append(more);lower.append(historySection.section);
+  page.append(lower);host.append(page);
+ }catch(e){host.replaceChildren(subscriptionNode('p','sub-error','โหลดข้อมูลสมาชิกไม่สำเร็จ: '+e.message))}
 }
+function subscriptionHistoryDialog(){return $('subscriptionHistoryDialog')}
+async function subscriptionOpenHistory(){
+ const dlg=subscriptionHistoryDialog();if(!dlg||dlg.open)return;
+ billingHistoryCursor=null;
+ $('subscriptionHistoryRows').replaceChildren();
+ $('subscriptionHistoryMore').hidden=true;
+ dlg.showModal();
+ await subscriptionLoadHistory();
+}
+async function subscriptionReloadHistory(){
+ const dlg=subscriptionHistoryDialog();if(!dlg||!dlg.open)return;
+ billingHistoryCursor=null;
+ $('subscriptionHistoryRows').replaceChildren();
+ await subscriptionLoadHistory();
+}
+async function subscriptionLoadHistory(){
+ if(billingHistoryBusy)return;
+ const rows=$('subscriptionHistoryRows'),more=$('subscriptionHistoryMore'),dlg=subscriptionHistoryDialog();
+ if(!rows||!dlg?.open)return;
+ billingHistoryBusy=true;more.disabled=true;
+ const loading=subscriptionNode('p','sub-loading','กำลังโหลดประวัติการชำระ…');rows.append(loading);
+ try{
+  const result=await credit().billingHistory(billingHistoryCursor);
+  loading.remove();
+  if(!dlg.open)return;
+  for(const x of result.items)rows.append(subscriptionRequestRow(x,subscriptionDashboardData));
+  if(rows.childElementCount===0)rows.append(subscriptionNode('p','sub-empty','ยังไม่มีประวัติแพ็กเกจ'));
+  billingHistoryCursor=result.nextCursor||null;
+  more.hidden=!billingHistoryCursor;
+ }catch(e){
+  loading.remove();
+  rows.append(subscriptionNode('p','sub-error','โหลดประวัติไม่ได้: '+e.message));
+  more.hidden=false;more.textContent='ลองโหลดอีกครั้ง';
+ }finally{
+  more.disabled=false;billingHistoryBusy=false;
+  if(more.textContent!=='โหลดประวัติเพิ่ม'&&more.hidden)more.textContent='โหลดประวัติเพิ่ม';
+ }
+}
+
 async function renderPendingReservationReview(){
  const page=$('plans');if(!page||page.hidden)return;
  let pane=$('pendingReservationReview');
@@ -381,6 +592,9 @@ document.querySelectorAll('[data-tab]').forEach(e=>e.onclick=()=>showTab(e.datas
 $('barcode').addEventListener('keydown',e=>{if(e.key!=='Enter')return;e.preventDefault();const code=$('barcode').value.trim();$('barcode').value='';if(!code){toast('กรุณาสแกนหรือพิมพ์ Barcode ก่อนกด Enter');return}if(ending||reservation){toast('ระบบกำลังดำเนินการ กรุณารอสักครู่');return}if(activeBarcode){if(code===activeBarcode)stopRecording();else toast('กำลังอัด '+activeBarcode+' ต้องสแกนรหัสเดิมเพื่อหยุด');return}reservation=true;startRecording(code).catch(e=>toast('เกิดข้อผิดพลาด: '+e.message)).finally(()=>{reservation=false;$('barcode').focus()})});
 function connectFirebaseUI(){if(!credit()?.ready)return;credit().onUser(u=>{remoteUser=u;if(u){void credit().accountRole().then(info=>{accountRoleInfo=info;const role=$('userRoleInfo');if(role)role.textContent=info.role==='admin'?'Admin — อนุมัติการบันทึกซ้ำได้':'Operator — ต้องขออนุมัติจาก Admin';}).catch(e=>toast('Role: '+e.message));showRecovery();showDeviceControl();const details=$('userAccountDetails');if(details)details.textContent='ยืนยันอีเมลแล้ว • Firebase Authentication';const em=$('userAccountEmail');if(em)em.textContent=u.email||'—';void setupDevice().catch(e=>toast('Device Management: '+e.message)).finally(()=>void renderDeviceManager());$('loginPage').hidden=true;$('appPage').hidden=false;void refreshRemoteQuota().then(()=>{showTab('packing');void verifyAfterPaymentReturn()}).catch(e=>{showTab('packing');toast('เชื่อมโควตาไม่สำเร็จ: '+e.message);void verifyAfterPaymentReturn()})}else{$('appPage').hidden=true;$('loginPage').hidden=false}});const msg=$('firebaseConnectStatus');if(msg)msg.textContent='เชื่อมต่อ Firebase แล้ว — เข้าสู่ระบบเพื่อเปิด Packing / Dashboard / Packages / Help'}
 if(credit()?.ready)connectFirebaseUI();else window.addEventListener('packtook-firebase-ready',connectFirebaseUI,{once:true});
+$('subscriptionHistoryClose')?.addEventListener('click',()=>subscriptionHistoryDialog()?.close());
+$('subscriptionHistoryMore')?.addEventListener('click',()=>{ $('subscriptionHistoryMore').textContent='โหลดประวัติเพิ่ม';void subscriptionLoadHistory() });
+$('subscriptionHistoryDialog')?.addEventListener('close',()=>{billingHistoryCursor=null;$('subscriptionHistoryRows').replaceChildren()});
 
 $('barcodeFilter').addEventListener('input',renderHistory);
 $('trialBtn').addEventListener('click',()=>toast('สมัครบัญชีทดสอบได้ที่ /firebase-v4.html หรือผ่าน Firebase Staging'));
