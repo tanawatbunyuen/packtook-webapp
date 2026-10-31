@@ -123,7 +123,7 @@ function read(){try{return JSON.parse(localStorage.getItem(KEY))||{plan:'Free',l
 let store=read(), stream=null,recorder=null,videoWriter=null,folder=null,activeBarcode='',startMs=0,ticker=null,ending=false, reservation=false, recordingFailure='', currentWritable=null, lastVideoUrl=null, healthTimer=null, stopPromise=null, lastFrameTime=0, lastFrameSignature='', recoveryBusy=false;
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(store))}catch(e){toast('บันทึกประวัติ Browser ไม่สำเร็จ: '+e.message)}}
 
-let historyReady=null,historyCursor=null,historyQueryId=0,historyLoading=false;
+let historyReady=null,historyCursor=null,historyQueryId=0,historyLoading=false,historyRefreshQueued=false;
 async function ensureVideoHistory(){
  if(!historyReady){
   historyReady=(async()=>{
@@ -616,7 +616,7 @@ async function runRetention(force=false){
 }
 async function renderHistory(next=false){
  const rows=$('historyRows'),button=$('historyNext');
- if(historyLoading)return;
+ if(historyLoading){if(!next)historyRefreshQueued=true;return}
  const queryId=next?historyQueryId:++historyQueryId;
  if(!next){historyCursor=null;rows.replaceChildren()}
  historyLoading=true;if(button){button.disabled=true;button.hidden=true}
@@ -639,7 +639,7 @@ async function renderHistory(next=false){
   historyCursor=page.nextCursor;
   if(button){button.hidden=!historyCursor;button.disabled=false}
  }catch(e){console.error('Video history failed',e);toast('โหลดประวัติวิดีโอไม่ได้: '+e.message);if(button)button.hidden=true}
- finally{historyLoading=false}
+ finally{historyLoading=false;if(historyRefreshQueued){historyRefreshQueued=false;void renderHistory(false)}}
 }
 function safeFilename(s){return (s||'order').replace(/[^\w\-ก-๙]/g,'_').slice(0,70)}
 function fmtSec(s){return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
@@ -858,7 +858,7 @@ async function stopRecording(reason='manual'){
 $('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginError').hidden=true;try{await credit().login($('email').value.trim(),$('password').value);remoteUser=true;$('loginPage').hidden=true;$('appPage').hidden=false;await refreshRemoteQuota();showTab('packing');$('barcode').focus()}catch(err){$('loginError').hidden=false;$('loginError').textContent=err.message}});
 $('showPassword').onclick=()=>{$('password').type=$('password').type==='password'?'text':'password'};
 $('logout').onclick=async()=>{if(activeBarcode||recordingOp)return toast('กรุณาหยุดการบันทึกและตรวจเครดิตก่อนออกจากระบบ');await credit().logout();remoteUser=null;remoteQuota=null;$('appPage').hidden=true;$('loginPage').hidden=false;stream?.getTracks().forEach(t=>t.stop());stream=null;cameraState(false)};
-document.querySelectorAll('[data-tab]').forEach(e=>e.onclick=()=>showTab(e.dataset.tab));$('refreshUserDevices').onclick=()=>{void renderDeviceManager();void refreshRemoteQuota().catch(e=>toast(e.message))};$('cameraBtn').onclick=toggleCamera;$('folderBtn').onclick=selectFolder;$('stopBtn').onclick=stopRecording;$('focusScan').onclick=()=>$('barcode').focus();$('refreshHistory').onclick=renderHistory;$('dateFilter').onchange=renderHistory;
+document.querySelectorAll('[data-tab]').forEach(e=>e.onclick=()=>showTab(e.dataset.tab));$('refreshUserDevices').onclick=()=>{void renderDeviceManager();void refreshRemoteQuota().catch(e=>toast(e.message))};$('cameraBtn').onclick=toggleCamera;$('folderBtn').onclick=selectFolder;$('stopBtn').onclick=stopRecording;$('focusScan').onclick=()=>$('barcode').focus();$('refreshHistory').onclick=()=>{void renderHistory(false)};$('dateFilter').onchange=()=>{void renderHistory(false)};
 $('barcode').addEventListener('keydown',e=>{if(e.key!=='Enter')return;e.preventDefault();const code=$('barcode').value.trim();$('barcode').value='';if(!code){toast('กรุณาสแกนหรือพิมพ์ Barcode ก่อนกด Enter');return}if(ending||reservation){toast('ระบบกำลังดำเนินการ กรุณารอสักครู่');return}if(activeBarcode){if(code===activeBarcode)stopRecording();else toast('กำลังอัด '+activeBarcode+' ต้องสแกนรหัสเดิมเพื่อหยุด');return}reservation=true;startRecording(code).catch(e=>toast('เกิดข้อผิดพลาด: '+e.message)).finally(()=>{reservation=false;$('barcode').focus()})});
 function connectFirebaseUI(){if(!credit()?.ready)return;credit().onUser(u=>{remoteUser=u;if(u){void credit().accountRole().then(info=>{accountRoleInfo=info;const role=$('userRoleInfo');if(role)role.textContent=info.role==='admin'?'Admin — อนุมัติการบันทึกซ้ำได้':'Operator — ต้องขออนุมัติจาก Admin';}).catch(e=>toast('Role: '+e.message));showRecovery();showDeviceControl();const details=$('userAccountDetails');if(details)details.textContent='ยืนยันอีเมลแล้ว • Firebase Authentication';const em=$('userAccountEmail');if(em)em.textContent=u.email||'—';void setupDevice().catch(e=>toast('Device Management: '+e.message)).finally(()=>void renderDeviceManager());$('loginPage').hidden=true;$('appPage').hidden=false;void refreshRemoteQuota().then(()=>{showTab('packing');void verifyAfterPaymentReturn()}).catch(e=>{showTab('packing');toast('เชื่อมโควตาไม่สำเร็จ: '+e.message);void verifyAfterPaymentReturn()})}else{$('appPage').hidden=true;$('loginPage').hidden=false}});const msg=$('firebaseConnectStatus');if(msg)msg.textContent='เชื่อมต่อ Firebase แล้ว — เข้าสู่ระบบเพื่อเปิด Packing / Dashboard / Packages / Help'}
 if(credit()?.ready)connectFirebaseUI();else window.addEventListener('packtook-firebase-ready',connectFirebaseUI,{once:true});
@@ -866,12 +866,14 @@ $('subscriptionHistoryClose')?.addEventListener('click',()=>subscriptionHistoryD
 $('subscriptionHistoryMore')?.addEventListener('click',()=>{ $('subscriptionHistoryMore').textContent='โหลดประวัติเพิ่ม';void subscriptionLoadHistory() });
 $('subscriptionHistoryDialog')?.addEventListener('close',()=>{billingHistoryCursor=null;$('subscriptionHistoryRows').replaceChildren()});
 
-$('barcodeFilter').addEventListener('input',renderHistory);
+$('barcodeFilter').addEventListener('input',()=>{void renderHistory(false)});
+$('historyNext').addEventListener('click',()=>{void renderHistory(true)});
 $('trialBtn').addEventListener('click',()=>toast('สมัครบัญชีทดสอบได้ที่ /firebase-v4.html หรือผ่าน Firebase Staging'));
 
 $('restoreFolder').addEventListener('click',()=>restoreFolder(true));
 $('closeVideo').addEventListener('click',closePlayback);
-window.addEventListener('pagehide',()=>{closePlayback();clearHealth();if(activeBarcode)console.warn('PACKTOOK: Browser page closed during recording; recording may not be saved')});
+window.addEventListener('pagehide',()=>{closePlayback();clearHealth();if(activeBarcode||ending||pending())console.warn('PACKTOOK: page closed while video/credit operation is pending. Reconcile using operation ID before recording more.')});
+window.addEventListener('beforeunload',e=>{if(activeBarcode||ending){e.preventDefault();e.returnValue='';}});
 window.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&stream&&!streamGood()){updateHealth('⚠ กรุณาตรวจสอบกล้อง','danger-health')}});
 restoreFolder(false).catch(()=>{});
 
