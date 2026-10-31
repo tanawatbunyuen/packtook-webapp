@@ -264,7 +264,31 @@ function publicBillingRequest(doc){
   createdAt:x.createdAt?.toDate?.()?.toISOString()||null};
 }
 exports.subscriptionOverview=onCall(options,async req=>{
- const id=uid(req),ref=await ensureAccount(id),snap=await ref.get(),a=snap.data();
+ const id=uid(req),ref=await ensureAccount(id),input=data(req);
+ // V5.3.1: reuse the established, callable subscriptionOverview endpoint for
+ // paginated read-only billing history. New billingHistory may lack Cloud Run invoker IAM.
+ if(input.historyOnly===true){
+  const afterId=input.afterId;
+  if(afterId!==undefined&&afterId!==null&&!validOp(afterId))
+   throw new HttpsError("invalid-argument","Invalid history cursor");
+  const collection=ref.collection("billingRequests");
+  let query=collection.orderBy("createdAt","desc").limit(13);
+  if(afterId){
+   const cursor=await collection.doc(afterId).get();
+   if(!cursor.exists||cursor.data().requestedBy!==id||!cursor.data().createdAt)
+    throw new HttpsError("invalid-argument","History cursor not found for this account");
+   query=query.startAfter(cursor);
+  }
+  try{
+   const snap=await query.get(),page=snap.docs.slice(0,12);
+   return {items:page.map(publicBillingRequest),
+    nextCursor:snap.docs.length>12&&page.length?page[page.length-1].id:null};
+  }catch(e){
+   console.error("PACKTOOK billing history read failed",{code:e.code||"unknown",message:e.message});
+   throw new HttpsError("unavailable","Unable to load billing history. Please try again.");
+  }
+ }
+ const snap=await ref.get(),a=snap.data();
  const history=await ref.collection("billingRequests").orderBy("createdAt","desc").limit(20).get();
  const docs=[...history.docs];
  // The current unpaid request must remain actionable even after many later records.
