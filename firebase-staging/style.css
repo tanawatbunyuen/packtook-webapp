@@ -310,3 +310,135 @@
 .subscription-history-dialog .sub-error{color:#a33e41;font-size:14px;padding:14px 0}
 @media(max-width:900px){#appPage .sub-content-grid{grid-template-columns:1fr}#appPage .sub-summary-metrics{gap:9px}}
 @media(max-width:620px){#appPage .sub-summary-card{padding:18px}#appPage .sub-content-card{padding:18px}#appPage .sub-summary-metrics{grid-template-columns:1fr}#appPage .sub-summary-head>button{width:100%}#appPage .sub-summary-metric{padding:12px 15px}#appPage .sub-summary-metric strong{font-size:23px}.subscription-history-dialog .subscription-modal-head{padding:18px 16px}.subscription-history-dialog .subscription-modal-rows{padding:3px 16px}.subscription-history-dialog .subscription-modal-footer{padding:14px 16px}.subscription-history-dialog .subscription-modal-head h2{font-size:18px}.subscription-history-dialog .subscription-modal-close{font-size:13px}}
+
+
+/* PACKTOOK V5.4 — large, legible typography across all signed-in tabs */
+#appPage{font-size:18px;line-height:1.65}
+#appPage .sidebar{width:264px}
+#appPage .main{width:calc(100% - 264px)}
+#appPage .nav{font-size:18px;line-height:1.35;min-height:62px;padding:14px 13px;white-space:nowrap}
+#appPage .nav small{font-size:12px;letter-spacing:.045em}
+#appPage .sidebarbottom,#appPage .sidebarbottom button{font-size:16px}
+#appPage .topbar h2{font-size:clamp(28px,2.7vw,37px);line-height:1.25;letter-spacing:-.03em}
+#appPage .topbar .eyebrow{font-size:14px}
+#appPage .topbar .account{font-size:16px}
+#appPage .tabcontent .eagle-tip strong{font-size:18px}
+#appPage .tabcontent .eagle-tip small{font-size:15px}
+#appPage .tabcontent .panel h3,#appPage .users-panel h3{font-size:clamp(23px,2vw,29px);line-height:1.3}
+#appPage .tabcontent .page-intro h3,#appPage .users-head h3{font-size:clamp(26px,2.7vw,36px);line-height:1.25}
+#appPage .tabcontent .intro p,#appPage .tabcontent .panel p,#appPage .users-page p,#appPage .tabcontent p{font-size:17px;line-height:1.7}
+#appPage .tabcontent label,#appPage .users-section-header p{font-size:18px;line-height:1.5}
+#appPage .tabcontent input,#appPage .tabcontent select,#appPage .tabcontent textarea{font-size:19px;min-height:53px;line-height:1.3}
+#appPage .tabcontent button{font-size:17px;min-height:49px;line-height:1.3;font-weight:750}
+#appPage .tabcontent .hint{font-size:16px!important;line-height:1.55!important}
+#appPage .tabcontent .metric small,#appPage .tabcontent .metric span{font-size:16px}
+#appPage .tabcontent .metric b{font-size:clamp(32px,3.2vw,44px);line-height:1.25}
+#appPage .tabcontent .pill,#appPage .tabcontent .step-tag{font-size:13px}
+#appPage .tabcontent .live-badge{font-size:16px;padding:9px 13px}
+#appPage .tabcontent .health-pill{font-size:16px}
+#appPage .tabcontent .filter input{font-size:18px;min-width:185px}
+#appPage .tabcontent table{font-size:17px}
+#appPage .tabcontent th,#appPage .tabcontent td{font-size:16px;padding:15px 12px}
+#appPage .tabcontent td button{font-size:16px;min-height:44px}
+#appPage .tabcontent .record-state{font-size:22px;line-height:1.5;font-weight:750;padding:19px 18px}
+#appPage #barcode{font-size:clamp(22px,2.3vw,29px);min-height:65px;font-weight:800;letter-spacing:.018em}
+#appPage #worker{font-size:22px;min-height:57px}
+#appPage #focusScan{font-size:21px;min-height:62px;width:100%}
+#appPage #recTimer{font-size:22px;padding:10px 15px;font-weight:850}
+#appPage .recording-options label,#appPage .quota-title,#appPage .camera-display-controls label{font-size:18px}
+#appPage .quota-title strong{font-size:19px}
+#appPage .preview-placeholder small{font-size:18px}
+#appPage .users-stat>span{font-size:18px}
+#appPage .users-stat strong{font-size:clamp(22px,2.3vw,30px)}
+#appPage .users-stat small,#appPage .users-account p,#appPage .users-hint{font-size:16px}
+#appPage .users-account strong{font-size:20px}
+#appPage .users-page .users-account,#appPage .users-page .users-device-list{font-size:17px}
+#appPage .plan h4{font-size:23px}
+#appPage .plan .plan-name small{font-size:16px}
+#appPage .plan .price{font-size:35px}
+#appPage .plan .price small{font-size:16px}
+#appPage .plan .plan-feature{font-size:17px}
+#appPage .plan .plan-current{font-size:13px}
+#appPage .plan button{min-height:52px}
+#appPage #subscriptionRequests .sub-summary-plan strong{font-size:29px}
+#appPage #subscriptionRequests .sub-summary-metric small{font-size:16px}
+#appPage #subscriptionRequests .sub-summary-metric strong{font-size:clamp(22px,2.2vw,30px)}
+#appPage #subscriptionRequests .sub-summary-metric span{font-size:15px}
+#appPage #subscriptionRequests .sub-content-head h3{font-size:24px}
+#appPage #subscriptionRequests .sub-content-head p{font-size:16px}
+#appPage #subscriptionRequests .sub-entry-title{font-size:18px}
+#appPage #subscriptionRequests .sub-entry-info,#appPage #subscriptionRequests .sub-entry-expiry{font-size:15px}
+#appPage #subscriptionRequests .sub-entry-credits{font-size:16px}
+#appPage #subscriptionRequests .sub-entry-actions button{font-size:16px;min-height:44px!important}
+#appPage #subscriptionRequests .sub-state-chip{font-size:14px}
+#appPage #subscriptionRequests .sub-summary-foot{font-size:15px}
+#appPage #subscriptionRequests .sub-history-more{font-size:17px;min-height:51px}
+#appPage .sub-notice{font-size:17px}
+/* Packages: membership + payments before purchaseable plan cards */
+#plans .package-dashboard-heading{margin:18px 0 17px}
+#plans .package-dashboard-overline{display:block;color:#2672c5;letter-spacing:.12em;font-size:13px;font-weight:850;margin-bottom:7px}
+#plans .package-dashboard-heading h3,#plans .available-plans-head h3{font-size:clamp(25px,2.8vw,35px);line-height:1.25;font-weight:850;color:#123354;margin:0 0 8px}
+#plans .package-dashboard-heading p,#plans .available-plans-head p{font-size:17px;margin:0;color:#66809a}
+#plans #subscriptionRequests.subscription-requests-host{margin:0;padding:0;border:0;background:transparent;box-shadow:none}
+#plans #paymentQrResult:empty{display:none}
+#plans #paymentQrResult{margin:14px 0 0}
+#plans .available-plans-section{margin-top:32px;padding-top:27px;border-top:2px solid #dce7f5;scroll-margin-top:20px}
+#plans .available-plans-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;margin:0 0 17px}
+#plans .available-plans-tag{background:#e7f2ff;color:#1d60a6;border-radius:30px;padding:9px 14px;font-size:15px;font-weight:800}
+#plans .pricing-benefits{margin-bottom:21px}
+#plans .pricing-benefits span{font-size:16px}
+#plans #planGrid{scroll-margin-top:22px}
+#plans .plan{min-height:304px}
+/* Visual infographic instead of text-only help cards */
+#help .help-v54-head{display:flex;gap:25px;justify-content:space-between;align-items:center;background:linear-gradient(115deg,#0c2c58,#1656a1 67%,#0f92cf);padding:28px 33px;border-radius:23px;color:#fff;margin:18px 0 17px;overflow:hidden}
+#help .help-v54-eyebrow{font-size:14px;letter-spacing:.16em;color:#9cdfff;font-weight:800}
+#help .help-v54-head h3{font-size:clamp(28px,3vw,39px);line-height:1.3;color:white;font-weight:900;margin:10px 0 8px}
+#help .help-v54-head p{font-size:18px;color:#d2e9ff;margin:0}
+#help .help-v54-hero-mark{font-size:75px;line-height:1;filter:drop-shadow(0 14px 18px #041b3d50)}
+#help .help-v54-lane{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:13px;margin:20px 0;font-size:16px;font-weight:850;color:#2b649b}
+#help .help-v54-lane span:nth-child(odd){background:#e6f2ff;border:1px solid #c6e2ff;padding:9px 16px;border-radius:999px}
+#help .help-v54-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:21px;counter-reset:quickstart}
+#help .help-v54-card{position:relative;min-width:0;background:#fff;border:1px solid #dce8f6;border-radius:20px;padding:20px 21px 22px;box-shadow:0 8px 23px #124b810c;display:flex;flex-direction:column;gap:10px}
+#help .help-v54-card::after{content:'→';position:absolute;top:39%;right:-19px;z-index:2;width:31px;height:31px;border-radius:50%;background:#eef6ff;border:1px solid #cde2fb;display:grid;place-items:center;color:#247bc9;font-size:21px;font-weight:850;box-shadow:0 3px 9px #15498722}
+#help .help-v54-card-3::after,#help .help-v54-card-6::after{display:none}
+#help .help-v54-cardhead{display:flex;align-items:center;justify-content:space-between;gap:12px}
+#help .help-v54-number{font-size:31px;font-weight:900;line-height:1;color:#b3d2f6;letter-spacing:-.03em}
+#help .help-v54-mini{color:#3772aa;background:#edf6ff;border-radius:20px;font-size:13px;font-weight:800;padding:5px 11px}
+#help .help-v54-art{background:linear-gradient(145deg,#eff8ff,#e4f0ff);border-radius:16px;min-height:175px;display:grid;place-items:center;overflow:hidden}
+#help .help-v54-card-2 .help-v54-art{background:linear-gradient(145deg,#eff8ff,#e1f5fa)}
+#help .help-v54-card-3 .help-v54-art{background:linear-gradient(145deg,#edf5ff,#eeeaff)}
+#help .help-v54-card-4 .help-v54-art{background:linear-gradient(145deg,#e8f6ff,#e7f9f2)}
+#help .help-v54-card-5 .help-v54-art{background:linear-gradient(145deg,#fff2ed,#edf5ff)}
+#help .help-v54-card-6 .help-v54-art{background:linear-gradient(145deg,#eef4ff,#e5f5ff)}
+#help .help-v54-art svg{display:block;width:min(100%,260px);height:175px}
+#help .help-v54-art .ill-frame{fill:#fff;stroke:#76b5e9}
+#help .help-v54-art .ill-line{stroke:#397eb6}
+#help .help-v54-art .ill-dot{fill:#21b7d4;stroke:#21a1c5}
+#help .help-v54-art .ill-soft{fill:#d4e9fc;stroke:#81b9e9}
+#help .help-v54-art .ill-strong{fill:#198bea;stroke:#198bea}
+#help .help-v54-art .ill-inner{stroke:#fff;fill:#fff}
+#help .help-v54-art .ill-accent{stroke:#10a4bb}
+#help .help-v54-card h4{font-size:clamp(20px,1.8vw,25px);font-weight:850;line-height:1.4;margin:3px 0 0;color:#143a65}
+#help .help-v54-card p{font-size:17px;line-height:1.65;color:#596e87;margin:0;flex:1}
+#help .help-v54-chip{align-self:flex-start;padding:7px 12px;border-radius:99px;background:#e9f4ff;color:#186eb6;font-size:13px;letter-spacing:.05em;font-weight:850;margin-top:3px}
+#help .help-v54-flow{margin-top:23px;background:linear-gradient(124deg,#0c2852,#164e95);border-radius:20px;color:#fff;padding:25px}
+#help .help-v54-flowhead>span{color:#9ad6f8;font-size:13px;font-weight:850;letter-spacing:.1em}
+#help .help-v54-flowhead h3{font-size:clamp(23px,2.2vw,30px);color:#fff;margin:5px 0 20px}
+#help .help-v54-flowitems{display:flex;align-items:stretch;justify-content:space-between;gap:9px}
+#help .help-v54-flowitems>div{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center;background:#ffffff11;border:1px solid #ffffff2b;border-radius:13px;padding:14px 8px}
+#help .help-v54-flowitems strong{font-size:17px;color:#fff}
+#help .help-v54-flowitems small{font-size:14px;color:#c4dfff}
+#help .help-v54-flowarrow{align-self:center;color:#80dbfc;font-size:25px;font-weight:850}
+#help .help-flow-icon{font-size:32px;line-height:1.25;color:#b6e8ff}
+#help .help-flow-record{color:#ff7676;animation:help-rec-pulse 1.7s ease-in-out infinite alternate}
+#help .help-flow-done{color:#6cf2bb}
+@keyframes help-rec-pulse{from{opacity:.62}to{opacity:1}}
+@media(prefers-reduced-motion:reduce){#help .help-flow-record{animation:none}}
+#help .help-v54-tips{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:18px}
+#help .help-v54-tips article{display:flex;gap:12px;align-items:flex-start;padding:18px;border-radius:16px;border:1px solid #e3ebf7;background:#fff}
+#help .help-v54-tip-icon{font-size:27px;flex-shrink:0}
+#help .help-v54-tips h4{margin:0 0 5px;font-size:19px;color:#193d66}
+#help .help-v54-tips p{margin:0;font-size:16px;color:#617a96;line-height:1.6}
+@media(max-width:1140px){#help .help-v54-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#help .help-v54-card-3::after{display:grid}#help .help-v54-card:nth-child(even)::after{display:none}#help .help-v54-tips{grid-template-columns:1fr 1fr}}
+@media(max-width:920px){#appPage .workgrid{grid-template-columns:1fr}#appPage .main{padding:24px 18px}#appPage .statgrid{gap:11px}#appPage .metric{padding:15px}}
+@media(max-width:700px){#appPage .sidebar{width:100%;flex-direction:row;gap:7px;overflow-x:auto;scrollbar-width:thin}#appPage .main{width:100%;padding:19px 13px}#appPage .nav{font-size:16px;min-height:52px;padding:11px 12px}#appPage .nav small{font-size:10px}#appPage .topbar h2{font-size:27px}#appPage .statgrid{grid-template-columns:repeat(3,minmax(0,1fr))}#appPage .metric{padding:12px}#appPage .metric small,#appPage .metric span{font-size:13px}#appPage .metric b{font-size:29px}#appPage .workgrid{grid-template-columns:minmax(0,1fr)}#appPage .paneltop{flex-wrap:wrap}#appPage #subscriptionRequests .sub-summary-metrics{grid-template-columns:1fr}#help .help-v54-grid{grid-template-columns:1fr}#help .help-v54-card::after{display:none!important}#help .help-v54-head{padding:23px 19px}#help .help-v54-hero-mark{display:none}#help .help-v54-tips{grid-template-columns:1fr}#help .help-v54-flowitems{flex-direction:column}#help .help-v54-flowarrow{transform:rotate(90deg);align-self:center;line-height:1}#help .help-v54-lane{gap:7px;font-size:14px}#help .help-v54-art{min-height:155px}#help .help-v54-art svg{height:155px}#plans .available-plans-section{margin-top:22px}}
