@@ -27,6 +27,23 @@ function barcodeKey(value){return crypto.createHash("sha256").update(value.trim(
 function periodId(at){return new Date(at).toISOString().slice(0,7)}
 function subscriptionState(a){if(a.plan==="Free")return "free";if(!a.planExpiresAt)return "unconfigured";const expires=Date.parse(a.planExpiresAt);if(!Number.isFinite(expires))return "invalid";return expires<=Date.now()?"expired":"active"}
 function hasActivePaidPlan(a){return a.plan!=="Free"&&subscriptionState(a)==="active"}
+
+// V5.0: A paid account may renew the same tier in its final 7 days, or
+// buy the same/higher tier when video quota is exhausted (not downgraded).
+function purchaseDecision(a,target,now=Date.now()){
+ if(!Object.hasOwn(pricesTHB,target)||target==="Free")return {allowed:false,reason:"Invalid paid plan"};
+ const active=hasActivePaidPlan(a),limit=limits[a.plan];
+ if(!active)return {allowed:true,kind:"new",resetQuota:false};
+ const tiers=Object.keys(pricesTHB),remaining=limit===null?null:Math.max(0,limit-(a.period===periodId(now)?(a.used||0)+(a.reserved||0):0));
+ const reserved=a.period===periodId(now)?(a.reserved||0):0;
+ const exhausted=remaining===0&&reserved===0;
+ const exp=Date.parse(a.planExpiresAt),nearExpiry=Number.isFinite(exp)&&exp>now&&exp-now<=7*86400000;
+ if(exhausted&&tiers.indexOf(target)>=tiers.indexOf(a.plan))return {allowed:true,kind:"exhausted_topup",resetQuota:true};
+ if(nearExpiry&&target===a.plan)return {allowed:true,kind:"renewal",resetQuota:false};
+ return {allowed:false,reason:reserved>0&&remaining===0?"Finish outstanding recordings before buying more": "Current plan is active. Buy the same/higher tier only after quota is exhausted, or renew the same tier within 7 days of expiry."};
+}
+function billingOpen(a){return typeof a.openBillingRequestId==="string"&&a.openBillingRequestId.length>0}
+
 async function ensureAccount(id){
  const ref=await ownerRef(id);
  if(ref.id!==id)return ref;
@@ -39,7 +56,7 @@ exports.usageStatus=onCall(options,async req=>{
  if(!snap.exists)throw new HttpsError("failed-precondition","Account not provisioned");
  const a=snap.data(),limit=limits[a.plan];if(limit===undefined)throw new HttpsError("failed-precondition","Invalid plan");
  const current=periodId(Date.now()),used=a.period===current?a.used||0:0,reserved=a.period===current?a.reserved||0:0;
- return {plan:a.plan,limit,used,reserved,remaining:limit===null?null:Math.max(0,limit-used-reserved),period:current,planExpiresAt:typeof a.planExpiresAt==="string"?a.planExpiresAt:null,subscriptionStatus:subscriptionState(a)};
+ return {plan:a.plan,limit,used,reserved,remaining:limit===null?null:Math.max(0,limit-used-reserved),period:current,canBuyMore:purchaseDecision(a,a.plan).allowed,purchaseReason:purchaseDecision(a,a.plan).kind||null,planExpiresAt:typeof a.planExpiresAt==="string"?a.planExpiresAt:null,subscriptionStatus:subscriptionState(a)};
 });
 exports.reserveCredit=onCall(options,async req=>{
  const id=uid(req),body=data(req),op=body.operationId,barcode=body.barcode;
@@ -164,18 +181,31 @@ exports.accountRole=onCall(options,async req=>{
 exports.subscriptionOverview=onCall(options,async req=>{
  const id=uid(req),ref=await ensureAccount(id),snap=await ref.get(),a=snap.data();
  const hist=await ref.collection("billingRequests").orderBy("createdAt","desc").limit(20).get();
- return {plan:a.plan,status:subscriptionState(a),expiresAt:a.planExpiresAt||null,priceTHB:pricesTHB[a.plan]??null,requests:hist.docs.map(x=>({id:x.id,plan:x.data().plan,amountTHB:x.data().amountTHB,status:x.data().status,createdAt:x.data().createdAt?.toDate()?.toISOString()||null}))};
+ return {plan:a.plan,status:subscriptionState(a),expiresAt:a.planExpiresAt||null,priceTHB:pricesTHB[a.plan]??null,remaining:(limits[a.plan]===null?null:Math.max(0,limits[a.plan]-(a.period===periodId(Date.now())?(a.used||0)+(a.reserved||0):0))),purchaseWindow:purchaseDecision(a,a.plan),openBillingRequestId:a.openBillingRequestId||null,requests:hist.docs.map(x=>({id:x.id,plan:x.data().plan,amountTHB:x.data().amountTHB,purchaseKind:x.data().purchaseKind||"new",status:x.data().status,createdAt:x.data().createdAt?.toDate()?.toISOString()||null}))};
 });
 exports.requestPlanChange=onCall(options,async req=>{
- const id=uid(req),d=data(req),plan=d.plan;
- if(!Object.hasOwn(pricesTHB,plan)||plan==="Free")throw new HttpsError("invalid-argument","Select a paid plan");
+ const id=uid(req),plan=data(req).plan;
  const acc=await ensureAccount(id),ticket=acc.collection("billingRequests").doc();
  return db.runTransaction(async tx=>{
-  const snap=await tx.get(acc);
-  const current=snap.data();
-  if(hasActivePaidPlan(current))throw new HttpsError("failed-precondition","Your "+current.plan+" plan is still active until "+current.planExpiresAt+". New purchases and downgrades are disabled until expiration.");
-  tx.create(ticket,{plan,amountTHB:pricesTHB[plan],status:"pending_payment_setup",createdAt:FieldValue.serverTimestamp(),requestedBy:id});
-  return {requestId:ticket.id,status:"pending_payment_setup",plan,amountTHB:pricesTHB[plan],message:"No payment has been collected. Plan remains unchanged."};
+  const snap=await tx.get(acc),current=snap.data(),decision=purchaseDecision(current,plan);
+  if(!decision.allowed)throw new HttpsError("failed-precondition",decision.reason);
+  if(billingOpen(current))throw new HttpsError("failed-precondition","Another billing request is still open. Check or complete it before creating a new one.");
+  tx.create(ticket,{plan,amountTHB:pricesTHB[plan],purchaseKind:decision.kind,baseBillingVersion:current.billingVersion||0,basePlan:current.plan,baseExpiresAt:current.planExpiresAt||null,status:"pending_payment_setup",createdAt:FieldValue.serverTimestamp(),requestedBy:id});
+  tx.update(acc,{openBillingRequestId:ticket.id,updatedAt:FieldValue.serverTimestamp()});
+  return {requestId:ticket.id,status:"pending_payment_setup",plan,amountTHB:pricesTHB[plan],purchaseKind:decision.kind,message:"Payment is required before any subscription changes."};
+ });
+});
+exports.cancelUnpaidPlanRequest=onCall(options,async req=>{
+ const uidValue=uid(req),id=data(req).requestId;
+ if(!validOp(id))throw new HttpsError("invalid-argument","Invalid request ID");
+ const acc=own(uidValue),ticket=acc.collection("billingRequests").doc(id);
+ return db.runTransaction(async tx=>{
+  const [a,t]=await Promise.all([tx.get(acc),tx.get(ticket)]);
+  if(!t.exists||t.data().requestedBy!==uidValue)throw new HttpsError("not-found","Request not found");
+  if(t.data().status!=="pending_payment_setup"||t.data().omiseChargeId)throw new HttpsError("failed-precondition","Only requests with no charge can be cancelled");
+  tx.update(ticket,{status:"cancelled",cancelledAt:FieldValue.serverTimestamp()});
+  if(a.data().openBillingRequestId===id)tx.update(acc,{openBillingRequestId:FieldValue.delete()});
+  return {status:"cancelled"};
  });
 });
 
@@ -199,25 +229,30 @@ async function reconcileCharge(accountId,requestId,chargeId){
   const item=tSnap.data(),a=aSnap.data();
   if(item.omiseChargeId!==chargeId||item.requestedBy!==accountId||charge.id!==chargeId||charge.currency.toLowerCase()!=="thb"||charge.amount!==item.amountTHB*100||item.amountTHB!==pricesTHB[item.plan]||charge.metadata?.requestId!==requestId||charge.metadata?.uid!==accountId||charge.livemode!==false)throw Error("Charge mismatch");
   if(item.status==="paid")return {status:"paid",plan:item.plan,alreadyApplied:true};
-  // Another payment may have activated a paid plan after this QR was issued.
-  // Do not overwrite that plan or silently consume the customer's remaining entitlement.
-  if(charge.status==="successful"&&charge.paid===true&&hasActivePaidPlan(a)){
-   if(item.status!=="payment_review"){
-    tx.update(ref,{status:"payment_review",reviewReason:"active_paid_plan",reviewedAgainstPlan:a.plan,reviewedAgainstExpiresAt:a.planExpiresAt,reviewRequiredAt:FieldValue.serverTimestamp()});
-    tx.create(acc.collection("audit").doc(),{action:"payment_requires_manual_review",billingRequestId:requestId,omiseChargeId:chargeId,createdAt:FieldValue.serverTimestamp()});
-   }
-   return {status:"payment_review",requiresSupport:true,plan:a.plan,expiresAt:a.planExpiresAt};
-  }
   if(charge.status==="successful"&&charge.paid===true){
+   const legacy=!item.purchaseKind;
+   const sameRevision=(a.billingVersion||0)===(item.baseBillingVersion||0);
+   const lockOk=a.openBillingRequestId===requestId;
+   const decision=purchaseDecision(a,item.plan);
+   const authorized=legacy?(!hasActivePaidPlan(a)&&!billingOpen(a)):lockOk&&sameRevision&&(decision.allowed||item.purchaseKind==="renewal"&&a.plan===item.plan);
+   if(!authorized){
+    if(item.status!=="payment_review"){
+     tx.update(ref,{status:"payment_review",reviewReason:"active_or_changed_subscription",reviewedAgainstPlan:a.plan,reviewedAgainstExpiresAt:a.planExpiresAt||null,reviewRequiredAt:FieldValue.serverTimestamp()});
+     tx.create(acc.collection("audit").doc(),{action:"payment_requires_manual_review",billingRequestId:requestId,omiseChargeId:chargeId,createdAt:FieldValue.serverTimestamp()});
+    }
+    return {status:"payment_review",requiresSupport:true,plan:a.plan,expiresAt:a.planExpiresAt||null};
+   }
    const currentEnd=Date.parse(a.planExpiresAt);
-   const base=a.plan===item.plan&&Number.isFinite(currentEnd)&&currentEnd>Date.now()?currentEnd:Date.now();
+   const base=Number.isFinite(currentEnd)&&currentEnd>Date.now()&&item.purchaseKind!=="new"?currentEnd:Date.now();
    const expiresAt=new Date(base+30*86400000).toISOString();
-   tx.update(acc,{plan:item.plan,planExpiresAt:expiresAt,lastPaidAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()});
-   tx.update(ref,{status:"paid",paidAt:FieldValue.serverTimestamp(),paymentProvider:"omise",activationExpiresAt:expiresAt});
-   tx.create(acc.collection("audit").doc(),{action:"subscription_paid",billingRequestId:requestId,omiseChargeId:chargeId,plan:item.plan,createdAt:FieldValue.serverTimestamp()});
-   return {status:"paid",plan:item.plan,expiresAt};
+   const reset=item.purchaseKind==="exhausted_topup";
+   if(reset&&(a.period===periodId(Date.now())?(a.reserved||0):0)>0)throw new HttpsError("failed-precondition","Pending recordings must be finalized before quota reset");
+   tx.update(acc,{plan:item.plan,planExpiresAt:expiresAt,lastPaidAt:FieldValue.serverTimestamp(),billingVersion:FieldValue.increment(1),...(reset?{period:periodId(Date.now()),used:0,reserved:0}:{}),...(lockOk?{openBillingRequestId:FieldValue.delete()}:{}),updatedAt:FieldValue.serverTimestamp()});
+   tx.update(ref,{status:"paid",paidAt:FieldValue.serverTimestamp(),paymentProvider:"omise",activationExpiresAt:expiresAt,quotaReset:reset});
+   tx.create(acc.collection("audit").doc(),{action:reset?"subscription_quota_refilled":"subscription_paid",billingRequestId:requestId,omiseChargeId:chargeId,plan:item.plan,createdAt:FieldValue.serverTimestamp()});
+   return {status:"paid",plan:item.plan,expiresAt,quotaReset:reset};
   }
-  if(["failed","expired"].includes(charge.status)&&!["failed","expired"].includes(item.status))tx.update(ref,{status:charge.status});
+  if(["failed","expired"].includes(charge.status)&&!["failed","expired"].includes(item.status)){tx.update(ref,{status:charge.status});if(a.openBillingRequestId===requestId)tx.update(acc,{openBillingRequestId:FieldValue.delete()})}
   return {status:charge.status};
  });
 }
@@ -236,7 +271,8 @@ exports.createOmisePayment=onCall(paymentSecrets,async req=>{
   if(!snap.exists||snap.data().requestedBy!==user)throw new HttpsError("not-found","Request not found");
   const item=snap.data();
   if(!accountSnap.exists)throw new HttpsError("not-found","Account missing");
-  if(hasActivePaidPlan(accountSnap.data()))throw new HttpsError("failed-precondition","Current paid plan is still active until "+accountSnap.data().planExpiresAt+". New payments are not allowed.");
+  const purchase=purchaseDecision(accountSnap.data(),item.plan);
+  if(!purchase.allowed||item.purchaseKind&&(!billingOpen(accountSnap.data())||accountSnap.data().openBillingRequestId!==id||(accountSnap.data().billingVersion||0)!==(item.baseBillingVersion||0)))throw new HttpsError("failed-precondition",purchase.reason||"Billing request is no longer valid");
   if(!Object.hasOwn(pricesTHB,item.plan)||item.plan==="Free"||item.amountTHB!==pricesTHB[item.plan])throw new HttpsError("failed-precondition","Invalid price");
   if(item.status!=="pending_payment_setup")return {claimed:false,status:item.status,chargeId:item.omiseChargeId};
   tx.update(ticket,{status:"creating_charge",paymentMethod:method,paymentProvider:"omise",claimedAt:FieldValue.serverTimestamp()});
