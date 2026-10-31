@@ -133,7 +133,7 @@ async function startOmiseUI(id,method,amountTHB){
  if(!confirm('สร้าง QR Code ผ่าน Omise TEST MODE สำหรับแพ็กเกจราคา ฿'+Number(amountTHB).toLocaleString('th-TH')+'? ยังไม่มีการเก็บเงินจริง'))return;
  try{
   const result=await credit().startOmisePayment(id,'promptpay');
-  if(result.qrImage)displayOmiseQR(result.qrImage);
+  if(result.qrImage){if(subscriptionHistoryDialog()?.open)subscriptionHistoryDialog().close();displayOmiseQR(result.qrImage)}
   toast('สถานะ Omise: '+result.status);
   await renderSubscriptionRequests();
  }catch(e){toast('Omise: '+e.message)}
@@ -148,10 +148,10 @@ async function testPaidRecheck(requestId,button){
    results.push(response.status);
   }
   const after=await credit().subscriptionOverview();
-  const unchanged=before.plan===after.plan&&before.expiresAt===after.expiresAt;
+  const unchanged=before.plan===after.plan&&before.expiresAt===after.expiresAt&&before.remaining===after.remaining;
   const allPaid=results.every(v=>v==='paid');
   const passed=allPaid&&unchanged;
-  const text='Payment Recheck: '+(passed?'PASS':'FAIL')+'\\n3 calls: '+results.join(', ')+'\\nExpiry before: '+(before.expiresAt||'none')+'\\nExpiry after: '+(after.expiresAt||'none')+'\\nPlan before/after: '+before.plan+' / '+after.plan;
+  const text='Payment Recheck: '+(passed?'PASS':'FAIL')+'\\n3 calls: '+results.join(', ')+'\\nExpiry before: '+(before.expiresAt||'none')+'\\nExpiry after: '+(after.expiresAt||'none')+'\\nPlan before/after: '+before.plan+' / '+after.plan+'\\nCredits before/after: '+before.remaining+' / '+after.remaining;
   alert(text);
   if(!passed)toast('ตรวจสอบซ้ำไม่ผ่าน กรุณาส่งผลให้ตรวจโค้ด');
   await refreshRemoteQuota();
@@ -244,7 +244,7 @@ function subscriptionRequestActions(x,details){
    recover.disabled=true;
    try{
     const response=await credit().recoverOmiseCharge(x.id);
-    if(response.qrImage)displayOmiseQR(response.qrImage);
+    if(response.qrImage){if(subscriptionHistoryDialog()?.open)subscriptionHistoryDialog().close();displayOmiseQR(response.qrImage)}
     if(!response.found)alert(response.matchCount>1?'พบหลาย Charge กรุณาตรวจสอบกับผู้ดูแล':'ไม่พบ Charge กรุณาตรวจ Omise Test Dashboard ก่อนสร้างคำขอใหม่');
     else toast('สถานะรายการ: '+response.status);
     await subscriptionRefreshAfterAction();
@@ -258,7 +258,7 @@ function subscriptionRequestActions(x,details){
    check.disabled=true;
    try{
     const result=await credit().omisePaymentStatus(x.id);
-    if(result.qrImage)displayOmiseQR(result.qrImage);
+    if(result.qrImage){if(subscriptionHistoryDialog()?.open)subscriptionHistoryDialog().close();displayOmiseQR(result.qrImage)}
     if(result.needsReconciliation)toast('กรุณากู้คืน Charge เพื่อค้นหารายการ');
     else toast('สถานะ Omise: '+result.status);
     await subscriptionRefreshAfterAction();
@@ -394,6 +394,7 @@ async function subscriptionLoadHistory(){
  const rows=$('subscriptionHistoryRows'),more=$('subscriptionHistoryMore'),dlg=subscriptionHistoryDialog();
  if(!rows||!dlg?.open)return;
  billingHistoryBusy=true;more.disabled=true;
+ rows.querySelectorAll('.sub-error').forEach(node=>node.remove());
  const loading=subscriptionNode('p','sub-loading','กำลังโหลดประวัติการชำระ…');rows.append(loading);
  try{
   const result=await credit().billingHistory(billingHistoryCursor);
@@ -405,7 +406,7 @@ async function subscriptionLoadHistory(){
   more.hidden=!billingHistoryCursor;
  }catch(e){
   loading.remove();
-  rows.append(subscriptionNode('p','sub-error','โหลดประวัติไม่ได้: '+e.message));
+  rows.querySelectorAll('.sub-error').forEach(node=>node.remove());rows.append(subscriptionNode('p','sub-error','โหลดประวัติไม่ได้: '+e.message));
   more.hidden=false;more.textContent='ลองโหลดอีกครั้ง';
  }finally{
   more.disabled=false;billingHistoryBusy=false;
