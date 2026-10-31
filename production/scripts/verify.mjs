@@ -1,7 +1,9 @@
 // PACKTOOK V6.0 static checks. No production secrets; no staging SDK references.
 "use strict";
-const fs=require("node:fs"),path=require("node:path");
-const root=path.resolve(__dirname,"..");
+import fs from "node:fs";
+import path from "node:path";
+import {fileURLToPath} from "node:url";
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
 const id=process.argv[2];
 const assert=(c,m)=>{if(!c)throw Error("V6.0 verify: "+m)};
 assert(/^[a-z][a-z0-9-]{5,29}$/.test(id||""),"Missing or invalid Production project ID");
