@@ -72,7 +72,7 @@ function updateUsersSummary(){
  $('userPlanName').textContent=q?.plan||'—';
  const expiry=q?.planExpiresAt;
  $('userPlanExpiry').textContent=expiry?new Date(expiry).toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'}):'ยังไม่ได้กำหนด';
- $('userPlanExpiryNote').textContent=expiry?'วันที่กำหนดในระบบสมาชิก':(q?.subscriptionStatus==='expired'?'แพ็กเกจหมดอายุ — ไม่สามารถจองเครดิตใหม่':q?.subscriptionStatus==='active'?'แพ็กเกจยังมีผลใช้งาน':q?.subscriptionStatus==='invalid'?'ข้อมูลวันหมดอายุไม่ถูกต้อง':q?.subscriptionStatus==='free'?'Free Plan — ไม่มีวันหมดอายุ':'ยังไม่มีข้อมูลวันหมดอายุที่ยืนยันจากระบบ');
+ const stateText={expired:'แพ็กเกจหมดอายุ — ไม่สามารถจองเครดิตใหม่',active:'แพ็กเกจยังมีผลใช้งาน',invalid:'ข้อมูลวันหมดอายุไม่ถูกต้อง',free:'Free Plan — ไม่มีวันหมดอายุ',unconfigured:'ยังไม่มีข้อมูลวันหมดอายุที่ยืนยันจากระบบ'}; $('userPlanExpiryNote').textContent=stateText[q?.subscriptionStatus]||'ยังไม่ได้ตรวจสอบสถานะสมาชิก';
  $('userQuotaRemaining').textContent=q?(q.limit===null?'ไม่จำกัด':Number(q.remaining||0).toLocaleString('th-TH')):'—';
  $('userQuotaDetail').textContent=q?'ใช้แล้ว '+(q.used||0)+' • จองอยู่ '+(q.reserved||0)+' / เดือน '+q.period:'ไม่พบข้อมูลเครดิต';
 }
@@ -103,6 +103,22 @@ function plan(){return plans.find(p=>p[0]===store.plan)||plans[0]}
 function updateQuota(){const q=remoteQuota;const p=q?plans.find(x=>x[0]===q.plan)||plans[0]:plans[0];const u=q?.used??0,unlimited=q?.limit===null;const left=q?.remaining??0;$('planName').textContent=p[0].toUpperCase();$('usedCount').textContent=u.toLocaleString();$('remainingCount').textContent=unlimited?'∞':left.toLocaleString();$('limitLabel').textContent=unlimited?'ไม่จำกัดวิดีโอ':`จาก ${(q?.limit??20).toLocaleString()} วิดีโอ`;$('quotaText').textContent=unlimited?`${u.toLocaleString()} / ไม่จำกัด`:`${u.toLocaleString()} / ${(q?.limit??20).toLocaleString()}`;$('quotaProgress').style.width=unlimited?'0%':`${Math.min(100,u/(q?.limit||20)*100)}%`}
 
 function showTab(tab){document.querySelectorAll('.tabcontent').forEach(e=>e.hidden=e.id!==tab);document.querySelectorAll('.nav').forEach(e=>e.classList.toggle('active',e.dataset.tab===tab));$('crumb').textContent=tab.toUpperCase();$('pageTitle').textContent={packing:'บันทึกวิดีโอการแพ็กสินค้า',dashboard:'ค้นหาประวัติวิดีโอ',plans:'แพ็กเกจและโควตาวิดีโอ',help:'คู่มือการใช้งาน',users:'จัดการผู้ใช้และอุปกรณ์'}[tab];if(tab==='dashboard'){renderHistory();void runRetention(false)}if(tab==='plans')renderPlans();if(tab==='users'){updateUsersSummary();void refreshRemoteQuota().catch(e=>toast(e.message));void renderDeviceManager()}}
+async function verifyAfterPaymentReturn(){
+ if(new URLSearchParams(location.search).get('payment')!=='return')return;
+ showTab('plans');
+ const container=$('paymentQrResult');container.replaceChildren();
+ const status=document.createElement('p');status.textContent='กลับจากหน้าชำระเงินแล้ว กำลังตรวจสอบสถานะจาก Omise (Test Mode) — การกลับหน้าเว็บไม่ได้หมายความว่าชำระสำเร็จ';container.append(status);
+ try{
+  const overview=await credit().subscriptionOverview();
+  const pending=overview.requests.filter(x=>['payment_pending','creating_charge'].includes(x.status));
+  for(const item of pending){
+   try{const result=await credit().omisePaymentStatus(item.id);if(result.status==='paid')status.textContent='ยืนยันการชำระเงินแล้ว แพ็กเกจอัปเดตจาก Firebase';else status.textContent='สถานะการชำระเงิน: '+result.status+' — ยังไม่มีการยืนยันชำระสำเร็จ'}catch(e){status.textContent='ยังตรวจสอบการชำระเงินไม่ได้: '+e.message}
+  }
+  if(!pending.length)status.textContent='ไม่พบรายการค้างตรวจสอบ กรุณาตรวจประวัติชำระเงินใน Packages';
+  await refreshRemoteQuota();await renderSubscriptionRequests();
+ }catch(e){status.textContent='การตรวจสถานะมีปัญหา: '+e.message}
+ history.replaceState(null,'',location.pathname);
+}
 function displayOmiseQR(uri){
  const url=new URL(uri);
  if(url.protocol!=="https:"||!(url.hostname==="api.omise.co"||url.hostname.endsWith(".omise.co")))throw Error("URL รูป QR ไม่ปลอดภัย");
@@ -163,7 +179,8 @@ async function renderSubscriptionRequests(){
   status.textContent='แพ็กเกจปัจจุบัน: '+details.plan+' • '+(labels[details.status]||details.status)+' • หมดอายุ: '+(details.expiresAt?new Date(details.expiresAt).toLocaleDateString('th-TH'):'ยังไม่กำหนด');
   box.append(status);
   const note=document.createElement('p');note.textContent='ชำระผ่าน Omise Test Mode: PromptPay QR หรือบัตร ระบบยืนยันยอดจาก Omise ก่อนเปิดแพ็กเกจ';box.append(note);
-  for(const x of details.requests){const line=document.createElement('div');line.style.margin='10px 0';const name=document.createElement('span');name.textContent=x.plan+' — '+({pending_payment_setup:'รอชำระเงิน',checkout_created:'สร้างหน้าชำระเงินแล้ว',paid:'ชำระแล้ว'}[x.status]||x.status)+' — '+(x.createdAt?new Date(x.createdAt).toLocaleDateString('th-TH'):'');line.append(name);
+  for(const x of details.requests){const line=document.createElement('div');line.style.margin='10px 0';const name=document.createElement('span');name.textContent=x.plan+' — '+({pending_payment_setup:'รอชำระเงิน',checkout_created:'สร้างหน้าชำระเงินแล้ว',creating_charge:'กำลังสร้างรายการชำระเงิน',payment_pending:'รอการชำระเงิน',failed:'ชำระเงินไม่สำเร็จ — แพ็กเกจไม่เปลี่ยน',expired:'รายการชำระเงินหมดอายุ — แพ็กเกจไม่เปลี่ยน',paid:'ชำระแล้ว'}[x.status]||x.status)+' — '+(x.createdAt?new Date(x.createdAt).toLocaleDateString('th-TH'):'');line.append(name);
+ if(['failed','expired'].includes(x.status)){const failed=document.createElement('p');failed.textContent='รายการนี้ไม่ทำให้เปลี่ยนแพ็กเกจ หากต้องการลองอีกครั้งให้สร้างคำขอใหม่';failed.style.color='#9b3444';line.append(failed)}
  if(x.status==='paid'){
   const test=document.createElement('button');test.type='button';test.className='secondary';test.style.marginLeft='10px';
   test.textContent='ทดสอบตรวจซ้ำ 3 ครั้ง';test.onclick=()=>testPaidRecheck(x.id,test);line.append(test);
@@ -296,7 +313,7 @@ $('showPassword').onclick=()=>{$('password').type=$('password').type==='password
 $('logout').onclick=async()=>{if(activeBarcode||recordingOp)return toast('กรุณาหยุดการบันทึกและตรวจเครดิตก่อนออกจากระบบ');await credit().logout();remoteUser=null;remoteQuota=null;$('appPage').hidden=true;$('loginPage').hidden=false;stream?.getTracks().forEach(t=>t.stop());stream=null;cameraState(false)};
 document.querySelectorAll('[data-tab]').forEach(e=>e.onclick=()=>showTab(e.dataset.tab));$('refreshUserDevices').onclick=()=>{void renderDeviceManager();void refreshRemoteQuota().catch(e=>toast(e.message))};$('cameraBtn').onclick=toggleCamera;$('folderBtn').onclick=selectFolder;$('stopBtn').onclick=stopRecording;$('focusScan').onclick=()=>$('barcode').focus();$('refreshHistory').onclick=renderHistory;$('dateFilter').onchange=renderHistory;
 $('barcode').addEventListener('keydown',e=>{if(e.key!=='Enter')return;e.preventDefault();const code=$('barcode').value.trim();$('barcode').value='';if(!code){toast('กรุณาสแกนหรือพิมพ์ Barcode ก่อนกด Enter');return}if(ending||reservation){toast('ระบบกำลังดำเนินการ กรุณารอสักครู่');return}if(activeBarcode){if(code===activeBarcode)stopRecording();else toast('กำลังอัด '+activeBarcode+' ต้องสแกนรหัสเดิมเพื่อหยุด');return}reservation=true;startRecording(code).catch(e=>toast('เกิดข้อผิดพลาด: '+e.message)).finally(()=>{reservation=false;$('barcode').focus()})});
-function connectFirebaseUI(){if(!credit()?.ready)return;credit().onUser(u=>{remoteUser=u;if(u){void credit().accountRole().then(info=>{accountRoleInfo=info;const role=$('userRoleInfo');if(role)role.textContent=info.role==='admin'?'Admin — อนุมัติการบันทึกซ้ำได้':'Operator — ต้องขออนุมัติจาก Admin';void refreshTeam()}).catch(e=>toast('Role: '+e.message));showRecovery();showDeviceControl();const details=$('userAccountDetails');if(details)details.textContent='ยืนยันอีเมลแล้ว • Firebase Authentication';const em=$('userAccountEmail');if(em)em.textContent=u.email||'—';void setupDevice().catch(e=>toast('Device Management: '+e.message)).finally(()=>void renderDeviceManager());$('loginPage').hidden=true;$('appPage').hidden=false;void refreshRemoteQuota().then(()=>showTab('packing')).catch(e=>{showTab('packing');toast('เชื่อมโควตาไม่สำเร็จ: '+e.message)})}else{$('appPage').hidden=true;$('loginPage').hidden=false}});const msg=$('firebaseConnectStatus');if(msg)msg.textContent='เชื่อมต่อ Firebase แล้ว — เข้าสู่ระบบเพื่อเปิด Packing / Dashboard / Packages / Help'}
+function connectFirebaseUI(){if(!credit()?.ready)return;credit().onUser(u=>{remoteUser=u;if(u){void credit().accountRole().then(info=>{accountRoleInfo=info;const role=$('userRoleInfo');if(role)role.textContent=info.role==='admin'?'Admin — อนุมัติการบันทึกซ้ำได้':'Operator — ต้องขออนุมัติจาก Admin';}).catch(e=>toast('Role: '+e.message));showRecovery();showDeviceControl();const details=$('userAccountDetails');if(details)details.textContent='ยืนยันอีเมลแล้ว • Firebase Authentication';const em=$('userAccountEmail');if(em)em.textContent=u.email||'—';void setupDevice().catch(e=>toast('Device Management: '+e.message)).finally(()=>void renderDeviceManager());$('loginPage').hidden=true;$('appPage').hidden=false;void refreshRemoteQuota().then(()=>{showTab('packing');void verifyAfterPaymentReturn()}).catch(e=>{showTab('packing');toast('เชื่อมโควตาไม่สำเร็จ: '+e.message);void verifyAfterPaymentReturn()})}else{$('appPage').hidden=true;$('loginPage').hidden=false}});const msg=$('firebaseConnectStatus');if(msg)msg.textContent='เชื่อมต่อ Firebase แล้ว — เข้าสู่ระบบเพื่อเปิด Packing / Dashboard / Packages / Help'}
 if(credit()?.ready)connectFirebaseUI();else window.addEventListener('packtook-firebase-ready',connectFirebaseUI,{once:true});
 
 $('barcodeFilter').addEventListener('input',renderHistory);
