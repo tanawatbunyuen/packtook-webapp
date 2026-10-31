@@ -11,18 +11,58 @@ function clearPending(){if(pendingKey())localStorage.removeItem(pendingKey())}
 async function recoverCredit(){
  const p=pending();
  if(!p)return toast('ไม่พบรายการจองเครดิตค้าง');
- if(activeBarcode||ending)return toast('ต้องหยุดการบันทึกก่อนตรวจรายการ');
+ if(activeBarcode||ending||reservation)return toast('ต้องหยุดและตรวจการบันทึกที่กำลังทำอยู่ก่อน');
  try{
-  const state=await credit().recordingStatus(p.operationId);
-  if(state.status==='reserved'){
-   const ok=confirm('พบเครดิตจองค้างของ '+p.barcode+'\\nตรวจสอบวิดีโอในเครื่องก่อน: หากวิดีโอถูกบันทึกสำเร็จ ห้ามยกเลิกเครดิตเพื่อหลีกเลี่ยงการใช้สิทธิ์โดยไม่หักเครดิต\\nยืนยันยกเลิกการจองและคืนเครดิตหรือไม่?');
-   if(!ok)return;
+  if(!folder)await restoreFolder(false);
+  if(!folder)return toast('เลือกโฟลเดอร์เดิมที่ใช้บันทึกวิดีโอก่อนตรวจและคืนเครดิต');
+  if(await folder.queryPermission({mode:'read'})!=='granted')return toast('กรุณากดเชื่อมโฟลเดอร์เดิมและอนุญาตสิทธิ์อ่านก่อน');
+  let server=null;
+  try{server=await credit().recordingStatus(p.operationId)}
+  catch(e){if(e.code!=='functions/not-found')throw e}
+  const filename=p.filename||server?.file?.filename||null;
+  let file=null;
+  if(filename){
+   try{const handle=await folder.getFileHandle(filename);file=await handle.getFile()}
+   catch(e){if(e.name!=='NotFoundError')throw e}
+  }
+  const hasEvidence=!!file&&file.size>=1000;
+  if(server?.status==='completed'){
+   if(!hasEvidence)return toast('Firebase ยืนยันการบันทึกสำเร็จแล้ว แต่ยังไม่พบไฟล์ในโฟลเดอร์นี้ กรุณาเลือกโฟลเดอร์เดิมก่อน');
+   const verified=await verifySavedVideo(file,p.seconds||1);
+   await saveVideoHistory({month:monthKey(new Date(p.timestamp||file.lastModified||Date.now())),day:new Date(p.timestamp||file.lastModified||Date.now()).toLocaleDateString('en-CA'),timestamp:p.timestamp||file.lastModified||Date.now(),barcode:p.barcode,worker:p.worker||'Unknown',seconds:p.seconds||1,filename,quality:p.quality||'Recovered',verified});
+   clearPending();recordingOp=null;showRecovery();await refreshRemoteQuota();
+   return toast('✓ Firebase ยืนยันเครดิตและพบไฟล์แล้ว กู้คืนประวัติวิดีโอสำเร็จ');
+  }
+  if(server?.status==='reserved'){
+   if(hasEvidence){
+    let verified;
+    try{verified=await verifySavedVideo(file,p.seconds||1)}
+    catch(e){return toast('⚠ พบไฟล์แต่ยังตรวจสอบภาพไม่ได้: '+e.message+' • ห้ามคืนเครดิตอัตโนมัติ กรุณาตรวจสอบไฟล์')}
+    if(!confirm('พบไฟล์ '+filename+' ที่ตรวจสอบภาพได้\\nต้องการยืนยันการบันทึกสำเร็จและหักเครดิต 1 วิดีโอผ่าน Firebase หรือไม่?'))return;
+    updatePendingOperation({phase:'finalizing'});
+    await credit().finalize(p.operationId,true,{filename,bytes:file.size});
+    const timestamp=p.timestamp||file.lastModified||Date.now();
+    await saveVideoHistory({month:monthKey(new Date(timestamp)),day:new Date(timestamp).toLocaleDateString('en-CA'),timestamp,barcode:p.barcode,worker:p.worker||'Unknown',seconds:p.seconds||Math.max(1,Math.round((timestamp-(p.startedAt||timestamp))/1000)),filename,quality:p.quality||'Recovered',verified});
+    clearPending();recordingOp=null;showRecovery();await refreshRemoteQuota();
+    return toast('✓ กู้คืนไฟล์และยืนยันเครดิตสำเร็จ');
+   }
+   if(!confirm('ไม่พบไฟล์วิดีโอที่ใช้งานได้ในโฟลเดอร์นี้\\nยืนยันว่าไม่มีอุปกรณ์ใดกำลัง REC และไม่ได้บันทึกไฟล์สำเร็จในโฟลเดอร์อื่นใช่หรือไม่?\\nหากมีหลักฐานวิดีโออยู่ ห้ามคืนเครดิต'))return;
    const result=await credit().finalize(p.operationId,false);
    if(result.status!=='failed')throw Error('Server ยังไม่ยืนยันการคืนเครดิต');
-  }else if(state.status!=='completed'&&state.status!=='failed')throw Error('Server ส่งสถานะที่ไม่รู้จัก');
-  clearPending();recordingOp=null;showRecovery();await refreshRemoteQuota();
-  toast(state.status==='completed'?'ตรวจสอบแล้ว: ระบบหักเครดิตไปก่อนหน้านี้':'ตรวจสอบรายการและคืนเครดิตเรียบร้อย');
- }catch(e){toast('ตรวจสอบเครดิตค้างไม่สำเร็จ: '+e.message)}
+   clearPending();recordingOp=null;showRecovery();await refreshRemoteQuota();
+   return toast('ยืนยันไม่มีวิดีโอแล้ว คืนเครดิตจองสำเร็จ');
+  }
+  if(server?.status==='failed'){
+   if(hasEvidence)return toast('⚠ Firebase ระบุว่าเครดิตถูกคืนแล้ว แต่พบไฟล์วิดีโอ กรุณาติดต่อผู้ดูแลก่อนลบรายการ');
+   clearPending();recordingOp=null;showRecovery();return toast('รายการนี้สิ้นสุดโดยไม่ได้ใช้เครดิตแล้ว');
+  }
+  if(!server){
+   if(hasEvidence)return toast('⚠ พบไฟล์วิดีโอ แต่ไม่พบข้อมูลจองบน Firebase โปรดตรวจสอบก่อนดำเนินการ');
+   if(!confirm('ไม่พบ Operation ID นี้บน Firebase และไม่พบไฟล์วิดีโอใช้งานได้ในโฟลเดอร์นี้\\nยืนยันยกเลิกรายการค้างใน Browser?'))return;
+   clearPending();recordingOp=null;showRecovery();return toast('ล้างคำขอที่ Firebase ไม่พบแล้ว');
+  }
+  toast('สถานะเครดิตไม่รู้จัก: '+server.status);
+ }catch(e){console.error('Recovery failed',e);toast('กู้คืนเครดิต/วิดีโอไม่สำเร็จ: '+e.message+' • เก็บข้อมูลรอตรวจสอบ')}
 }
 function showRecovery(){
  let b=$('recoverCreditBtn');
