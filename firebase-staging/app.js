@@ -41,7 +41,8 @@ async function recoverCredit(){
     catch(e){return toast('⚠ พบไฟล์แต่ยังตรวจสอบภาพไม่ได้: '+e.message+' • ห้ามคืนเครดิตอัตโนมัติ กรุณาตรวจสอบไฟล์')}
     if(!confirm('พบไฟล์ '+filename+' ที่ตรวจสอบภาพได้\\nต้องการยืนยันการบันทึกสำเร็จและหักเครดิต 1 วิดีโอผ่าน Firebase หรือไม่?'))return;
     updatePendingOperation({phase:'finalizing'});
-    await credit().finalize(p.operationId,true,{filename,bytes:file.size});
+    const done=await credit().finalize(p.operationId,true,{filename,bytes:file.size});
+    if(done.status!=='completed')throw Error('Firebase ไม่ยืนยันสถานะ Completed: '+done.status);
     const timestamp=p.timestamp||file.lastModified||Date.now();
     await saveVideoHistory({month:monthKey(new Date(timestamp)),day:new Date(timestamp).toLocaleDateString('en-CA'),timestamp,barcode:p.barcode,worker:p.worker||'Unknown',seconds:p.seconds||Math.max(1,Math.round((timestamp-(p.startedAt||timestamp))/1000)),filename,quality:p.quality||'Recovered',verified});
     clearPending();recordingOp=null;showRecovery();await refreshRemoteQuota();
@@ -829,7 +830,8 @@ async function stopRecording(reason='manual'){
   if(!op)throw Error('ไม่พบการจองเครดิตบน Server');
   finalizePending=true;
   updatePendingOperation({phase:'finalizing'});
-  await credit().finalize(op,true,{filename,bytes:saved.size});
+  const finalResult=await credit().finalize(op,true,{filename,bytes:saved.size});
+  if(finalResult.status!=='completed')throw Error('Firebase ไม่ยืนยันสถานะ Completed: '+finalResult.status);
   finalizePending=false;
   updatePendingOperation({phase:'completed'});
   // Store the local video reference before clearing the durable operation intent.
