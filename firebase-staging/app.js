@@ -75,6 +75,7 @@ function updateUsersSummary(){
  const stateText={expired:'แพ็กเกจหมดอายุ — ไม่สามารถจองเครดิตใหม่',active:'แพ็กเกจยังมีผลใช้งาน',invalid:'ข้อมูลวันหมดอายุไม่ถูกต้อง',free:'Free Plan — ไม่มีวันหมดอายุ',unconfigured:'ยังไม่มีข้อมูลวันหมดอายุที่ยืนยันจากระบบ'}; $('userPlanExpiryNote').textContent=stateText[q?.subscriptionStatus]||'ยังไม่ได้ตรวจสอบสถานะสมาชิก';
  $('userQuotaRemaining').textContent=q?(q.limit===null?'ไม่จำกัด':Number(q.remaining||0).toLocaleString('th-TH')):'—';
  $('userQuotaDetail').textContent=q?'ใช้แล้ว '+(q.used||0)+' • จองอยู่ '+(q.reserved||0)+' / เดือน '+q.period:'ไม่พบข้อมูลเครดิต';
+ const renewal=$('userRenewalNotice');if(renewal){const eligible=q?.subscriptionStatus==='active'&&q?.canBuyMore;renewal.hidden=!eligible;renewal.textContent=eligible?(q.purchaseReason==='exhausted_topup'?'🎥 โควตาวิดีโอหมดแล้ว สามารถซื้อแพ็กเกจเดิมหรือสูงกว่าเพื่อเติมเครดิตผ่าน Packages':'🔔 แพ็กเกจเหลืออายุไม่เกิน 7 วัน สามารถต่ออายุแพ็กเกจเดิมผ่าน Packages'):'';}
 }
 async function refreshRemoteQuota(){if(!remoteUser)return;remoteQuota=await credit().usage();updateQuota();updateUsersSummary()}
 
@@ -185,7 +186,7 @@ async function renderSubscriptionRequests(){
  const controls=document.createElement('div');controls.style.marginTop='8px';
  if(x.status==='pending_payment_setup'){
   const qr=document.createElement('button');qr.type='button';qr.className='secondary';qr.textContent='PromptPay QR (Test)';
-  qr.disabled=activePaid&&!(details.purchaseWindow?.allowed);qr.title=qr.disabled?'ยังไม่ถึงเงื่อนไขต่ออายุหรือเติมเครดิต':'';qr.onclick=()=>startOmiseUI(x.id,'promptpay',x.amountTHB);controls.append(qr);const cancel=document.createElement('button');cancel.type='button';cancel.className='secondary';cancel.textContent='ยกเลิกคำขอนี้';cancel.onclick=async()=>{if(!confirm('ยกเลิกคำขอ '+x.plan+' ที่ยังไม่ได้สร้าง QR?'))return;cancel.disabled=true;try{await credit().cancelUnpaidPlanRequest(x.id);await refreshRemoteQuota();await renderSubscriptionRequests();renderPlans()}catch(e){toast(e.message);cancel.disabled=false}};controls.append(cancel);
+  const eligibility=planBuyStatus(x.plan);qr.disabled=!eligibility.allowed&&details.status==='active';qr.title=qr.disabled?'ไม่สามารถซื้อแพ็กเกจนี้ตามเงื่อนไขสมาชิกปัจจุบัน':'';qr.onclick=()=>startOmiseUI(x.id,'promptpay',x.amountTHB);controls.append(qr);const cancel=document.createElement('button');cancel.type='button';cancel.className='secondary';cancel.textContent='ยกเลิกคำขอนี้';cancel.onclick=async()=>{if(!confirm('ยกเลิกคำขอ '+x.plan+' ที่ยังไม่ได้สร้าง QR?'))return;cancel.disabled=true;try{await credit().cancelUnpaidPlanRequest(x.id);await refreshRemoteQuota();await renderSubscriptionRequests();renderPlans()}catch(e){toast(e.message);cancel.disabled=false}};controls.append(cancel);
  }else{
   if(x.status==='creating_charge'){
    const recover=document.createElement('button');recover.type='button';recover.className='secondary';recover.textContent='กู้คืน Charge จาก Omise';
