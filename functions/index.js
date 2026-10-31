@@ -551,10 +551,9 @@ const OWNER_MAX_ACCOUNTS=1200,OWNER_BATCH=100,OWNER_CONCURRENCY=12;
 exports.ownerAnalyticsSummary=onCall(ownerOptions,async req=>{
  requirePlatformOwner(req);
  const now=Date.now(),plans=Object.keys(pricesTHB),currentMonth=ownerMonthTH(now);
- const months=Array.from({length:12},(_,i)=>{
-  const d=new Date(now);d.setUTCDate(1);d.setUTCHours(12,0,0,0);
-  d.setUTCMonth(d.getUTCMonth()-(11-i));return ownerMonthTH(d.getTime());
- });
+ const [currentYear,currentMonthNumber]=currentMonth.split("-").map(Number);
+ const months=Array.from({length:12},(_,i)=>
+  new Date(Date.UTC(currentYear,currentMonthNumber-1-(11-i),1)).toISOString().slice(0,7));
  const byMonth=new Map(months.map(month=>[month,{month,newCustomers:0,testSalesTHB:0,testPayments:0,unknownPayments:0}]));
  const byPlan=new Map(plans.map(plan=>[plan,{plan,customers:0,active:0,expired:0,testSalesTHB:0,testPayments:0}]));
  const totals={customers:0,free:0,activePaid:0,expiredPaid:0,otherPaid:0,
