@@ -3,3 +3,17 @@
 /* Official PACKTOOK vector logo in isolated Owner identity. */
 .brand-symbol img{display:block;width:40px;height:40px;object-fit:contain;filter:drop-shadow(0 3px 4px #061e4555)}
 .brand-sidebar .brand-symbol img{width:36px;height:36px}
+
+
+/* V5.8.1 — owner-only customer identity and video balance, readable on wide tables */
+#customers .table-scroll{overflow-x:auto;scrollbar-width:thin}
+#customers table{min-width:1120px}
+#customers th,#customers td{white-space:nowrap;vertical-align:middle}
+#customers td.customer-email{color:#175985;font-size:14px;font-weight:750;white-space:normal;min-width:190px;overflow-wrap:anywhere}
+#customers .credit-balance{font-weight:850;color:#196f5d;font-variant-numeric:tabular-nums}
+#customers .credit-reserved{font-weight:750;color:#9c681d;font-variant-numeric:tabular-nums}
+#customers .uid{max-width:165px;font-size:12px;white-space:normal;overflow-wrap:anywhere}
+@media(max-width:740px){
+ #customers table{min-width:1060px}
+ #customers th,#customers td{padding:12px 10px}
+}
