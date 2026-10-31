@@ -30,14 +30,40 @@ function hasActivePaidPlan(a){return a.plan!=="Free"&&subscriptionState(a)==="ac
 
 // V5.0: A paid account may renew the same tier in its final 7 days, or
 // buy the same/higher tier when video quota is exhausted (not downgraded).
+// V5.1 credit wallet: balance represents credits immediately available for new reservations.
+// Reservations debit the wallet and failures credit it back. No calendar-month reset.
+function walletEnabled(a){return a.creditWalletV1===true}
+function pendingReservations(a,now=Date.now()){return walletEnabled(a)?Math.max(0,a.reserved||0):a.period===periodId(now)?Math.max(0,a.reserved||0):0}
+function creditAvailable(a,now=Date.now()){
+ const limit=limits[a.plan];
+ if(limit===null)return null;
+ if(limit===undefined)throw new HttpsError("failed-precondition","Unknown plan");
+ if(walletEnabled(a)){
+  if(!Number.isSafeInteger(a.creditWalletRemaining)||a.creditWalletRemaining<0)throw new HttpsError("failed-precondition","Credit balance needs review");
+  return a.creditWalletRemaining;
+ }
+ const same=a.period===periodId(now);
+ return Math.max(0,limit-(same?(a.used||0)+(a.reserved||0):0));
+}
+function purchasedCreditBalance(a,nextPlan,now=Date.now()){
+ const purchased=limits[nextPlan],current=creditAvailable(a,now);
+ if(purchased===undefined)throw new HttpsError("invalid-argument","Unknown plan");
+ const eligible=hasActivePaidPlan(a)||a.plan==="Free";
+ const transferred=eligible&&current!==null?current:0;
+ if(purchased===null)return {purchased:null,transferred:0,total:null};
+ const total=purchased+transferred;
+ if(!Number.isSafeInteger(total)||total<0)throw new HttpsError("failed-precondition","Credit total exceeds supported range");
+ return {purchased,transferred,total};
+}
 function purchaseDecision(a,target,now=Date.now()){
  if(!Object.hasOwn(pricesTHB,target)||target==="Free")return {allowed:false,reason:"Invalid paid plan"};
  const state=subscriptionState(a),active=hasActivePaidPlan(a),limit=limits[a.plan];
  if(a.plan!=="Free"&&["unconfigured","invalid"].includes(state))return {allowed:false,reason:"Subscription data needs administrator review before any new payment"};
  if(!active)return {allowed:true,kind:"new",resetQuota:true};
- const tiers=Object.keys(pricesTHB),remaining=limit===null?null:Math.max(0,limit-(a.period===periodId(now)?(a.used||0)+(a.reserved||0):0));
- const reserved=a.period===periodId(now)?(a.reserved||0):0;
- const exhausted=remaining===0&&reserved===0;
+ const tiers=Object.keys(pricesTHB),remaining=creditAvailable(a,now);
+ const reserved=pendingReservations(a,now);
+ if(reserved>0)return {allowed:false,reason:"Finish outstanding recordings before purchasing or renewing"};
+ const exhausted=remaining===0;
  const exp=Date.parse(a.planExpiresAt),nearExpiry=Number.isFinite(exp)&&exp>now&&exp-now<=7*86400000;
  if(exhausted&&tiers.indexOf(target)>=tiers.indexOf(a.plan))return {allowed:true,kind:"exhausted_topup",resetQuota:true};
  if(nearExpiry&&target===a.plan)return {allowed:true,kind:"renewal",resetQuota:false};
@@ -56,8 +82,8 @@ exports.usageStatus=onCall(options,async req=>{
  const id=uid(req),ref=await ensureAccount(id),snap=await ref.get();
  if(!snap.exists)throw new HttpsError("failed-precondition","Account not provisioned");
  const a=snap.data(),limit=limits[a.plan];if(limit===undefined)throw new HttpsError("failed-precondition","Invalid plan");
- const current=periodId(Date.now()),used=a.period===current?a.used||0:0,reserved=a.period===current?a.reserved||0:0;
- return {plan:a.plan,limit,used,reserved,remaining:limit===null?null:Math.max(0,limit-used-reserved),period:current,openBillingRequestId:a.openBillingRequestId||null,canBuyMore:purchaseDecision(a,a.plan).allowed,purchaseReason:purchaseDecision(a,a.plan).kind||null,planExpiresAt:typeof a.planExpiresAt==="string"?a.planExpiresAt:null,subscriptionStatus:subscriptionState(a)};
+ const current=periodId(Date.now()),used=a.period===current?a.used||0:0,reserved=pendingReservations(a);
+ return {plan:a.plan,limit,used,reserved,remaining:creditAvailable(a),walletEnabled:walletEnabled(a),period:current,openBillingRequestId:a.openBillingRequestId||null,canBuyMore:purchaseDecision(a,a.plan).allowed,purchaseReason:purchaseDecision(a,a.plan).kind||null,planExpiresAt:typeof a.planExpiresAt==="string"?a.planExpiresAt:null,subscriptionStatus:subscriptionState(a)};
 });
 exports.reserveCredit=onCall(options,async req=>{
  const id=uid(req),body=data(req),op=body.operationId,barcode=body.barcode;
@@ -76,14 +102,14 @@ exports.reserveCredit=onCall(options,async req=>{
   const override=kSnap.exists&&kSnap.data().operationId!==op;
   if(override){const approved=approvalSnap?.exists?approvalSnap.data():null;if(!approved||approved.barcode!==code||approved.status!=="approved"||approved.expiresAtMs<=Date.now()||(approved.requestedBy&&approved.requestedBy!==id))throw new HttpsError("already-exists","Barcode already scanned or recorded");if(kSnap.data().status!=="completed")throw new HttpsError("failed-precondition","Previous recording is not completed")}
   if(!override&&approvalId)throw new HttpsError("failed-precondition","Override is not required");
-  const samePeriod=a.period===period,used=samePeriod?(a.used||0):0,reserved=samePeriod?(a.reserved||0):0;
-  if(limit!==null&&used+reserved>=limit)throw new HttpsError("resource-exhausted","Monthly video quota exceeded");
+  const samePeriod=a.period===period,used=samePeriod?(a.used||0):0,reserved=pendingReservations(a),available=creditAvailable(a);
+  if(limit!==null&&available<=0)throw new HttpsError("resource-exhausted","Video credit balance exhausted");
   tx.set(rec,{barcode:code,status:"reserved",period,createdAt:FieldValue.serverTimestamp(),file:null,overrideOf:override?kSnap.data().operationId:null,approvalId:override?approvalId:null});
   if(override){tx.update(approvalRef,{status:"consumed",consumedBy:op,consumedAt:FieldValue.serverTimestamp()});if(approvalSnap.data().requestId)tx.update(ref.collection("duplicateRequests").doc(approvalSnap.data().requestId),{status:"consumed",consumedBy:op})}
   tx.set(key,{operationId:op,barcode:code,status:"reserved",previousOperationId:override?kSnap.data().operationId:null,createdAt:FieldValue.serverTimestamp()});
-  tx.update(ref,{period,used,reserved:reserved+1,updatedAt:FieldValue.serverTimestamp()});
+  tx.update(ref,{period,used,reserved:reserved+1,...(walletEnabled(a)&&limit!==null?{creditWalletRemaining:available-1}:{}),updatedAt:FieldValue.serverTimestamp()});
   tx.create(ref.collection("audit").doc(),{action:"reserve",recordingId:op,createdAt:FieldValue.serverTimestamp()});
-  return {recordingId:op,status:"reserved",remaining:limit===null?null:Math.max(0,limit-used-reserved-1)};
+  return {recordingId:op,status:"reserved",remaining:limit===null?null:Math.max(0,available-1)};
  })
 });
 exports.finalizeCredit=onCall(options,async req=>{
@@ -103,8 +129,11 @@ exports.finalizeCredit=onCall(options,async req=>{
   const next=success?"completed":"failed";
   tx.update(rec,{status:next,finalizedAt:FieldValue.serverTimestamp(),file:success?{filename:d.filename,bytes:d.bytes}:null});
   if(kSnap.exists&&kSnap.data().operationId===op){if(success)tx.update(key,{status:"completed",finalizedAt:FieldValue.serverTimestamp()});else if(r.overrideOf)tx.set(key,{operationId:r.overrideOf,barcode:r.barcode,status:"completed",restoredAt:FieldValue.serverTimestamp()});else tx.delete(key)}
-  // Credit count of a previous period stays in its own period; never deduct it from the current month.
-  if(a.period===r.period)tx.update(acc,{reserved:FieldValue.increment(-1),...(success?{used:FieldValue.increment(1)}:{}),updatedAt:FieldValue.serverTimestamp()});
+  // Wallet reservations span month boundaries; a failed recording always returns its reserved credit.
+  if(walletEnabled(a)){
+   if(!Number.isSafeInteger(a.reserved)||a.reserved<1)throw new HttpsError("failed-precondition","Wallet reservation count mismatch");
+   tx.update(acc,{reserved:FieldValue.increment(-1),...(success&&a.period===r.period?{used:FieldValue.increment(1)}:{}),...(!success&&limits[a.plan]!==null?{creditWalletRemaining:FieldValue.increment(1)}:{}),updatedAt:FieldValue.serverTimestamp()});
+  }else if(a.period===r.period)tx.update(acc,{reserved:FieldValue.increment(-1),...(success?{used:FieldValue.increment(1)}:{}),updatedAt:FieldValue.serverTimestamp()});
   tx.create(acc.collection("audit").doc(),{action:next,recordingId:op,createdAt:FieldValue.serverTimestamp()});
   return {status:next};
  })
@@ -182,7 +211,7 @@ exports.accountRole=onCall(options,async req=>{
 exports.subscriptionOverview=onCall(options,async req=>{
  const id=uid(req),ref=await ensureAccount(id),snap=await ref.get(),a=snap.data();
  const hist=await ref.collection("billingRequests").orderBy("createdAt","desc").limit(20).get();
- return {plan:a.plan,status:subscriptionState(a),expiresAt:a.planExpiresAt||null,priceTHB:pricesTHB[a.plan]??null,remaining:(limits[a.plan]===null?null:Math.max(0,limits[a.plan]-(a.period===periodId(Date.now())?(a.used||0)+(a.reserved||0):0))),purchaseWindow:purchaseDecision(a,a.plan),openBillingRequestId:a.openBillingRequestId||null,requests:hist.docs.map(x=>({id:x.id,plan:x.data().plan,amountTHB:x.data().amountTHB,purchaseKind:x.data().purchaseKind||"new",status:x.data().status,createdAt:x.data().createdAt?.toDate()?.toISOString()||null}))};
+ return {plan:a.plan,status:subscriptionState(a),expiresAt:a.planExpiresAt||null,priceTHB:pricesTHB[a.plan]??null,remaining:creditAvailable(a),walletEnabled:walletEnabled(a),purchaseWindow:purchaseDecision(a,a.plan),openBillingRequestId:a.openBillingRequestId||null,requests:hist.docs.map(x=>({id:x.id,plan:x.data().plan,amountTHB:x.data().amountTHB,transferredCredits:x.data().transferredCredits??null,creditsPurchased:x.data().creditsPurchased??null,balanceAfter:x.data().balanceAfter??null,activationExpiresAt:x.data().activationExpiresAt||null,purchaseKind:x.data().purchaseKind||"new",status:x.data().status,createdAt:x.data().createdAt?.toDate()?.toISOString()||null}))};
 });
 exports.requestPlanChange=onCall(options,async req=>{
  const id=uid(req),plan=data(req).plan;
@@ -247,16 +276,20 @@ async function reconcileCharge(accountId,requestId,chargeId){
    const currentEnd=Date.parse(a.planExpiresAt);
    const base=Number.isFinite(currentEnd)&&currentEnd>Date.now()&&item.purchaseKind!=="new"?currentEnd:Date.now();
    const expiresAt=new Date(base+30*86400000).toISOString();
-   const reset=item.purchaseKind==="exhausted_topup"||item.purchaseKind==="new";
-   if(reset&&(a.period===periodId(Date.now())?(a.reserved||0):0)>0){
-    tx.update(ref,{status:"payment_review",reviewReason:"pending_recordings_prevent_quota_reset",reviewRequiredAt:FieldValue.serverTimestamp()});
+   // Reserve before settling must be zero, otherwise an in-flight recording may be lost.
+   if(pendingReservations(a)>0){
+    tx.update(ref,{status:"payment_review",reviewReason:"pending_recordings_prevent_credit_transfer",reviewRequiredAt:FieldValue.serverTimestamp()});
     tx.create(acc.collection("audit").doc(),{action:"payment_requires_manual_review",billingRequestId:requestId,omiseChargeId:chargeId,createdAt:FieldValue.serverTimestamp()});
     return {status:"payment_review",requiresSupport:true};
    }
-   tx.update(acc,{plan:item.plan,planExpiresAt:expiresAt,lastPaidAt:FieldValue.serverTimestamp(),billingVersion:FieldValue.increment(1),...(reset?{period:periodId(Date.now()),used:0,reserved:0}:{}),...(lockOk?{openBillingRequestId:FieldValue.delete()}:{}),updatedAt:FieldValue.serverTimestamp()});
-   tx.update(ref,{status:"paid",paidAt:FieldValue.serverTimestamp(),paymentProvider:"omise",activationExpiresAt:expiresAt,quotaReset:reset});
-   tx.create(acc.collection("audit").doc(),{action:reset?"subscription_quota_refilled":"subscription_paid",billingRequestId:requestId,omiseChargeId:chargeId,plan:item.plan,createdAt:FieldValue.serverTimestamp()});
-   return {status:"paid",plan:item.plan,expiresAt,quotaReset:reset};
+   const credits=purchasedCreditBalance(a,item.plan);
+   tx.update(acc,{plan:item.plan,planExpiresAt:expiresAt,lastPaidAt:FieldValue.serverTimestamp(),billingVersion:FieldValue.increment(1),
+    creditWalletV1:true,creditWalletRemaining:credits.total,period:periodId(Date.now()),used:0,reserved:0,
+    ...(lockOk?{openBillingRequestId:FieldValue.delete()}:{}),updatedAt:FieldValue.serverTimestamp()});
+   tx.update(ref,{status:"paid",paidAt:FieldValue.serverTimestamp(),paymentProvider:"omise",activationExpiresAt:expiresAt,
+    creditsPurchased:credits.purchased,transferredCredits:credits.transferred,balanceAfter:credits.total,expiryBefore:a.planExpiresAt||null});
+   tx.create(acc.collection("audit").doc(),{action:"subscription_credits_merged",billingRequestId:requestId,omiseChargeId:chargeId,plan:item.plan,creditsPurchased:credits.purchased,transferredCredits:credits.transferred,balanceAfter:credits.total,createdAt:FieldValue.serverTimestamp()});
+   return {status:"paid",plan:item.plan,expiresAt,creditsPurchased:credits.purchased,transferredCredits:credits.transferred,balanceAfter:credits.total};
   }
   if(["failed","expired"].includes(charge.status)&&!["failed","expired"].includes(item.status)){tx.update(ref,{status:charge.status});if(a.openBillingRequestId===requestId)tx.update(acc,{openBillingRequestId:FieldValue.delete()})}
   return {status:charge.status};
