@@ -59,13 +59,14 @@ function purchaseDecision(a,target,now=Date.now()){
  if(!Object.hasOwn(pricesTHB,target)||target==="Free")return {allowed:false,reason:"Invalid paid plan"};
  const state=subscriptionState(a),active=hasActivePaidPlan(a),limit=limits[a.plan];
  if(a.plan!=="Free"&&["unconfigured","invalid"].includes(state))return {allowed:false,reason:"Subscription data needs administrator review before any new payment"};
- if(!active)return {allowed:true,kind:"new",resetQuota:true};
+ if(pendingReservations(a,now)>0)return {allowed:false,reason:"Finish outstanding recordings before purchasing or renewing"};
+ if(!active)return {allowed:true,kind:"new",resetQuota:false};
  const tiers=Object.keys(pricesTHB),remaining=creditAvailable(a,now);
  const reserved=pendingReservations(a,now);
  if(reserved>0)return {allowed:false,reason:"Finish outstanding recordings before purchasing or renewing"};
  const exhausted=remaining===0;
  const exp=Date.parse(a.planExpiresAt),nearExpiry=Number.isFinite(exp)&&exp>now&&exp-now<=7*86400000;
- if(exhausted&&tiers.indexOf(target)>=tiers.indexOf(a.plan))return {allowed:true,kind:"exhausted_topup",resetQuota:true};
+ if(exhausted&&tiers.indexOf(target)>=tiers.indexOf(a.plan))return {allowed:true,kind:"exhausted_topup",resetQuota:false};
  if(nearExpiry&&target===a.plan)return {allowed:true,kind:"renewal",resetQuota:false};
  return {allowed:false,reason:reserved>0&&remaining===0?"Finish outstanding recordings before buying more": "Current plan is active. Buy the same/higher tier only after quota is exhausted, or renew the same tier within 7 days of expiry."};
 }
@@ -409,7 +410,7 @@ exports.paymentAudit=onCall(paymentSecrets,async req=>{
  const item=snap.data(),account=(await acc.get()).data();
  const result={requestId:id,status:item.status,plan:item.plan,amountTHB:item.amountTHB,
    provider:"omise",hasChargeId:!!item.omiseChargeId,paidAt:item.paidAt?.toDate?.()?.toISOString()||null,
-   activationExpiresAt:item.activationExpiresAt||null,currentPlan:account?.plan||null,
+   activationExpiresAt:item.activationExpiresAt||null,creditsPurchased:item.creditsPurchased??null,transferredCredits:item.transferredCredits??null,balanceAfter:item.balanceAfter??null,currentCreditBalance:account?creditAvailable(account):null,currentPlan:account?.plan||null,
    currentExpiresAt:account?.planExpiresAt||null};
  if(item.omiseChargeId){
    const charge=await omiseAPI("/charges/"+encodeURIComponent(item.omiseChargeId));
