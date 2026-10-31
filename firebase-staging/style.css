@@ -180,3 +180,44 @@
 .users-device-list{padding:3px 0;font-size:15px}.users-device-list>div{padding:13px 0;border-bottom:1px solid #edf1f6;justify-content:space-between;line-height:1.6}.users-device-list button{font-size:14px}
 .users-hint{color:#647890;font-size:13px;line-height:1.7;margin:15px 0 0}
 @media(max-width:820px){.users-cards{grid-template-columns:1fr}.users-stat strong{font-size:23px}.users-panel{padding:18px}.users-head h3{font-size:21px}}
+
+
+/* PACKTOOK V4.9 — readability and differentiated pricing */
+#appPage{font-size:16px;line-height:1.65}
+#appPage .nav{font-size:15px;line-height:1.4}
+#appPage .sidebarbottom{font-size:14px}
+#appPage .account,#appPage .metric small,#appPage .metric span{font-size:14px}
+#appPage .tabcontent label{font-size:15px}
+#appPage .tabcontent input,#appPage .tabcontent select,#appPage .tabcontent button,#appPage .tabcontent textarea{font-size:15px}
+#appPage .tabcontent p,#appPage .tabcontent li,#appPage .tabcontent td,#appPage .tabcontent th{font-size:15px;line-height:1.7}
+#appPage .tabcontent h3{line-height:1.45}
+#appPage .eyebrow,#appPage .pill{font-size:12px}
+#appPage .users-page{font-size:16px}
+#appPage .users-head p,#appPage .users-account p,#appPage .users-hint{font-size:14px}
+#appPage .users-stat>span{font-size:15px}
+#appPage .users-stat small{font-size:13px}
+#appPage .users-account strong{font-size:16px}
+#appPage .plans{grid-template-columns:repeat(auto-fit,minmax(225px,1fr));gap:16px}
+#appPage .plan{position:relative;padding:22px;border-radius:17px;display:flex;flex-direction:column;min-height:290px}
+#appPage .plan.selected{border:2px solid #1788d0;background:#f4faff}
+#appPage .plan-heading{display:flex;gap:12px;align-items:center;min-height:56px}
+#appPage .plan-icon{display:grid;place-items:center;font-size:30px;flex-shrink:0;width:54px;height:54px;background:#e8f3ff;border-radius:14px}
+#appPage .plan:nth-child(1) .plan-icon{background:#e9f9ef}
+#appPage .plan:nth-child(2) .plan-icon{background:#e7f5ff}
+#appPage .plan:nth-child(3) .plan-icon{background:#e8eefe}
+#appPage .plan:nth-child(4) .plan-icon{background:#eef9ed}
+#appPage .plan:nth-child(5) .plan-icon{background:#fff4e6}
+#appPage .plan:nth-child(6) .plan-icon{background:#f6ecff}
+#appPage .plan-name{min-width:0}
+#appPage .plan h4{font-size:20px;font-weight:800;color:#122d50}
+#appPage .plan-name small{font-size:13px;color:#637890;display:block}
+#appPage .plan-current{margin-left:auto;font-size:12px;font-weight:700;background:#d7f5e5;border-radius:20px;color:#176943;padding:4px 9px;white-space:nowrap}
+#appPage .plan .price{font-size:32px;line-height:1.2;margin:20px 0 12px}
+#appPage .plan .price small{font-size:14px;font-weight:500;color:#64758a}
+#appPage .plan .plan-feature{font-size:15px;color:#334b67;margin:3px 0}
+#appPage .plan button{margin-top:auto;padding:11px 8px;min-height:46px}
+#appPage .subscription-lock{padding:12px 16px;border:1px solid #f0d5ab;border-radius:12px;background:#fffbf4;color:#805317;font-size:15px;line-height:1.7;margin:12px 0}
+#appPage #subscriptionRequests{font-size:16px}
+#appPage #subscriptionRequests>div{border-top:1px solid #eaf0f6;padding:14px 0;margin:0!important}
+#appPage #subscriptionRequests button{margin-top:6px;min-height:42px}
+@media(max-width:700px){#appPage .nav{font-size:14px}#appPage .plans{grid-template-columns:repeat(auto-fit,minmax(225px,1fr))}#appPage .plan{min-height:272px}#appPage .main{padding:20px 14px}}
