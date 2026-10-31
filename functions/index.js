@@ -255,10 +255,45 @@ exports.accountRole=onCall(options,async req=>{
 });
 
 
+function publicBillingRequest(doc){
+ const x=doc.data();
+ return {id:doc.id,plan:x.plan||"—",amountTHB:x.amountTHB??null,
+  transferredCredits:x.transferredCredits??null,creditsPurchased:x.creditsPurchased??null,
+  balanceAfter:x.balanceAfter??null,activationExpiresAt:x.activationExpiresAt||null,
+  purchaseKind:x.purchaseKind||"new",status:x.status||"unknown",
+  createdAt:x.createdAt?.toDate?.()?.toISOString()||null};
+}
 exports.subscriptionOverview=onCall(options,async req=>{
  const id=uid(req),ref=await ensureAccount(id),snap=await ref.get(),a=snap.data();
- const hist=await ref.collection("billingRequests").orderBy("createdAt","desc").limit(20).get();
- return {plan:a.plan,status:subscriptionState(a),expiresAt:a.planExpiresAt||null,priceTHB:pricesTHB[a.plan]??null,remaining:creditAvailable(a),walletEnabled:walletEnabled(a),purchaseWindow:purchaseDecision(a,a.plan),openBillingRequestId:a.openBillingRequestId||null,requests:hist.docs.map(x=>({id:x.id,plan:x.data().plan,amountTHB:x.data().amountTHB,transferredCredits:x.data().transferredCredits??null,creditsPurchased:x.data().creditsPurchased??null,balanceAfter:x.data().balanceAfter??null,activationExpiresAt:x.data().activationExpiresAt||null,purchaseKind:x.data().purchaseKind||"new",status:x.data().status,createdAt:x.data().createdAt?.toDate()?.toISOString()||null}))};
+ const history=await ref.collection("billingRequests").orderBy("createdAt","desc").limit(20).get();
+ const docs=[...history.docs];
+ // The current unpaid request must remain actionable even after many later records.
+ if(a.openBillingRequestId&&!docs.some(doc=>doc.id===a.openBillingRequestId)){
+  const open=await ref.collection("billingRequests").doc(a.openBillingRequestId).get();
+  if(open.exists&&open.data().requestedBy===id)docs.unshift(open);
+ }
+ const period=periodId(Date.now());
+ return {plan:a.plan,status:subscriptionState(a),expiresAt:a.planExpiresAt||null,
+  priceTHB:pricesTHB[a.plan]??null,remaining:creditAvailable(a),
+  used:a.period===period?(a.used||0):0,reserved:pendingReservations(a),
+  walletEnabled:walletEnabled(a),purchaseWindow:purchaseDecision(a,a.plan),
+  openBillingRequestId:a.openBillingRequestId||null,requests:docs.map(publicBillingRequest)};
+});
+exports.billingHistory=onCall(options,async req=>{
+ const id=uid(req),d=data(req),ref=await ensureAccount(id);
+ if(d.afterId!==undefined&&d.afterId!==null&&!validOp(d.afterId))
+  throw new HttpsError("invalid-argument","Invalid history cursor");
+ const collection=ref.collection("billingRequests");
+ let query=collection.orderBy("createdAt","desc").limit(13);
+ if(d.afterId){
+  const cursor=await collection.doc(d.afterId).get();
+  if(!cursor.exists||cursor.data().requestedBy!==id||!cursor.data().createdAt)
+   throw new HttpsError("invalid-argument","History cursor not found");
+  query=query.startAfter(cursor);
+ }
+ const snap=await query.get(),items=snap.docs.slice(0,12);
+ return {items:items.map(publicBillingRequest),
+  nextCursor:snap.docs.length>12&&items.length?items[items.length-1].id:null};
 });
 exports.requestPlanChange=onCall(options,async req=>{
  const id=uid(req),plan=data(req).plan;
