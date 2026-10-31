@@ -748,11 +748,14 @@ async function verifySavedVideo(file,expectedSeconds){
   return {width:video.videoWidth,height:video.videoHeight,duration:Number.isFinite(video.duration)?video.duration:null,frames:frames.length};
  }finally{video.pause();video.removeAttribute('src');video.load();URL.revokeObjectURL(url)}
 }
-async function stopRecording(reason='manual'){if(!activeBarcode||!recorder||ending)return;ending=true;const rec=recorder;const code=activeBarcode;const begun=startMs;const stopRequestedAt=performance.now();
- // Stop the encoder synchronously before disk I/O, verification or Firebase finalization.
- // MediaRecorder.stop() automatically emits its final dataavailable chunk.
+async function stopRecording(reason='manual'){
+ if(!activeBarcode||!recorder||ending)return;
+ ending=true;
+ const rec=recorder,code=activeBarcode,begun=startMs,stopRequestedAt=performance.now(),op=recordingOp;
  let stopped=Promise.resolve();
  try{
+  // MediaRecorder.stop() is issued immediately. Saving and Firebase confirmation
+  // are separate stages, never reported as completed until both succeed.
   if(rec.state!=='inactive')stopped=new Promise((resolve,reject)=>{
    let done=false;
    const timeout=setTimeout(()=>{if(!done){done=true;reject(Error('กล้องไม่ตอบสนองภายใน 10 วินาที'))}},10000);
@@ -761,17 +764,57 @@ async function stopRecording(reason='manual'){if(!activeBarcode||!recorder||endi
    try{rec.stop()}catch(e){clearTimeout(timeout);reject(e)}
   });
   clearInterval(ticker);ticker=null;
-  $('recordState').textContent='⏹ รับคำสั่งหยุดแล้ว • กำลังสร้างและตรวจสอบไฟล์วิดีโอ…';
+  $('recordState').textContent='⏹ รับคำสั่งหยุดแล้ว • กำลังเขียนไฟล์วิดีโอ…';
   $('recordState').classList.remove('active');$('recordState').classList.add('saving');
   $('recBadge').textContent='■ STOPPED • SAVING';$('recBadge').classList.remove('recording');$('recBadge').classList.add('saving');
-  $('stopBtn').disabled=true;
-  $('recTimer').textContent='⏹ SAVING';
-  updateHealth('กำลังบันทึกไฟล์ • กรุณารอระบบยืนยันสำเร็จ');
+  $('stopBtn').disabled=true;$('recTimer').textContent='⏹ SAVING';
+  updateHealth('กำลังบันทึกไฟล์ • กรุณารอการยืนยันสำเร็จ');
+  updatePendingOperation({phase:'stopping'});
   console.info('[PACKTOOK] Barcode → recorder.stop() requested:',Math.round(performance.now()-stopRequestedAt),'ms');
   await stopped;
   console.info('[PACKTOOK] Barcode → MediaRecorder stop event:',Math.round(performance.now()-stopRequestedAt),'ms');
   if(recordingFailure)throw Error(recordingFailure);
-  const blob=new Blob(parts,{type:'video/webm'});if(blob.size<1000)throw Error('ไฟล์วิดีโอว่างหรือข้อมูลไม่สมบูรณ์');const timestamp=Date.now(),seconds=Math.max(1,Math.round((timestamp-begun)/1000));const filename=`${safeFilename(code)}_${new Date(timestamp).toISOString().replace(/[:.]/g,'-')}.webm`;const handle=await folder.getFileHandle(filename,{create:true});currentWritable=await handle.createWritable();await currentWritable.write(blob);await currentWritable.close();currentWritable=null;const saved=await handle.getFile();if(saved.size!==blob.size)throw Error('ขนาดไฟล์ที่บันทึกไม่ตรงกัน');$('recordState').textContent='กำลังตรวจสอบไฟล์วิดีโอ…';const verified=await verifySavedVideo(saved,seconds);if(!recordingOp)throw Error('ไม่พบการจองเครดิตบน Server');finalizePending=true;await credit().finalize(recordingOp,true,{filename,bytes:saved.size});finalizePending=false;recordingOp=null;clearPending();showRecovery();await refreshRemoteQuota();store.logs.push({month:monthKey(),day:new Date(timestamp).toLocaleDateString('en-CA'),timestamp,barcode:code,worker:$('worker').value.trim()||'Unknown',seconds,filename,quality:$('actualQuality').textContent,verified});persist();updateQuota();console.info('[PACKTOOK] Barcode stop → file saved, verified and credited:',Math.round(performance.now()-stopRequestedAt),'ms');toast('✓ บันทึกสำเร็จ: '+filename+(reason==='camera_lost'?' (กล้องหลุด)': ''));}catch(e){updateHealth('⚠ บันทึกมีปัญหา','danger-health');toast('บันทึก/ตรวจสอบมีปัญหา: '+e.message+' กรุณาตรวจเครดิตและไฟล์ในโฟลเดอร์');if(recordingOp&&!finalizePending){const op=recordingOp;recordingOp=null;try{await credit().finalize(op,false);clearPending();await refreshRemoteQuota()}catch(err){toast('คืนเครดิตไม่สำเร็จ: '+err.message)}}else if(finalizePending){toast('ไม่ทราบผลยืนยันเครดิต ห้ามอัดซ้ำจนกว่าจะตรวจสอบ');}if(currentWritable){try{await currentWritable.abort()}catch{}currentWritable=null}}finally{clearInterval(ticker);finalizePending=false;activeBarcode='';recorder=null;parts=[];ending=false;recordingFailure='';$('stopBtn').disabled=true;$('recTimer').hidden=true;$('recordState').classList.remove('active','saving');$('recordState').textContent=recordingOp||pending()?'⚠ ตรวจสอบเครดิตจองค้างก่อนสแกนถัดไป':'พร้อมสแกน Barcode ถัดไป';$('recBadge').classList.remove('recording','saving');$('recBadge').textContent=streamGood()?'● CAMERA ON':'● CAMERA OFF';if(reason==='camera_lost')void recoverCamera();else updateHealth(streamGood()?'● กล้องพร้อมใช้งาน':'● ยังไม่เปิดกล้อง',streamGood()?'good-health':'');$('barcode').focus()}}
+  if(!videoWriter)throw Error('ไม่พบตัวเขียนวิดีโอลงดิสก์');
+  const saved=await videoWriter.finish();
+  if(saved.size<1000)throw Error('ไฟล์วิดีโอว่างหรือข้อมูลไม่สมบูรณ์');
+  const timestamp=Date.now(),seconds=Math.max(1,Math.round((timestamp-begun)/1000));
+  const filename=videoWriter.filename;
+  updatePendingOperation({phase:'file_written',filename,bytes:saved.size,seconds,timestamp});
+  $('recordState').textContent='ตรวจสอบไฟล์วิดีโอที่บันทึกแล้ว…';
+  const verified=await verifySavedVideo(saved,seconds);
+  updatePendingOperation({phase:'verified',verified});
+  if(!op)throw Error('ไม่พบการจองเครดิตบน Server');
+  finalizePending=true;
+  updatePendingOperation({phase:'finalizing'});
+  await credit().finalize(op,true,{filename,bytes:saved.size});
+  finalizePending=false;
+  updatePendingOperation({phase:'completed'});
+  // Store the local video reference before clearing the durable operation intent.
+  await saveVideoHistory({month:monthKey(new Date(timestamp)),day:new Date(timestamp).toLocaleDateString('en-CA'),timestamp,barcode:code,worker:$('worker').value.trim()||'Unknown',seconds,filename,quality:$('actualQuality').textContent,verified});
+  recordingOp=null;videoWriter=null;clearPending();showRecovery();
+  void refreshRemoteQuota().catch(e=>console.warn('Quota refresh delayed after successful finalization',e));
+  console.info('[PACKTOOK] Barcode stop → file saved, verified and credited:',Math.round(performance.now()-stopRequestedAt),'ms');
+  toast('✓ บันทึกสำเร็จ: '+filename+(reason==='camera_lost'?' (กล้องหลุด)':''));
+ }catch(e){
+  updateHealth('⚠ วิดีโอ/เครดิตรอตรวจสอบ','danger-health');
+  console.error('PACKTOOK stop needs manual review',e);
+  if(videoWriter){try{await videoWriter.preservePartial()}catch(err){console.warn('Preserve partial video',err)}}
+  // A usable file may already exist, or Firebase may have committed despite a
+  // timeout. NEVER finalize(false) automatically after REC has started.
+  updatePendingOperation({phase:'needs_review',lastError:String(e.message||e).slice(0,220)});
+  toast('⚠ บันทึกยังไม่ยืนยัน: '+e.message+' • ตรวจไฟล์และเครดิตจองค้างก่อนแพ็กต่อ');
+ }finally{
+  clearInterval(ticker);ticker=null;
+  finalizePending=false;activeBarcode='';recorder=null;videoWriter=null;ending=false;recordingFailure='';
+  $('stopBtn').disabled=true;$('recTimer').hidden=true;
+  $('recordState').classList.remove('active','saving');
+  $('recordState').textContent=pending()?'⚠ มีไฟล์/เครดิตรอตรวจสอบ — กดตรวจสอบเครดิตจองค้าง':'พร้อมสแกน Barcode ถัดไป';
+  $('recBadge').classList.remove('recording','saving');$('recBadge').textContent=streamGood()?'● CAMERA ON':'● CAMERA OFF';
+  if(reason==='camera_lost')void recoverCamera();
+  else updateHealth(pending()?'⚠ รอยืนยันเครดิต/ไฟล์':(streamGood()?'● กล้องพร้อมใช้งาน':'● ยังไม่เปิดกล้อง'),pending()?'danger-health':(streamGood()?'good-health':''));
+  showRecovery();$('barcode').focus();
+ }
+}
 $('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginError').hidden=true;try{await credit().login($('email').value.trim(),$('password').value);remoteUser=true;$('loginPage').hidden=true;$('appPage').hidden=false;await refreshRemoteQuota();showTab('packing');$('barcode').focus()}catch(err){$('loginError').hidden=false;$('loginError').textContent=err.message}});
 $('showPassword').onclick=()=>{$('password').type=$('password').type==='password'?'text':'password'};
 $('logout').onclick=async()=>{if(activeBarcode||recordingOp)return toast('กรุณาหยุดการบันทึกและตรวจเครดิตก่อนออกจากระบบ');await credit().logout();remoteUser=null;remoteQuota=null;$('appPage').hidden=true;$('loginPage').hidden=false;stream?.getTracks().forEach(t=>t.stop());stream=null;cameraState(false)};
