@@ -572,3 +572,39 @@
 #appPage .history-pagination{display:flex;justify-content:center;padding:18px 6px 8px}
 #appPage #historyNext{min-width:260px;min-height:52px;font-size:17px;font-weight:800;border-radius:12px}
 #appPage #historyNext[hidden]{display:none}
+
+
+/* PACKTOOK V5.7 — diagnostic dashboard: clear, readable, local-only charts */
+#appPage #perfPanel{margin-bottom:20px;padding:24px 26px;background:linear-gradient(125deg,#fff,#f7fbff);border:1px solid #d8e7f5;border-radius:20px}
+#appPage .perf-head{display:flex;align-items:start;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:18px}
+#appPage .perf-head h3{font-size:clamp(23px,2vw,29px);font-weight:850;color:#17385d;margin:5px 0}
+#appPage .perf-eyebrow{font-size:13px;color:#2577bb;letter-spacing:.1em;font-weight:850}
+#appPage .perf-head p{font-size:16px;line-height:1.6;margin:4px 0;color:#68819e}
+#appPage .perf-controls{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+#appPage .perf-controls label{font-size:15px;color:#536f8d}
+#appPage .perf-controls select,#appPage .perf-controls button{font-size:16px;min-height:43px}
+#appPage .perf-stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+#appPage .perf-stat{background:#fff;border:1px solid #e0e9f5;border-radius:15px;padding:16px;display:flex;flex-direction:column;gap:7px;min-width:0}
+#appPage .perf-stat>span{font-size:15px;color:#667f9a;font-weight:750}
+#appPage .perf-stat>strong{font-size:clamp(21px,2vw,30px);color:#16395d;line-height:1.25;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+#appPage .perf-stat>small{font-size:13px;color:#8499af;line-height:1.45}
+#appPage .perf-stat[data-status=good]>strong{color:#198156}
+#appPage .perf-stat[data-status=slow]>strong{color:#bd6b13}
+#appPage .perf-footline{display:flex;gap:14px;justify-content:space-between;flex-wrap:wrap;color:#627c97;font-size:15px;margin:15px 0}
+#appPage .perf-footline strong{color:#b34848}
+#appPage .perf-detail{border:1px solid #deebf8;background:#fff;border-radius:14px;padding:14px 16px;margin:15px 0}
+#appPage .perf-detail summary{cursor:pointer;font-size:17px;font-weight:800;color:#225e98}
+#appPage .perf-explainer{font-size:15px!important;color:#607e99;margin:12px 0}
+#appPage .perf-table{width:100%;border-collapse:collapse}
+#appPage .perf-table th,#appPage .perf-table td{font-size:15px;padding:11px 12px;text-align:left;white-space:nowrap}
+#appPage .perf-table th{color:#5f7895;background:#f0f6fe}
+#appPage .perf-table td{border-bottom:1px solid #e7edf7;font-variant-numeric:tabular-nums}
+#appPage .perf-failtypes{font-size:15px!important;color:#586d84}
+#appPage .perf-recent-title{font-size:16px;font-weight:800;margin-top:16px}
+#appPage .perf-recent{font-size:14px;line-height:1.8;color:#4e6986;margin:6px 0;padding-left:20px}
+#appPage .perf-actions{display:flex;gap:11px;flex-wrap:wrap;margin-top:16px}
+#appPage .perf-actions button{font-size:15px;min-height:45px;border-radius:10px}
+#appPage .perf-note{font-size:13px!important;margin:12px 0 0;color:#7d94ab}
+#appPage .perf-alert{font-size:14px;color:#b35d16;background:#fff3df;padding:10px;border-radius:9px}
+@media(max-width:1140px){#appPage .perf-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){#appPage #perfPanel{padding:17px 14px}#appPage .perf-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}#appPage .perf-stat{padding:12px}#appPage .perf-stat>strong{font-size:21px}#appPage .perf-actions button{flex:1}}
