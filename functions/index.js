@@ -84,7 +84,7 @@ exports.usageStatus=onCall(options,async req=>{
  if(!snap.exists)throw new HttpsError("failed-precondition","Account not provisioned");
  const a=snap.data(),limit=limits[a.plan];if(limit===undefined)throw new HttpsError("failed-precondition","Invalid plan");
  const current=periodId(Date.now()),used=a.period===current?a.used||0:0,reserved=pendingReservations(a);
- return {plan:a.plan,limit,used,reserved,remaining:creditAvailable(a),walletEnabled:walletEnabled(a),period:current,openBillingRequestId:a.openBillingRequestId||null,canBuyMore:purchaseDecision(a,a.plan).allowed,purchaseReason:purchaseDecision(a,a.plan).kind||null,planExpiresAt:typeof a.planExpiresAt==="string"?a.planExpiresAt:null,subscriptionStatus:subscriptionState(a)};
+ return {plan:a.plan,limit,used,reserved,remaining:creditAvailable(a),walletEnabled:walletEnabled(a),walletStartingCredits:walletEnabled(a)?a.walletStartingCredits??null:null,period:current,openBillingRequestId:a.openBillingRequestId||null,canBuyMore:purchaseDecision(a,a.plan).allowed,purchaseReason:purchaseDecision(a,a.plan).kind||null,planExpiresAt:typeof a.planExpiresAt==="string"?a.planExpiresAt:null,subscriptionStatus:subscriptionState(a)};
 });
 exports.reserveCredit=onCall(options,async req=>{
  const id=uid(req),body=data(req),op=body.operationId,barcode=body.barcode;
@@ -285,7 +285,7 @@ async function reconcileCharge(accountId,requestId,chargeId){
    }
    const credits=purchasedCreditBalance(a,item.plan);
    tx.update(acc,{plan:item.plan,planExpiresAt:expiresAt,lastPaidAt:FieldValue.serverTimestamp(),billingVersion:FieldValue.increment(1),
-    creditWalletV1:true,creditWalletRemaining:credits.total,period:periodId(Date.now()),used:0,reserved:0,
+    creditWalletV1:true,creditWalletRemaining:credits.total,walletStartingCredits:credits.total,period:periodId(Date.now()),used:0,reserved:0,
     ...(lockOk?{openBillingRequestId:FieldValue.delete()}:{}),updatedAt:FieldValue.serverTimestamp()});
    tx.update(ref,{status:"paid",paidAt:FieldValue.serverTimestamp(),paymentProvider:"omise",activationExpiresAt:expiresAt,
     creditsPurchased:credits.purchased,transferredCredits:credits.transferred,balanceAfter:credits.total,expiryBefore:a.planExpiresAt||null});
@@ -410,7 +410,7 @@ exports.paymentAudit=onCall(paymentSecrets,async req=>{
  const item=snap.data(),account=(await acc.get()).data();
  const result={requestId:id,status:item.status,plan:item.plan,amountTHB:item.amountTHB,
    provider:"omise",hasChargeId:!!item.omiseChargeId,paidAt:item.paidAt?.toDate?.()?.toISOString()||null,
-   activationExpiresAt:item.activationExpiresAt||null,creditsPurchased:item.creditsPurchased??null,transferredCredits:item.transferredCredits??null,balanceAfter:item.balanceAfter??null,currentCreditBalance:account?creditAvailable(account):null,currentPlan:account?.plan||null,
+   activationExpiresAt:item.activationExpiresAt||null,expiryBefore:item.expiryBefore||null,creditsPurchased:item.creditsPurchased??null,transferredCredits:item.transferredCredits??null,balanceAfter:item.balanceAfter??null,currentCreditBalance:account?creditAvailable(account):null,currentPlan:account?.plan||null,
    currentExpiresAt:account?.planExpiresAt||null};
  if(item.omiseChargeId){
    const charge=await omiseAPI("/charges/"+encodeURIComponent(item.omiseChargeId));
