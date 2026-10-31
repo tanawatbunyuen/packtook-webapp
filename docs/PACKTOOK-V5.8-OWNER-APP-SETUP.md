@@ -90,7 +90,8 @@ The default `firebase.json` stays untouched and customer deployments will contin
 - Unclassified legacy payment records are excluded from both verified Test and Live revenue, with a visible warning.
 - 12 months of new account registrations and test payments (Asia/Bangkok month boundary), client 6/12 month selector.
 - Current-plan distribution and sales by purchased plan.
-- Read-only customer account listing, 25 per page; owner sees UID/plan/status/createdAt/expiry, not passwords or billing secrets.
+- Read-only customer account listing, 25 per page; authorized owner now sees **Firebase Authentication Email, UID, plan, status, spendable video credits, reserved credits, creation date and expiry**. No passwords or billing secrets are exposed. The account directory email lookup occurs only in server-side Admin SDK after validating the Platform Owner custom claim.
+- Credit display follows the same `creditAvailable(account)` wallet/legacy quota calculation used by PACKTOOK. Active Pro is shown as unlimited, expired paid plans show 0 *usable* credits, and inconsistent quota data is marked as needing review, rather than silently displayed as 0. Reserved video credits are shown separately. Free plans have no paid expiry date.
 - Customer and payment data come from Firestore payment snapshots. This MVP is **not** a real-time Omise refunds/chargebacks reconciliation or accounting ledger.
 
 **Scaling guard:** summary scans at most 1,200 customer accounts per refresh and marks `truncated=true` if there are more. In that case totals are incomplete; plan a server-side aggregation/scheduled rollup before larger production traffic. Every refresh performs Firestore reads and may incur cost. Do not repeatedly refresh unnecessarily.
@@ -104,7 +105,7 @@ The default `firebase.json` stays untouched and customer deployments will contin
 5. All test charge amounts are labeled **not real revenue**; no test purchases appear under real-revenue KPI.
 6. Transactions without verifiable Test/Live mode appear in the unclassified notice, not paid totals.
 7. Monthly charts show signups and test receipts; per-plan sales and active/expired counts appear.
-8. Customer table loads the next 25 records without data duplication.
+8. Customer table loads the next 25 records without data duplication and shows each authorized customer’s Email, video credit balance, reserved credits and expiry. Verify Free monthly remaining, paid wallet carryover, expired paid=0 usable, Pro=unlimited and missing Auth email display.
 9. Confirm Owner app refresh/logout and access removal after a token refresh works.
 10. Existing customer PACKTOOK Payments, Packing and Users remain unchanged; no cross-account data leak via customer client.
 11. More than 1,200 accounts: summary warns it is partial; never display an incomplete total as comprehensive.
