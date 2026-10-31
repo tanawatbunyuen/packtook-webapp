@@ -32,8 +32,9 @@ function hasActivePaidPlan(a){return a.plan!=="Free"&&subscriptionState(a)==="ac
 // buy the same/higher tier when video quota is exhausted (not downgraded).
 function purchaseDecision(a,target,now=Date.now()){
  if(!Object.hasOwn(pricesTHB,target)||target==="Free")return {allowed:false,reason:"Invalid paid plan"};
- const active=hasActivePaidPlan(a),limit=limits[a.plan];
- if(!active)return {allowed:true,kind:"new",resetQuota:false};
+ const state=subscriptionState(a),active=hasActivePaidPlan(a),limit=limits[a.plan];
+ if(a.plan!=="Free"&&["unconfigured","invalid"].includes(state))return {allowed:false,reason:"Subscription data needs administrator review before any new payment"};
+ if(!active)return {allowed:true,kind:"new",resetQuota:true};
  const tiers=Object.keys(pricesTHB),remaining=limit===null?null:Math.max(0,limit-(a.period===periodId(now)?(a.used||0)+(a.reserved||0):0));
  const reserved=a.period===periodId(now)?(a.reserved||0):0;
  const exhausted=remaining===0&&reserved===0;
