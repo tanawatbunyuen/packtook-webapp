@@ -143,6 +143,49 @@ exports.finalizeCredit=onCall(options,async req=>{
  })
 });
 
+// V5.2.1: account-owned reservation review across devices (no automatic refunds).
+const STALE_RESERVATION_MS=30*60*1000;
+exports.pendingVideoReservations=onCall(options,async req=>{
+ const id=uid(req),acc=await ensureAccount(id),a=(await acc.get()).data();
+ const snapshot=await acc.collection("recordings").where("status","==","reserved").limit(100).get();
+ const now=Date.now();
+ const items=snapshot.docs.map(d=>{
+  const record=d.data(),at=record.createdAt?.toMillis?.()||null;
+  return {id:d.id,barcode:record.barcode||"—",createdAt:at?new Date(at).toISOString():null,period:record.period||null,
+   ageMinutes:at?Math.max(0,Math.floor((now-at)/60000)):null,
+   canRecover:!!at&&now-at>=STALE_RESERVATION_MS};
+ }).sort((x,y)=>(x.createdAt||"").localeCompare(y.createdAt||""));
+ return {reservedCount:pendingReservations(a),items,minimumAgeMinutes:30,truncated:snapshot.size===100};
+});
+exports.recoverStaleVideoReservation=onCall(options,async req=>{
+ const user=uid(req),d=data(req),id=d.operationId;
+ if(!validOp(id)||d.confirmNoVideo!==true)throw new HttpsError("invalid-argument","Confirm that no usable recording exists and that no device is actively recording.");
+ const acc=await ensureAccount(user),rec=acc.collection("recordings").doc(id);
+ return db.runTransaction(async tx=>{
+  const [aSnap,rSnap]=await Promise.all([tx.get(acc),tx.get(rec)]);
+  if(!aSnap.exists||!rSnap.exists)throw new HttpsError("not-found","Recording reservation not found");
+  const a=aSnap.data(),r=rSnap.data();
+  if(r.status==="failed"&&r.recoveryReason==="manual_stale_recovery")return {status:"failed",idempotent:true};
+  if(r.status!=="reserved")throw new HttpsError("failed-precondition","Recording has already been finalized; it cannot be recovered.");
+  const createdAt=r.createdAt?.toMillis?.();
+  if(!createdAt||Date.now()-createdAt<STALE_RESERVATION_MS)throw new HttpsError("failed-precondition","The recording reservation must be at least 30 minutes old before manual recovery.");
+  const lock=acc.collection("barcodeLocks").doc(barcodeKey(r.barcode)),lockSnap=await tx.get(lock);
+  tx.update(rec,{status:"failed",file:null,recoveryReason:"manual_stale_recovery",finalizedAt:FieldValue.serverTimestamp()});
+  if(lockSnap.exists&&lockSnap.data().operationId===id){
+   if(r.overrideOf)tx.set(lock,{operationId:r.overrideOf,barcode:r.barcode,status:"completed",restoredAt:FieldValue.serverTimestamp()});
+   else tx.delete(lock);
+  }
+  const counted=walletEnabled(a)||a.period===r.period;
+  if(counted){
+   if(!Number.isSafeInteger(a.reserved)||a.reserved<1)throw new HttpsError("failed-precondition","Reserved credit count is inconsistent; contact support.");
+   const patch={reserved:a.reserved-1,updatedAt:FieldValue.serverTimestamp()};
+   if(walletEnabled(a)&&limits[a.plan]!==null)patch.creditWalletRemaining=FieldValue.increment(1);
+   tx.update(acc,patch);
+  }
+  tx.create(acc.collection("audit").doc(),{action:"manual_stale_reservation_recovery",recordingId:id,createdAt:FieldValue.serverTimestamp()});
+  return {status:"failed",creditReturned:counted,period:r.period};
+ });
+});
 exports.recordingStatus=onCall(options,async req=>{
  const id=uid(req),op=data(req).operationId;
  if(!validOp(op))throw new HttpsError("invalid-argument","Invalid operation ID");
