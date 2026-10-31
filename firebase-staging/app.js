@@ -1,6 +1,6 @@
 'use strict';
 const $=id=>document.getElementById(id);
-const plans=[['Free',0,20,1],['Starter',199,50,1],['Basic',299,300,1],['Growth',599,1500,3],['Business',1290,5000,5],['Pro',1990,Infinity,10]];
+const plans=[['Free',0,20,1,'🌱','เริ่มต้น'],['Starter',199,50,1,'🚀','ร้านเริ่มเติบโต'],['Basic',299,300,1,'🛡️','ร้านค้าประจำ'],['Growth',599,1500,3,'📈','ยอดขายเติบโต'],['Business',1290,5000,5,'🏢','ทีมธุรกิจ'],['Pro',1990,Infinity,10,'👑','มืออาชีพ']];
 const KEY='packtook-v4-staging-local-files';
 let remoteQuota=null,recordingOp=null,remoteUser=null,finalizePending=false,accountRoleInfo=null;
 const credit=()=>window.PACKTOOK_FIREBASE;
@@ -168,7 +168,9 @@ async function renderSubscriptionRequests(){
   status.textContent='แพ็กเกจปัจจุบัน: '+details.plan+' • '+(labels[details.status]||details.status)+' • หมดอายุ: '+(details.expiresAt?new Date(details.expiresAt).toLocaleDateString('th-TH'):'ยังไม่กำหนด');
   box.append(status);
   const note=document.createElement('p');note.textContent='ชำระผ่าน PromptPay QR Code (Omise Test Mode) เท่านั้น ระบบยืนยันยอดจาก Omise ก่อนเปิดแพ็กเกจ';box.append(note);
-  for(const x of details.requests){const line=document.createElement('div');line.style.margin='10px 0';const name=document.createElement('span');name.textContent=x.plan+' — '+({pending_payment_setup:'รอชำระเงิน',checkout_created:'สร้างหน้าชำระเงินแล้ว',creating_charge:'กำลังสร้างรายการชำระเงิน',payment_pending:'รอการชำระเงิน',failed:'ชำระเงินไม่สำเร็จ — แพ็กเกจไม่เปลี่ยน',expired:'รายการชำระเงินหมดอายุ — แพ็กเกจไม่เปลี่ยน',paid:'ชำระแล้ว'}[x.status]||x.status)+' — '+(x.createdAt?new Date(x.createdAt).toLocaleDateString('th-TH'):'');line.append(name);
+ const activePaid=details.status==='active'&&details.plan!=='Free';
+ if(activePaid){const warning=document.createElement('div');warning.className='subscription-lock';warning.textContent='🔒 แพ็กเกจ '+details.plan+' ยังใช้งานอยู่จนถึง '+new Date(details.expiresAt).toLocaleDateString('th-TH')+' — ระบบปิดการซื้อแพ็กเกจใหม่และการ Downgrade จนกว่าจะหมดอายุ';box.append(warning)}
+  for(const x of details.requests){const line=document.createElement('div');line.style.margin='10px 0';const name=document.createElement('span');name.textContent=x.plan+' — '+({pending_payment_setup:'รอชำระเงิน',checkout_created:'สร้างหน้าชำระเงินแล้ว',creating_charge:'กำลังสร้างรายการชำระเงิน',payment_pending:'รอการชำระเงิน',failed:'ชำระเงินไม่สำเร็จ — แพ็กเกจไม่เปลี่ยน',expired:'รายการชำระเงินหมดอายุ — แพ็กเกจไม่เปลี่ยน',paid:'ชำระแล้ว',payment_review:'ชำระแล้ว — รอเจ้าหน้าที่ตรวจสอบ (ไม่เปลี่ยนแพ็กเกจ)'}[x.status]||x.status)+' — '+(x.createdAt?new Date(x.createdAt).toLocaleDateString('th-TH'):'');line.append(name);
  if(['failed','expired'].includes(x.status)){const failed=document.createElement('p');failed.textContent='รายการนี้ไม่ทำให้เปลี่ยนแพ็กเกจ หากต้องการลองอีกครั้งให้สร้างคำขอใหม่';failed.style.color='#9b3444';line.append(failed)}
  if(x.status==='paid'){
   const test=document.createElement('button');test.type='button';test.className='secondary';test.style.marginLeft='10px';
@@ -177,11 +179,12 @@ async function renderSubscriptionRequests(){
   audit.onclick=async()=>{audit.disabled=true;try{const a=await credit().paymentAudit(x.id);const ok=a.status==='paid'&&a.providerStatus==='successful'&&a.providerPaid&&a.providerTest&&a.amountMatches;const historicalExpiry=a.activationExpiresAt||'ไม่มี Snapshot ในรายการชำระเก่า';const currentExpiry=a.currentExpiresAt||'ไม่พบวันหมดอายุปัจจุบัน';const note=!a.activationExpiresAt?'\\nหมายเหตุ: ข้อมูลธุรกรรมเก่าไม่มี Snapshot วันหมดอายุ โปรดตรวจสอบข้อมูลบัญชีปัจจุบัน':' ';alert('PAYMENT AUDIT: '+(ok?'PASS':'REVIEW')+'\\nแพ็กเกจที่ชำระ: '+a.plan+'\\nOmise: '+a.providerStatus+'\\nยอดเงินตรงกัน: '+a.amountMatches+'\\nเวลาชำระ: '+a.paidAt+'\\nวันหมดอายุจากธุรกรรม: '+historicalExpiry+'\\nแพ็กเกจปัจจุบัน: '+(a.currentPlan||'ไม่ทราบ')+'\\nวันหมดอายุบัญชีปัจจุบัน: '+currentExpiry+note);}catch(e){toast('Audit: '+e.message)}finally{audit.disabled=false}};
   line.append(audit);
  }
+ if(x.status==='payment_review'){const warn=document.createElement('p');warn.className='subscription-lock';warn.textContent='⚠️ Omise ยืนยันการชำระแล้ว แต่มีแพ็กเกจอื่นที่ยัง Active ระบบไม่ได้เปลี่ยนสิทธิ์ กรุณาติดต่อผู้ดูแลเพื่อตรวจสอบรายการและการคืนเงิน';line.append(warn)}
  if(['pending_payment_setup','creating_charge','payment_pending'].includes(x.status)){
  const controls=document.createElement('div');controls.style.marginTop='8px';
  if(x.status==='pending_payment_setup'){
   const qr=document.createElement('button');qr.type='button';qr.className='secondary';qr.textContent='PromptPay QR (Test)';
-  qr.onclick=()=>startOmiseUI(x.id,'promptpay',x.amountTHB);controls.append(qr);
+  qr.disabled=activePaid;qr.title=activePaid?'มีแพ็กเกจใช้งานอยู่ กรุณารอหมดอายุ':'';qr.onclick=()=>startOmiseUI(x.id,'promptpay',x.amountTHB);controls.append(qr);
  }else{
   if(x.status==='creating_charge'){
    const recover=document.createElement('button');recover.type='button';recover.className='secondary';recover.textContent='กู้คืน Charge จาก Omise';
@@ -196,9 +199,25 @@ async function renderSubscriptionRequests(){
  }catch(e){const p=document.createElement('p');p.textContent='โหลดข้อมูลสมาชิกไม่สำเร็จ: '+e.message;box.append(p)}
 }
 function renderPlans(){
- $('planGrid').innerHTML=plans.map(p=>`<article class="plan ${remoteQuota?.plan===p[0]?'selected':''}"><h4>${p[0]}</h4><div class="price">฿${p[1].toLocaleString()}<small>/เดือน</small></div><p>${Number.isFinite(p[2])?p[2].toLocaleString():'ไม่จำกัด'} วิดีโอ / เดือน</p><p>${p[3]} เครื่อง</p><button type="button" class="secondary" data-plan-request="${p[0]}" ${p[0]==='Free'||remoteQuota?.plan===p[0]?'disabled':''}>${remoteQuota?.plan===p[0]?'แพ็กเกจปัจจุบัน':p[0]==='Free'?'แผนใช้ฟรี':'ส่งคำขอแพ็กเกจ'}</button></article>`).join('');
+ const activePaid=remoteQuota?.plan!=='Free'&&remoteQuota?.subscriptionStatus==='active';
+ const cards=plans.map(p=>{
+  const current=remoteQuota?.plan===p[0];
+  const disabled=current||p[0]==='Free'||activePaid||!remoteQuota;
+  const label=current?'แพ็กเกจปัจจุบัน':activePaid?'รอแพ็กเกจเดิมหมดอายุ':p[0]==='Free'?'แผนใช้ฟรี':'เลือกแพ็กเกจ';
+  return `<article class="plan ${current?'selected':''}">
+   <div class="plan-heading"><span class="plan-icon" role="img" aria-label="${p[5]}">${p[4]}</span><span class="plan-name"><h4>${p[0]}</h4><small>${p[5]}</small></span>${current?'<span class="plan-current">ใช้งานอยู่</span>':''}</div>
+   <div class="price">฿${p[1].toLocaleString('th-TH')}<small>/เดือน</small></div>
+   <p class="plan-feature">🎥 ${Number.isFinite(p[2])?p[2].toLocaleString('th-TH'):'ไม่จำกัด'} วิดีโอ / เดือน</p>
+   <p class="plan-feature">🖥️ ${p[3]} เครื่อง</p>
+   <button type="button" class="secondary" data-plan-request="${p[0]}" ${disabled?'disabled':''}>${label}</button>
+  </article>`;
+ });
+ $('planGrid').innerHTML=cards.join('');
  document.querySelectorAll('[data-plan-request]').forEach(button=>button.addEventListener('click',async()=>{
-  const p=button.dataset.planRequest;if(!confirm('สร้างคำขอแพ็กเกจ '+p+'? จะยังไม่เก็บเงินจนกว่าจะยืนยันชำระผ่าน Omise (Test Mode)'))return;
+  const p=button.dataset.planRequest;
+  await refreshRemoteQuota();
+  if(remoteQuota?.subscriptionStatus==='active'&&remoteQuota.plan!=='Free'){alert('แพ็กเกจ '+remoteQuota.plan+' ยังไม่หมดอายุ ('+new Date(remoteQuota.planExpiresAt).toLocaleDateString('th-TH')+') จึงไม่สามารถซื้อแพ็กเกจใหม่ได้');renderPlans();return}
+  if(!confirm('สร้างคำขอแพ็กเกจ '+p+'? ยังไม่เก็บเงินจริงจนกว่าจะยืนยันชำระผ่าน Omise Test Mode'))return;
   button.disabled=true;
   try{const result=await credit().requestPlanChange(p);toast('บันทึกคำขอ '+result.plan+' แล้ว โปรดเลือกชำระเงินในประวัติคำขอ');await renderSubscriptionRequests()}catch(e){toast('ส่งคำขอไม่สำเร็จ: '+e.message)}finally{button.disabled=false}
  }));
