@@ -26,6 +26,7 @@ async function assertAdmin(uidValue){const accountId=await accountIdFor(uidValue
 function barcodeKey(value){return crypto.createHash("sha256").update(value.trim()).digest("hex")}
 function periodId(at){return new Date(at).toISOString().slice(0,7)}
 function subscriptionState(a){if(a.plan==="Free")return "free";if(!a.planExpiresAt)return "unconfigured";const expires=Date.parse(a.planExpiresAt);if(!Number.isFinite(expires))return "invalid";return expires<=Date.now()?"expired":"active"}
+function hasActivePaidPlan(a){return a.plan!=="Free"&&subscriptionState(a)==="active"}
 async function ensureAccount(id){
  const ref=await ownerRef(id);
  if(ref.id!==id)return ref;
@@ -169,10 +170,14 @@ exports.requestPlanChange=onCall(options,async req=>{
  const id=uid(req),d=data(req),plan=d.plan;
  if(!Object.hasOwn(pricesTHB,plan)||plan==="Free")throw new HttpsError("invalid-argument","Select a paid plan");
  const acc=await ensureAccount(id),ticket=acc.collection("billingRequests").doc();
- await ticket.create({plan,amountTHB:pricesTHB[plan],status:"pending_payment_setup",createdAt:FieldValue.serverTimestamp(),requestedBy:id});
- return {requestId:ticket.id,status:"pending_payment_setup",plan,amountTHB:pricesTHB[plan],message:"No payment has been collected. Plan remains unchanged."};
+ return db.runTransaction(async tx=>{
+  const snap=await tx.get(acc);
+  const current=snap.data();
+  if(hasActivePaidPlan(current))throw new HttpsError("failed-precondition","Your "+current.plan+" plan is still active until "+current.planExpiresAt+". New purchases and downgrades are disabled until expiration.");
+  tx.create(ticket,{plan,amountTHB:pricesTHB[plan],status:"pending_payment_setup",createdAt:FieldValue.serverTimestamp(),requestedBy:id});
+  return {requestId:ticket.id,status:"pending_payment_setup",plan,amountTHB:pricesTHB[plan],message:"No payment has been collected. Plan remains unchanged."};
+ });
 });
-
 
 const paymentSecrets={region,timeoutSeconds:30,secrets:[omiseKey]};
 async function omiseAPI(path,method="GET",params=null){
@@ -194,6 +199,15 @@ async function reconcileCharge(accountId,requestId,chargeId){
   const item=tSnap.data(),a=aSnap.data();
   if(item.omiseChargeId!==chargeId||item.requestedBy!==accountId||charge.id!==chargeId||charge.currency.toLowerCase()!=="thb"||charge.amount!==item.amountTHB*100||item.amountTHB!==pricesTHB[item.plan]||charge.metadata?.requestId!==requestId||charge.metadata?.uid!==accountId||charge.livemode!==false)throw Error("Charge mismatch");
   if(item.status==="paid")return {status:"paid",plan:item.plan,alreadyApplied:true};
+  // Another payment may have activated a paid plan after this QR was issued.
+  // Do not overwrite that plan or silently consume the customer's remaining entitlement.
+  if(charge.status==="successful"&&charge.paid===true&&hasActivePaidPlan(a)){
+   if(item.status!=="payment_review"){
+    tx.update(ref,{status:"payment_review",reviewReason:"active_paid_plan",reviewedAgainstPlan:a.plan,reviewedAgainstExpiresAt:a.planExpiresAt,reviewRequiredAt:FieldValue.serverTimestamp()});
+    tx.create(acc.collection("audit").doc(),{action:"payment_requires_manual_review",billingRequestId:requestId,omiseChargeId:chargeId,createdAt:FieldValue.serverTimestamp()});
+   }
+   return {status:"payment_review",requiresSupport:true,plan:a.plan,expiresAt:a.planExpiresAt};
+  }
   if(charge.status==="successful"&&charge.paid===true){
    const currentEnd=Date.parse(a.planExpiresAt);
    const base=a.plan===item.plan&&Number.isFinite(currentEnd)&&currentEnd>Date.now()?currentEnd:Date.now();
@@ -218,9 +232,11 @@ exports.createOmisePayment=onCall(paymentSecrets,async req=>{
  if(!validOp(id)||method!=="promptpay")throw new HttpsError("invalid-argument","Only PromptPay QR payment is currently supported");
  const acc=await ensureAccount(user),ticket=acc.collection("billingRequests").doc(id);
  const claim=await db.runTransaction(async tx=>{
-  const snap=await tx.get(ticket);
+  const [snap,accountSnap]=await Promise.all([tx.get(ticket),tx.get(acc)]);
   if(!snap.exists||snap.data().requestedBy!==user)throw new HttpsError("not-found","Request not found");
   const item=snap.data();
+  if(!accountSnap.exists)throw new HttpsError("not-found","Account missing");
+  if(hasActivePaidPlan(accountSnap.data()))throw new HttpsError("failed-precondition","Current paid plan is still active until "+accountSnap.data().planExpiresAt+". New payments are not allowed.");
   if(!Object.hasOwn(pricesTHB,item.plan)||item.plan==="Free"||item.amountTHB!==pricesTHB[item.plan])throw new HttpsError("failed-precondition","Invalid price");
   if(item.status!=="pending_payment_setup")return {claimed:false,status:item.status,chargeId:item.omiseChargeId};
   tx.update(ticket,{status:"creating_charge",paymentMethod:method,paymentProvider:"omise",claimedAt:FieldValue.serverTimestamp()});
