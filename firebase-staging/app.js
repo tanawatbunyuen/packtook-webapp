@@ -202,12 +202,53 @@ async function renderSubscriptionRequests(){
 }box.append(line)}
  }catch(e){const p=document.createElement('p');p.textContent='โหลดข้อมูลสมาชิกไม่สำเร็จ: '+e.message;box.append(p)}
 }
+async function renderPendingReservationReview(){
+ const page=$('plans');if(!page||page.hidden)return;
+ let pane=$('pendingReservationReview');
+ if(!pane){pane=document.createElement('section');pane.id='pendingReservationReview';pane.className='panel';pane.style.marginTop='18px';page.append(pane)}
+ pane.replaceChildren();
+ if(!remoteQuota||(remoteQuota.reserved||0)<1){pane.hidden=true;return}
+ pane.hidden=false;
+ const heading=document.createElement('h3');heading.textContent='⚠ ตรวจสอบวิดีโอที่จองเครดิตค้าง ('+remoteQuota.reserved+' รายการ)';pane.append(heading);
+ const desc=document.createElement('p');desc.textContent='ระบบไม่อนุญาตซื้อแพ็กเกจขณะมีเครดิตจองค้าง โปรดตรวจสอบว่าไม่มีเครื่องใดกำลัง REC และไม่มีไฟล์วิดีโอที่บันทึกสำเร็จ ก่อนคืนเครดิต';pane.append(desc);
+ const loading=document.createElement('p');loading.textContent='กำลังตรวจสอบรายการจองเครดิตจาก Firebase…';pane.append(loading);
+ try{
+  const result=await credit().pendingVideoReservations();loading.remove();
+  if(!result.items.length){
+   const notice=document.createElement('p');notice.textContent='ไม่พบรายการบันทึกสถานะ Reserved ใน Firebase แต่ตัวนับยังค้างอยู่ กรุณาติดต่อผู้ดูแลเพื่อตรวจสอบบัญชี อย่าปรับตัวเลขใน Firestore เอง';pane.append(notice);return;
+  }
+  if(result.truncated){const limit=document.createElement('p');limit.textContent='มีรายการจองค้างจำนวนมาก ระบบแสดงได้เพียง 100 รายการแรก';pane.append(limit)}
+  for(const item of result.items){
+   const line=document.createElement('div');line.className='pending-reservation-line';
+   const name=document.createElement('div');name.className='pending-reservation-name';name.textContent='Barcode: '+item.barcode+' • '+(item.createdAt?new Date(item.createdAt).toLocaleString('th-TH'):'ไม่ทราบเวลา');
+   const detail=document.createElement('p');detail.textContent=item.canRecover?'รายการนี้ค้างเกิน 30 นาที ตรวจสอบไฟล์ก่อนยกเลิก':'อายุรายการ '+(item.ageMinutes??'ไม่ทราบ')+' นาที • เพื่อความปลอดภัยต้องค้างเกิน 30 นาทีก่อนยกเลิกจากหน้า Packages';
+   line.append(name,detail);
+   const action=document.createElement('button');action.type='button';action.className='secondary';action.textContent='ตรวจสอบแล้ว — ยกเลิกการจองและคืนเครดิต';action.disabled=!item.canRecover;
+   action.onclick=async()=>{
+    if(activeBarcode||ending){toast('ยังมี REC ทำงานบนเครื่องนี้ กรุณาหยุดบันทึกก่อน');return}
+    const ok=confirm('ตรวจสอบ Barcode '+item.barcode+' แล้วหรือไม่?\\n1. ไม่มีเครื่องใดกำลังบันทึกวิดีโอรายการนี้\\n2. ไม่มีไฟล์วิดีโอที่บันทึกสำเร็จ\\nหากมีไฟล์อยู่ ห้ามคืนเครดิต เพราะจะทำให้การนับเครดิตผิด\\nยืนยันคืนเครดิตจองค้างหรือไม่?');
+    if(!ok)return;
+    action.disabled=true;
+    try{
+     const recovered=await credit().recoverStaleVideoReservation(item.id);
+     if(recovered.status!=='failed')throw Error('Server ไม่ยืนยันการยกเลิกเครดิต');
+     if(pending()?.operationId===item.id){clearPending();recordingOp=null;showRecovery()}
+     await refreshRemoteQuota();renderPlans();
+     toast('ตรวจสอบรายการจองค้างแล้ว'+(recovered.creditReturned?' และคืนเครดิต 1 รายการ':' (รายการนี้ไม่อยู่ในรอบเครดิตปัจจุบัน)'));
+    }catch(e){toast('คืนเครดิตไม่สำเร็จ: '+e.message);action.disabled=false}
+   };
+   line.append(action);pane.append(line);
+  }
+  const link=document.createElement('button');link.type='button';link.className='secondary';link.textContent='ตรวจสอบรายการจากเครื่องนี้ในหน้า Packing';
+  link.onclick=()=>showTab('packing');pane.append(link);
+ }catch(e){loading.textContent='โหลดเครดิตจองค้างไม่สำเร็จ: '+e.message}
+}
 function planBuyStatus(plan){
  if(!remoteQuota||plan==='Free')return {allowed:false,label:plan==='Free'?'แผนใช้ฟรี':'กำลังโหลด'};
  const current=remoteQuota.plan===plan,active=remoteQuota.subscriptionStatus==='active'&&remoteQuota.plan!=='Free';
  const open=remoteQuota.openBillingRequestId;
  if(open)return {allowed:false,label:'มีคำขอชำระค้าง'};
- if((remoteQuota.reserved||0)>0)return {allowed:false,label:'มีวิดีโอค้างบันทึก'};
+ if((remoteQuota.reserved||0)>0)return {allowed:false,label:'ตรวจสอบเครดิตจองค้างด้านล่าง'};
  if(!active)return {allowed:true,label:'สมัครแพ็กเกจ'};
  const index=plans.findIndex(x=>x[0]===plan),currentIndex=plans.findIndex(x=>x[0]===remoteQuota.plan);
  if(index>currentIndex)return {allowed:true,label:'อัปเกรดแพ็กเกจ'};
@@ -240,6 +281,7 @@ function renderPlans(){
   try{const result=await credit().requestPlanChange(p);toast('บันทึกคำขอ '+result.plan+' แล้ว โปรดชำระในประวัติคำขอ');await refreshRemoteQuota();renderPlans()}catch(e){toast('ส่งคำขอไม่สำเร็จ: '+e.message);renderPlans()}
  }));
  void renderSubscriptionRequests();
+ void renderPendingReservationReview();
 }
 
 async function deleteRecordedVideo(log,ask=true){
