@@ -58,7 +58,7 @@ assert(ownerClient.includes("function fetchRevenue()")&&ownerClient.includes("fu
 assert(!/exports\.(?:createOmisePayment|requestPlanChange|ownerAdjustCredits)\s*=/.test(ownerBackend),"Revenue report must remain read-only");
 assert(ownerHTML.includes('id="revenueModeChart"')&&ownerHTML.includes('id="revenuePlanChart"')&&ownerHTML.includes('id="revenueTrendChart"'),"Owner V6.2.2 revenue graphs missing");
 assert(!ownerHTML.includes('id="revenuePlanRows"')&&!ownerHTML.includes('id="revenueLive"'),"Legacy revenue table or KPI cards should not be shown");
-assert(ownerHTML.includes("app.js?v=6.2.3")&&ownerHTML.includes("style.css?v=6.2.3"),"Owner assets not cache-busted for V6.2.3");
+assert(ownerHTML.includes("app.js?v=6.4.0")&&ownerHTML.includes("style.css?v=6.4.0"),"Owner assets not cache-busted for V6.2.3");
 assert(ownerClient.includes("renderRevenueTrendChart")&&ownerClient.includes("renderRevenuePlanChart"),"Owner revenue chart renderers missing");
 assert(ownerBackend.includes('exports.ownerManageCustomer=onCall')&&ownerBackend.includes('exports.ownerManagementStatus=onCall')&&ownerBackend.includes('exports.ownerCustomerManagementHistory=onCall'),"Owner Customer Management endpoints missing");
 assert(ownerBackend.includes('PACKTOOK_OWNER_MANAGEMENT_ENABLED')&&ownerBackend.includes('packtookOwnerManager')&&ownerBackend.includes('creditWalletV1!==true'),"Owner Customer Management security/Free quota gates missing");
@@ -72,7 +72,7 @@ assert(payments.includes("omise-signature")&&payments.includes("timingSafeEqual"
 assert(payments.includes("packtookPaymentTester")&&payments.includes("paymentTester(req)"),"Only explicitly approved QR Tester accounts may purchase");
 assert(!payments.includes("skey_live_")&&!payments.includes("card.create"),"Live or card payment prohibited");
 assert(payments.includes('charge.source?.type!=="promptpay"'),"Only verified PromptPay charges may settle");
-assert(appHTML.includes("OMISE PROMPTPAY QR TEST MODE")&&appHTML.includes("app.js?v=6.3.2"),"V6.3 customer QR Test UI missing");
+assert(appHTML.includes("OMISE PROMPTPAY QR TEST MODE")&&appHTML.includes("app.js?v=6.4.0"),"V6.3 customer QR Test UI missing");
 assert(betaBridge.includes('api("promptpayCreateCharge")')&&!betaBridge.includes('api("createOmisePayment")'),"Client must use dedicated PromptPay only API");
 assert(appHTML.includes('id="qrAccessStatus"')&&appHTML.includes('id="refreshQrAccess"'),"Customer QR status diagnostics missing");
 assert(payments.includes("featureEnabled:PROMPTPAY_TEST_ENABLED")&&payments.includes("testerAuthorized"),"Payment config must expose safe gate reason");
@@ -80,4 +80,10 @@ assert(appHTML.includes('id="paymentQrResult"')&&appHTML.includes('aria-live="po
 const customerSource=fs.readFileSync(path.join(root,"app","app.js"),"utf8");
 assert(customerSource.includes("syncDisplayedPaymentQr(details)")&&customerSource.includes("async function checkDisplayedPaymentQr()"),"QR cleanup/polling missing");
 assert(customerSource.includes('finishDisplayedPaymentQr("paid",requestId)'),"Paid recheck must clear QR");
-console.log("PACKTOOK V6.3.2 PromptPay QR cleanup isolation checks: PASS for",id);
+assert(ownerBackend.includes('exports.ownerPaymentHealth=onCall')&&ownerBackend.includes('PAYMENT_HEALTH_ACCOUNTS=400'),"Owner V6.4 read-only payment health API missing");
+assert(ownerHTML.includes('id="paymentHealth"')&&ownerHTML.includes('id="paymentHealthRows"'),"Owner Payment Health UI missing");
+assert(ownerClient.includes('api("ownerPaymentHealth")')&&ownerClient.includes("renderPaymentHealth(data)"),"Owner Payment Health renderer missing");
+assert(payments.includes("paidEvidence(charge)")&&payments.includes("postSettlementAlert"),"Omise paid verification evidence / anomaly guard missing");
+assert(payments.includes("providerExpiryIso(charge.expires_at)")&&payments.includes("providerFailureCode"),"QR expiry and failure evidence missing");
+assert(customerSource.includes("qr-expiry-info")&&customerSource.includes("result.qrExpiresAt"),"Customer QR expiration display missing");
+console.log("PACKTOOK V6.4 PromptPay Test Payment Hardening checks: PASS for",id);
