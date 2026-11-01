@@ -69,6 +69,7 @@ const payExports=[...payments.matchAll(/exports\\.([A-Za-z0-9_]+)=/g)].map(x=>x[
 assert(payExports.length===10&&payExports.every(x=>x.startsWith("promptpay")),"Only 10 PromptPay scoped functions allowed");
 assert(payments.includes('PACKTOOK_PROMPTPAY_TEST_ENABLED')&&payments.includes('skey_test_'),"Test-mode fail-closed gates missing");
 assert(payments.includes("omise-signature")&&payments.includes("timingSafeEqual")&&payments.includes("reconcileCharge"),"Signed Webhook and verified charge reconciliation required");
+assert(payments.includes("packtookPaymentTester")&&payments.includes("paymentTester(req)"),"Only explicitly approved QR Tester accounts may purchase");
 assert(!payments.includes("skey_live_")&&!payments.includes("card.create"),"Live or card payment prohibited");
 assert(payments.includes('charge.source?.type!=="promptpay"'),"Only verified PromptPay charges may settle");
 assert(appHTML.includes("OMISE PROMPTPAY QR TEST MODE")&&appHTML.includes("app.js?v=6.3.0"),"V6.3 customer QR Test UI missing");
