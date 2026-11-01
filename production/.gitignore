@@ -13,3 +13,6 @@ functions/package-lock.json
 # V6.2 Owner-only generated Firebase SDK config and dependencies
 owner/firebase-config.js
 owner-functions/package-lock.json
+
+# V6.3 dedicated PromptPay Test Functions local installation
+payment-functions/package-lock.json
