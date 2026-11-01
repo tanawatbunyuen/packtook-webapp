@@ -147,7 +147,7 @@ exports.ownerAnalyticsCustomers=onCall(options,async req=>{
    joinedAt:basic.joinedAt===null?null:new Date(basic.joinedAt).toISOString(),
    expiresAt:basic.expiresAt,expiryState:basic.expiryState,daysRemaining:basic.daysRemaining,
    creditsRemaining:c.balance,
-   creditsUnlimited:c.status==="unlimited",creditsStatus:c.status,reservedCredits:basic.reservedCredits,
+   creditsUnlimited:c.status==="unlimited",creditsStatus:c.status,walletEnabled:a.creditWalletV1===true,reservedCredits:basic.reservedCredits,
    hasBilling:false};
  });
  return {customers,nextCursor:snap.docs.length>PER_PAGE&&docs.length?docs[docs.length-1].id:null};
