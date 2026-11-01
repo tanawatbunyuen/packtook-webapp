@@ -342,16 +342,13 @@ exports.ownerManageCustomer=onCall(options,async req=>{
   const patch={updatedAt:admin.firestore.FieldValue.serverTimestamp()};
   let newBalance=summary.balance,newExpiresAt=basics.expiresAt;
   if(d.action==="grant_credits"){
-   if(summary.status!=="available"||limits[a.plan]===null)
-    throw new HttpsError("failed-precondition","Credit grants require active finite-credit plan");
+   if(summary.status!=="available"||limits[a.plan]===null||a.creditWalletV1!==true)
+    throw new HttpsError("failed-precondition","Credit grants require an active finite-credit wallet; legacy monthly Free credits cannot be converted");
    newBalance=summary.balance+d.creditAmount;
    if(!Number.isSafeInteger(newBalance)||newBalance>MAX_WALLET_BALANCE)
     throw new HttpsError("failed-precondition","Wallet credit limit exceeded");
-   // Existing Free accounts may still use legacy monthly quota. Convert their
-   // current available credits to wallet once; preserve used and period fields.
-   patch.creditWalletV1=true;
+   // Preserve Free monthly quota semantics; credit wallet must already exist.
    patch.creditWalletRemaining=newBalance;
-   if(a.creditWalletV1!==true)patch.walletStartingCredits=newBalance;
   }else{
    if(a.plan==="Free")throw new HttpsError("failed-precondition","Free plan has no expiry");
    newExpiresAt=d.newExpiresAt;
