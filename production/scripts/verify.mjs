@@ -53,7 +53,7 @@ assert(ownerClient.includes('firebaseConfig.projectId!=="packtook-prod-01"'),"Ow
 assert(!/firebase-staging|packtook-staging/.test(ownerClient),"Owner front-end points to Staging");
 assert(ownerBackend.includes("exports.ownerAnalyticsRevenue=onCall"),"Owner revenue read-only callable missing");
 assert(ownerBackend.includes("expiryState")&&ownerBackend.includes("no_expiry"),"Customer expiry states missing");
-assert(ownerHTML.includes('id="revenue"')&&ownerHTML.includes('id="revenueMonthly"'),"Owner sales report UI missing");
+assert(ownerHTML.includes('id="revenue"')&&ownerHTML.includes('id="revenueModeChart"')&&ownerHTML.includes('id="revenuePlanChart"')&&ownerHTML.includes('id="revenueTrendChart"'),"Owner sales chart UI missing");
 assert(ownerClient.includes("function fetchRevenue()")&&ownerClient.includes("function expiryLabel(a)"),"Owner revenue and expiry renderers missing");
 assert(!/exports\.(?:createOmisePayment|requestPlanChange|ownerAdjustCredits)\s*=/.test(ownerBackend),"Revenue report must remain read-only");
 assert(ownerHTML.includes('id="revenueModeChart"')&&ownerHTML.includes('id="revenuePlanChart"')&&ownerHTML.includes('id="revenueTrendChart"'),"Owner V6.2.2 revenue graphs missing");
