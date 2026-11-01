@@ -2,7 +2,7 @@
 <html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#07152e">
 <meta name="robots" content="noindex,nofollow"><meta name="description" content="PACKTOOK Owner Analytics — private business dashboard">
 <title>PACKTOOK Owner | Production Beta Dashboard</title>
-<link rel="stylesheet" href="./style.css?v=6.2.0"></head>
+<link rel="stylesheet" href="./style.css?v=6.2.1"></head>
 <body>
 <section id="loginScreen" class="login-screen">
  <div class="login-bg"></div>
@@ -22,12 +22,12 @@
 <div id="ownerApp" class="app" hidden>
  <aside class="sidebar">
   <div class="brand brand-sidebar"><span class="brand-symbol"><img src="./logo.svg" alt="โลโก้ PACKTOOK"></span><div><strong>PACK<span>TOOK</span></strong><small>OWNER CONTROL CENTER</small></div></div>
-  <div class="sidebar-menu"><a href="#overview" class="sidebar-link active">▦ <span>ภาพรวมธุรกิจ</span></a><a href="#trends" class="sidebar-link">▥ <span>แนวโน้มรายเดือน</span></a><a href="#plans" class="sidebar-link">◈ <span>รายงานแพ็กเกจ</span></a><a href="#customers" class="sidebar-link">♙ <span>บัญชีลูกค้า</span></a></div>
+  <div class="sidebar-menu"><a href="#overview" class="sidebar-link active">▦ <span>ภาพรวมธุรกิจ</span></a><a href="#trends" class="sidebar-link">▥ <span>แนวโน้มรายเดือน</span></a><a href="#revenue" class="sidebar-link">฿ <span>รายงานยอดขาย</span></a><a href="#plans" class="sidebar-link">◈ <span>รายงานแพ็กเกจ</span></a><a href="#customers" class="sidebar-link">♙ <span>บัญชีลูกค้า</span></a></div>
   <div class="sidebar-bottom"><div class="environment"><span class="dot"></span> PRODUCTION · OWNER BETA</div><small>ส่วนจัดการแยกจากเว็บไซต์ของลูกค้า</small><button type="button" class="secondary logout" id="logoutButton">ออกจากระบบ</button></div>
  </aside>
  <main class="content">
   <header class="topbar">
-   <div><p class="eyebrow">BUSINESS INTELLIGENCE / V6.2</p><h1>Owner Analytics Dashboard</h1><p class="muted">ดูบัญชีสมาชิก เครดิต และวันหมดอายุใน Firebase Production เท่านั้น</p></div>
+   <div><p class="eyebrow">BUSINESS INTELLIGENCE / V6.2.1</p><h1>Owner Analytics Dashboard</h1><p class="muted">สมาชิก ยอดธุรกรรมที่บันทึก และวันหมดอายุจาก Firebase Production</p></div>
    <div class="top-actions"><span id="currentEmail" class="owner-email"></span><button type="button" id="refreshButton" class="primary">↻ รีเฟรชข้อมูล</button></div>
   </header>
   <div class="test-banner"><span class="test-banner-icon" aria-hidden="true">i</span><div><strong>PRODUCTION OWNER BETA — READ ONLY</strong><p>เฉพาะบัญชี Owner ที่ได้รับสิทธิ์ · ยังไม่เปิดรับเงินจริงและยังไม่สามารถปรับเครดิตหรือวันหมดอายุจากหน้านี้ได้</p></div></div>
@@ -41,6 +41,25 @@
    </div>
    <p id="partialNotice" class="partial-notice" hidden></p><p id="unclassifiedNotice" class="partial-notice" hidden></p>
   </section>
+  <section id="revenue" class="report-section">
+   <div class="section-heading"><div><p class="eyebrow">02 / REVENUE RECORDS</p><h2>รายงานยอดขายจาก Production</h2>
+     <p class="muted">สรุปรายการที่ระบุว่า Paid ใน Firestore แยก Live / Test / ยังไม่ยืนยัน ไม่ใช่ยอดเงินเข้าบัญชีที่ตรวจสอบกับ Omise แบบ Real Time</p>
+   </div><button type="button" id="reloadRevenue" class="secondary">รีเฟรชยอดขาย</button></div>
+   <div class="metric-grid revenue-metrics">
+     <article class="metric"><span class="metric-icon green">฿</span><p>ยอดบันทึก Live</p><strong id="revenueLive">—</strong><small id="revenueLiveCount">ยังไม่โหลดข้อมูล</small></article>
+     <article class="metric"><span class="metric-icon cyan">฿</span><p>ยอดทดสอบ Test</p><strong id="revenueTest">—</strong><small id="revenueTestCount">ยังไม่โหลดข้อมูล</small></article>
+     <article class="metric"><span class="metric-icon amber">?</span><p>ยอดที่ยังยืนยันโหมดไม่ได้</p><strong id="revenueUnknown">—</strong><small id="revenueUnknownCount">ยังไม่โหลดข้อมูล</small></article>
+     <article class="metric"><span class="metric-icon purple">∑</span><p>รายการ Paid ทั้งหมด</p><strong id="revenueTransactions">—</strong><small>รวม Live, Test และยังไม่ยืนยัน</small></article>
+   </div>
+   <p id="revenueStatus" class="revenue-note" role="status">ระบบรับเงินจริง Production ยังไม่เปิดใช้งาน กำลังเตรียมรายงานอ่านอย่างเดียว</p>
+   <p id="revenuePartial" class="partial-notice" hidden></p>
+   <div class="panel"><div class="panel-head"><h3>ยอดธุรกรรมรายเดือน — 12 เดือนล่าสุด</h3><span class="muted">Live / Test / ไม่ยืนยัน แยกประเภท</span></div>
+      <div id="revenueMonthly" class="revenue-monthly" aria-label="รายงานยอดธุรกรรมรายเดือน"></div></div>
+   <div class="panel revenue-plan-panel"><div class="panel-head"><h3>ยอดรายการแยกตามแพ็กเกจที่ซื้อ</h3></div>
+      <div class="table-scroll"><table><thead><tr><th>แพ็กเกจ</th><th>Live (บาท)</th><th>Live (รายการ)</th><th>Test (บาท)</th><th>Test (รายการ)</th><th>ยังไม่ยืนยัน (รายการ)</th></tr></thead><tbody id="revenuePlanRows"></tbody></table></div>
+   </div>
+   <p class="hint">รายงานนี้อ่านจากเอกสารการชำระเงิน ไม่คำนวณรายได้จากจำนวนผู้ใช้งานหรือราคาแพ็กเกจ และไม่ยืนยันสถานะ Refund กับผู้ให้บริการชำระเงิน</p>
+  </section>
   <section id="trends" class="report-section">
    <div class="section-heading"><div><p class="eyebrow">02 / GROWTH TRENDS</p><h2>แนวโน้มรายเดือน</h2></div><label class="chart-control" for="monthRange">ดูย้อนหลัง <select id="monthRange"><option value="6">6 เดือน</option><option value="12" selected>12 เดือน</option></select></label></div>
    <div class="charts-grid">
@@ -52,11 +71,11 @@
    <div class="panel plan-panel"><div class="table-scroll"><table><thead><tr><th>แพ็กเกจ</th><th>บัญชีทั้งหมด</th><th>Active</th><th>หมดอายุ</th></tr></thead><tbody id="planRows"><tr><td colspan="4">กำลังโหลดข้อมูล…</td></tr></tbody></table></div></div>
   </section>
   <section id="customers" class="report-section">
-   <div class="section-heading"><div><p class="eyebrow">04 / CUSTOMER ACCOUNTS</p><h2>บัญชีสมาชิก PACKTOOK</h2><p class="muted">เฉพาะบัญชีที่มีข้อมูลใน Firestore Production · เครดิตคงเหลือและวันหมดอายุเป็นข้อมูลอ่านอย่างเดียว</p></div><button id="reloadCustomers" type="button" class="secondary">รีโหลดรายชื่อ</button></div>
-   <div class="panel"><div class="table-scroll"><table><thead><tr><th>Email ลูกค้า</th><th>บัญชี Firebase</th><th>แพ็กเกจ</th><th>สถานะ</th><th>เครดิตวิดีโอคงเหลือ</th><th>เครดิตที่จองอยู่</th><th>วันที่สร้าง</th><th>วันหมดอายุ</th></tr></thead><tbody id="customerRows"><tr><td colspan="8">กำลังโหลดข้อมูล…</td></tr></tbody></table></div><div class="customer-pager"><span id="customerPageStatus">เรียงตามรหัสบัญชี · 25 รายการต่อครั้ง</span><button id="moreCustomers" type="button" class="secondary" hidden>โหลดลูกค้าเพิ่ม 25 รายการ</button></div></div>
+   <div class="section-heading"><div><p class="eyebrow">04 / CUSTOMER ACCOUNTS</p><h2>บัญชีสมาชิก PACKTOOK</h2><p class="muted">บัญชี Free ไม่มีวันหมดอายุ ส่วนบัญชีเสียเงินที่ไม่มีวันหมดอายุในฐานข้อมูลจะแสดงว่า ยังไม่กำหนด · ข้อมูลทั้งหมดเป็นแบบอ่านอย่างเดียว</p></div><button id="reloadCustomers" type="button" class="secondary">รีโหลดรายชื่อ</button></div>
+   <div class="panel"><div class="table-scroll"><table><thead><tr><th>Email ลูกค้า</th><th>บัญชี Firebase</th><th>แพ็กเกจ</th><th>สถานะ</th><th>เครดิตวิดีโอคงเหลือ</th><th>เครดิตที่จองอยู่</th><th>วันที่สร้าง</th><th>วันหมดอายุ / สถานะ</th></tr></thead><tbody id="customerRows"><tr><td colspan="8">กำลังโหลดข้อมูล…</td></tr></tbody></table></div><div class="customer-pager"><span id="customerPageStatus">เรียงตามรหัสบัญชี · 25 รายการต่อครั้ง</span><button id="moreCustomers" type="button" class="secondary" hidden>โหลดลูกค้าเพิ่ม 25 รายการ</button></div></div>
   </section>
   <footer class="footer"><span>PACKTOOK OWNER · Production Beta</span><span>Read-only • ยังไม่มีระบบ Omise Live Payment</span></footer>
  </main>
 </div>
-<script type="module" src="./app.js?v=6.2.0"></script>
+<script type="module" src="./app.js?v=6.2.1"></script>
 </body></html>
