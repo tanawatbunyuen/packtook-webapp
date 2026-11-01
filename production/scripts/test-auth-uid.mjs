@@ -21,7 +21,7 @@ assert(pendingKeyFor({uid:expected})==="packtook-pending-"+expected,"pending key
 assert(pendingKeyFor(true)===null,"boolean session must not generate a key");
 assert(pendingKeyFor(null)===null,"logged-out session must not generate a key");
 // Keep this test forward-compatible with later Customer UI releases.
-const scriptVersion=index.match(/<script\\s+src="app\\.js\\?v=(\\d+)\\.(\\d+)\\.(\\d+)"\\s*><\\/script>/);
+const scriptVersion=index.match(/<script\s+src="app\.js\?v=(\d+)\.(\d+)\.(\d+)"\s*><\/script>/);
 assert(!!scriptVersion,"app.js script must include a semver cache-busting query parameter");
 const [major,minor,patch]=scriptVersion.slice(1).map(Number);
 assert(major>6||(major===6&&(minor>1||(minor===1&&patch>=1))),"app.js cache version must be at least 6.1.1");
