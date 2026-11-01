@@ -113,3 +113,12 @@
 .owner-manage-audit-row{padding:9px 12px;border:1px solid #dae6ef;background:white;border-radius:10px;margin:7px 0;display:flex;flex-direction:column;gap:4px;color:#2d5578}
 .owner-manage-audit-row small{font-size:11px;color:#6e88a1;overflow-wrap:anywhere}
 @media(max-width:650px){.owner-manage-form button{width:100%;min-width:0}}
+
+/* V6.4 — read-only PromptPay Test Payment Health */
+.owner-payment-health-panel{margin-top:17px}
+#paymentHealthRows td{vertical-align:top;overflow-wrap:anywhere}
+#paymentHealthRows td.uid{font-size:11px;max-width:230px;word-break:break-word}
+#paymentHealthRows td:nth-child(5){min-width:180px;font-weight:750;color:#365977}
+#paymentHealth .metric strong{font-variant-numeric:tabular-nums}
+#paymentHealth .hint{padding-top:9px;line-height:1.65}
+@media(max-width:760px){#paymentHealthRows td.uid{min-width:170px}}
