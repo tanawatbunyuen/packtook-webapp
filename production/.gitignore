@@ -9,3 +9,7 @@ serviceAccount*.json
 app/firebase-v4-config.js
 app/login-background.png
 functions/package-lock.json
+
+# V6.2 Owner-only generated Firebase SDK config and dependencies
+owner/firebase-config.js
+owner-functions/package-lock.json
