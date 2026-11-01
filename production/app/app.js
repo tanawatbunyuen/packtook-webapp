@@ -183,7 +183,7 @@ function showTab(tab){document.querySelectorAll('.tabcontent').forEach(e=>e.hidd
 async function verifyAfterPaymentReturn(){
  if(new URLSearchParams(location.search).get('payment')!=='return')return;
  showTab('plans');
- const container=$('paymentQrResult');container.replaceChildren();
+ const container=$('paymentQrResult');container.replaceChildren();container.hidden=false;
  const status=document.createElement('p');status.textContent='กลับจากหน้าชำระเงินแล้ว กำลังตรวจสอบสถานะจาก Omise (Test Mode) — การกลับหน้าเว็บไม่ได้หมายความว่าชำระสำเร็จ';container.append(status);
  try{
   const overview=await credit().subscriptionOverview();
