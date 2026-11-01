@@ -94,3 +94,22 @@
 .owner-sales-error{color:#b7424d;font-size:14px;padding:18px}
 @media(max-width:1050px){.owner-sales-two{grid-template-columns:1fr}}
 @media(max-width:640px){.owner-sales-card{padding:17px}.owner-sales-heading{margin-bottom:14px}.owner-sales-bars{min-height:160px}.owner-sales-trend{min-width:610px}}
+
+/* PACKTOOK V6.2.3 Owner Customer Management: controlled and audit-friendly. */
+.owner-management-status{margin:17px 0 12px;padding:12px 15px;border:1px solid #bcd5ec;background:#f0f7ff;color:#215680;border-radius:12px;font-size:13px;font-weight:750}
+.owner-manage-button{white-space:nowrap;padding:8px 12px;font-size:12px;border:1px solid #c9dced}
+.owner-manage-button:disabled{opacity:.35;cursor:not-allowed}
+.owner-manage-panel{margin:18px 0;background:#f9fcff;border:1px solid #b8d3ec}
+.owner-manage-customer{padding:11px 14px;border:1px solid #d4e4f3;border-radius:10px;background:white;color:#204a73;font-size:13px;overflow-wrap:anywhere;font-weight:700}
+.owner-manage-form{display:grid;gap:8px;max-width:630px;margin-top:14px}
+.owner-manage-form label{font-size:13px;color:#254f77;font-weight:800;margin-top:5px}
+.owner-manage-form input,.owner-manage-form select,.owner-manage-form textarea{background:#fff;border:1px solid #bfd5e8;border-radius:11px;color:#1b3a5e;padding:10px 12px;font:inherit;width:100%;max-width:100%;box-sizing:border-box}
+.owner-manage-form :is(input,textarea,select):focus{outline:2px solid #65bae9;outline-offset:1px}
+.owner-manage-warning{padding:11px 14px;background:#fff8e8;border:1px solid #f2d9a0;border-radius:10px;color:#8f6320;font-size:12px;line-height:1.7;margin-top:9px}
+.owner-manage-form button{justify-self:start;min-width:240px}
+#manageResult{font-size:13px;font-weight:700;min-height:18px;color:#265583;overflow-wrap:anywhere}
+.owner-manage-history{margin:22px 0 0;border-top:1px solid #d8e6f3;padding-top:16px}
+.owner-manage-history h3{font-size:16px;margin:0 0 10px}
+.owner-manage-audit-row{padding:9px 12px;border:1px solid #dae6ef;background:white;border-radius:10px;margin:7px 0;display:flex;flex-direction:column;gap:4px;color:#2d5578}
+.owner-manage-audit-row small{font-size:11px;color:#6e88a1;overflow-wrap:anywhere}
+@media(max-width:650px){.owner-manage-form button{width:100%;min-width:0}}
