@@ -12,7 +12,7 @@ assert(!app.includes("PACKTOOK_PERF?.render()"),"Dashboard still renders diagnos
 for(const id of ["historyRows","dateFilter","barcodeFilter","allVideos","monthVideos","historyVideo","planGrid","cameraBtn","folderBtn"]){
  assert(html.includes('id="'+id+'"'),"Required Customer feature missing: "+id);
 }
-assert(html.includes('app.js?v=6.1.2')&&html.includes('style.css?v=6.1.2'),"Browser cache version not updated");
+assert(html.includes('app.js?v=6.3.0')&&html.includes('style.css?v=6.3.0'),"Customer V6.3 JS/CSS version mismatch");
 assert(app.includes("function renderHistory("),"Video history renderer missing");
 assert(app.includes("async function startRecording(")&&app.includes("async function stopRecording("),"Barcode workflow missing");
-console.log("PASS: PACKTOOK V6.1.2 hides diagnostics and retains video/packing UI");
+console.log("PASS: PACKTOOK V6.3 retains recording/video dashboard and removes diagnostics");
