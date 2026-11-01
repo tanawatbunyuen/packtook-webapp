@@ -2,6 +2,7 @@
 // PACKTOOK V6.2.3 — Provision a brand NEW internal test wallet, never convert customer credits.
 // Production only, Cloud Shell with Firebase Admin credentials. No Omise or payment records.
 const admin=require("firebase-admin");
+const readline=require("node:readline/promises");
 const PROJECT="packtook-prod-01",INITIAL_CREDITS=50;
 const [uid,emailArg]=process.argv.slice(2);
 if(process.env.GOOGLE_CLOUD_PROJECT!==PROJECT || !uid || !emailArg ||
@@ -23,15 +24,17 @@ const {FieldValue}=admin.firestore;
     user.customClaims?.packtookPlatformOwner===true||
     user.customClaims?.packtookOwnerManager===true)
   throw Error("User must have Production Beta permission but NOT Owner or Manager permission");
- if(user.metadata?.lastSignInTime)
-  throw Error("Account has already signed in. Create a NEW test account not previously used.");
+ // Signing in to verify an email is allowed, but no recordings or billing data may exist.
  const account=db.collection("accounts").doc(uid);
- // Check subcollections too: account docs can be missing while descendants exist.
- const subcollections=["recordings","audit","billingRequests","ownerChanges","barcodeLocks","devices"];
+ // Check usage/billing subcollections too: a Firebase account may have no parent doc yet.
+ const subcollections=["recordings","billingRequests","ownerChanges","barcodeLocks","duplicateRequests","duplicateApprovals"];
  for(const name of subcollections){
   const one=await account.collection(name).limit(1).get();
   if(!one.empty)throw Error("Existing "+name+" data found; refusing to touch this account");
  }
+ const created=Date.parse(user.metadata?.creationTime||"");
+ if(!Number.isFinite(created)||created<Date.now()-7*86400000)
+  throw Error("This fixture requires an Auth account created within the last 7 days.");
  const now=Date.now(),expiry=new Date(now+30*86400000).toISOString();
  const yearMonth=new Date(now).toISOString().slice(0,7);
  const data={
@@ -42,18 +45,26 @@ const {FieldValue}=admin.firestore;
  };
  const confirm="CREATE-PROD-TEST-WALLET-"+uid;
  console.log("Target:",email,"UID:",uid,"Project:",PROJECT);
- console.log("Will create only accounts/"+uid+" with Starter, 50 wallet credits, 30-day expiry and internalTestOnly flag.");
+ console.log("Will provision only accounts/"+uid+" with Starter, 50 wallet credits, 30-day expiry and internalTestOnly flag.");
  console.log("No Omise payment or paid billingRequest will be created.");
  process.stdout.write("Type "+confirm+" to create this TEST account: ");
- // Input from stdin, never in tool/output arguments.
- const chunks=[];
- for await(const chunk of process.stdin)chunks.push(chunk);
- const typed=Buffer.concat(chunks).toString("utf8").trim();
+ const rl=readline.createInterface({input:process.stdin,output:process.stdout});
+ let typed;
+ try{typed=(await rl.question("")).trim()}finally{rl.close()}
  if(typed!==confirm)throw Error("Cancelled: exact confirmation not received");
  await db.runTransaction(async tx=>{
   const snap=await tx.get(account);
-  if(snap.exists)throw Error("Account already exists. This script cannot convert or override any existing customer.");
-  tx.create(account,data);
+  // A brand new beta user may have created a pristine Free record during sign-in.
+  // Permit only that zero-usage record; never touch a customer with orders, reservations,
+  // billing or a credit wallet.
+  if(snap.exists){
+   const existing=snap.data();
+   if(existing.plan!=="Free"||existing.creditWalletV1===true||
+      existing.used!==0||existing.reserved!==0||existing.openBillingRequestId||
+      (existing.devices&&existing.devices.length))
+    throw Error("Account has activity or special fields. Refusing test-wallet conversion.");
+   tx.update(account,{...data,createdAt:existing.createdAt||FieldValue.serverTimestamp()});
+  }else tx.create(account,data);
   tx.create(account.collection("audit").doc("initial_test_wallet"),{
    action:"provision_internal_test_wallet",credits:INITIAL_CREDITS,plan:"Starter",targetEmail:email,
    reason:"Isolated Owner Customer Management functional test",createdAt:FieldValue.serverTimestamp()
