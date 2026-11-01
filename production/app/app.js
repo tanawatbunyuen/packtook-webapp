@@ -260,7 +260,9 @@ async function checkDisplayedPaymentQr(){
    if(!$("plans")?.hidden)await renderSubscriptionRequests();
   }else{
    const indicator=$("qrPendingStatus");
-   if(indicator)indicator.textContent="ยังรอการยืนยันจาก Omise Test • ตรวจสอบอัตโนมัติทุก 10 วินาที";
+   if(indicator)indicator.textContent=pending.expiresAt&&Date.now()>Date.parse(pending.expiresAt)?
+    "เลยกำหนด QR แล้ว แต่ Omise ยังไม่ยืนยันสถานะ Expired • ระบบกำลังตรวจสอบต่อ":
+    "ยังรอการยืนยันจาก Omise Test • ตรวจสอบอัตโนมัติทุก 10 วินาที";
   }
  }catch(e){
   if(displayedPaymentQr===pending){
@@ -273,16 +275,26 @@ async function checkDisplayedPaymentQr(){
   if(displayedPaymentQr)scheduleQrPoll();
  }
 }
-function displayOmiseQR(uri,requestId){
+function displayOmiseQR(uri,requestId,expiresAt=null){
  if(typeof requestId!=="string"||!requestId||!remoteUser?.uid)throw Error("ไม่สามารถติดตาม QR ที่ไม่มีรายการชำระเงินหรือบัญชีผู้ใช้");
  const url=new URL(uri);
  if(url.protocol!=="https:"||url.hostname!=="api.omise.co")throw Error("URL รูป QR ไม่ปลอดภัย");
  stopQrPoll();
- displayedPaymentQr={requestId,userId:remoteUser.uid};
+ const verifiedExpiry=typeof expiresAt==="string"&&Number.isFinite(Date.parse(expiresAt))?
+  new Date(expiresAt).toISOString():null;
+ displayedPaymentQr={requestId,userId:remoteUser.uid,expiresAt:verifiedExpiry};
  const container=$("paymentQrResult");container.replaceChildren();container.hidden=false;
  const label=document.createElement("p");
  label.textContent="PromptPay QR · OMISE TEST MODE · ไม่มีการโอนเงินจริง";
  const img=document.createElement("img");img.src=url.href;img.alt="PromptPay QR (Test)";img.style.maxWidth="280px";
+ if(verifiedExpiry){
+  const expiryInfo=document.createElement("p");expiryInfo.className="qr-expiry-info";
+  expiryInfo.textContent="QR มีกำหนดหมดอายุตาม Omise: "+
+   new Date(verifiedExpiry).toLocaleString("th-TH",{timeZone:"Asia/Bangkok",
+    year:"numeric",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})+
+   " • ระบบจะตรวจสถานะกับ Omise ก่อนปิดรายการ";
+  container.append(expiryInfo);
+ }
  const status=document.createElement("p");status.id="qrPendingStatus";
  status.textContent="รอการชำระเงิน (Test Mode) • ตรวจสอบอัตโนมัติทุก 10 วินาที";
  const check=document.createElement("button");check.type="button";check.className="secondary";
@@ -297,7 +309,7 @@ async function startOmiseUI(id,method,amountTHB){
  try{
   const result=await credit().startOmisePayment(id,'promptpay');
   if(result.status==="paid"){finishDisplayedPaymentQr("paid",id)}
-  else if(result.qrImage){if(subscriptionHistoryDialog()?.open)subscriptionHistoryDialog().close();displayOmiseQR(result.qrImage,id)}
+  else if(result.qrImage){if(subscriptionHistoryDialog()?.open)subscriptionHistoryDialog().close();displayOmiseQR(result.qrImage,id,result.qrExpiresAt)}
   toast('สถานะ Omise: '+result.status);
   await renderSubscriptionRequests();
  }catch(e){toast('Omise: '+e.message)}
@@ -410,7 +422,7 @@ function subscriptionRequestActions(x,details){
    try{
     const response=await credit().recoverOmiseCharge(x.id);
     if(QR_TERMINAL_STATES.has(response.status)){finishDisplayedPaymentQr(response.status,x.id)}
-    else if(response.qrImage){if(subscriptionHistoryDialog()?.open)subscriptionHistoryDialog().close();displayOmiseQR(response.qrImage,x.id)}
+    else if(response.qrImage){if(subscriptionHistoryDialog()?.open)subscriptionHistoryDialog().close();displayOmiseQR(response.qrImage,x.id,response.qrExpiresAt)}
     if(!response.found)alert(response.matchCount>1?'พบหลาย Charge กรุณาตรวจสอบกับผู้ดูแล':'ไม่พบ Charge กรุณาตรวจ Omise Test Dashboard ก่อนสร้างคำขอใหม่');
     else toast('สถานะรายการ: '+response.status);
     await subscriptionRefreshAfterAction();
@@ -425,7 +437,7 @@ function subscriptionRequestActions(x,details){
    try{
     const result=await credit().omisePaymentStatus(x.id);
     if(QR_TERMINAL_STATES.has(result.status)){finishDisplayedPaymentQr(result.status,x.id)}
-    else if(result.qrImage){if(subscriptionHistoryDialog()?.open)subscriptionHistoryDialog().close();displayOmiseQR(result.qrImage,x.id)}
+    else if(result.qrImage){if(subscriptionHistoryDialog()?.open)subscriptionHistoryDialog().close();displayOmiseQR(result.qrImage,x.id,result.qrExpiresAt)}
     if(result.needsReconciliation)toast('กรุณากู้คืน Charge เพื่อค้นหารายการ');
     else toast('สถานะ Omise: '+result.status);
     await subscriptionRefreshAfterAction();
