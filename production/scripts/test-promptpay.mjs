@@ -20,7 +20,7 @@ assert(bridge.includes('api("promptpayCreateCharge")')&&!bridge.includes('api("c
 const documents=new Map();
 const deleted=Symbol("delete"),timestamp=()=>new Date();
 const server={serverTimestamp:timestamp,increment:n=>({inc:n}),delete:()=>deleted};
-const userId="testWalletUser";
+let userId="testWalletUser";
 documents.set("accounts/"+userId,{plan:"Free",period:new Date().toISOString().slice(0,7),used:0,reserved:0,billingVersion:0});
 let ticketId="r6qrtest123456789012",chargeStatus="pending",currentMode="promptpay",currentLive=false,paid=false;
 let chargeCreateCount=0,charge=null,apiGetCount=0;
@@ -167,4 +167,31 @@ assert(documents.get("accounts/"+userId).creditWalletRemaining===70,
 assert(documents.get("accounts/"+userId+"/billingRequests/"+pending.requestId).postSettlementAlert==="provider_status_changed",
  "Provider discrepancy must be reported in paid ledger");
 await rejects(api.promptpayRequestPlanChange(request({plan:"Free"})),"failed-precondition");
-console.log("PASS: V6.4 QR Test idempotency, provider expiry/evidence, signed webhook, credit safety and post-settlement anomaly");
+for(const terminal of ["expired","failed"]){
+ userId="testWalletUser_"+terminal;
+ ticketId="r6qr"+terminal+"123456789012";
+ documents.set("accounts/"+userId,{
+  plan:"Free",period:new Date().toISOString().slice(0,7),used:0,reserved:0,billingVersion:0
+ });
+ chargeStatus="pending";paid=false;currentMode="promptpay";currentLive=false;
+ const next=await api.promptpayRequestPlanChange(request({plan:"Starter"}));
+ const newQr=await api.promptpayCreateCharge(request({requestId:next.requestId,method:"promptpay"}));
+ assert(newQr.status==="pending"&&newQr.qrImage,"Terminal test scenario should start as pending QR");
+ chargeStatus=terminal;
+ if(terminal==="failed"){charge.failure_code="payment_cancelled";charge.failure_message="Mock customer cancelled";}
+ const closed=await api.promptpayChargeStatus(request({requestId:next.requestId}));
+ const account=documents.get("accounts/"+userId);
+ const bill=documents.get("accounts/"+userId+"/billingRequests/"+next.requestId);
+ assert(closed.status===terminal&&bill.status===terminal&&bill.closedAt,
+  "Provider "+terminal+" must close billing request only after Omise GET");
+ assert(bill.providerVerifiedStatus===terminal&&bill.providerVerifiedAt,
+  "Provider terminal status "+terminal+" requires evidence of independent check");
+ assert(!account.openBillingRequestId&&account.plan==="Free"&&account.creditWalletV1!==true,
+  "Provider "+terminal+" must release billing lock without granting credits or changing plan");
+ if(terminal==="failed")assert(bill.providerFailureCode==="payment_cancelled","Omise failure code must be captured");
+ const repeatedStatus=await api.promptpayChargeStatus(request({requestId:next.requestId}));
+ assert(repeatedStatus.status===terminal&&documents.get("accounts/"+userId).plan==="Free",
+  "Repeated terminal check must not grant credits");
+}
+
+console.log("PASS: V6.4 Omise QR Test Paid/Failed/Expired, Webhook signature, evidence, idempotency, credit safety and alert");
