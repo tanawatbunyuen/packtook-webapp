@@ -277,7 +277,7 @@ function expectedAccountInput(d){
      typeof d.expectedExpiresAt!=="string"||
      !Number.isFinite(Date.parse(d.expectedExpiresAt)))))
    throw new HttpsError("invalid-argument","Expected account snapshot missing");
- if(!Number.isSafeInteger(d.expectedCreditsRemaining)||d.expectedCreditsRemaining<0||
+ if((d.expectedCreditsRemaining!==null&&(!Number.isSafeInteger(d.expectedCreditsRemaining)||d.expectedCreditsRemaining<0))||
     !Number.isSafeInteger(d.expectedReservedCredits)||d.expectedReservedCredits<0)
    throw new HttpsError("invalid-argument","Expected credit snapshot invalid");
  if(typeof d.confirmEmail!=="string"||d.confirmEmail.trim().length<5||d.confirmEmail.length>255)
