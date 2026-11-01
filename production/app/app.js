@@ -3,6 +3,7 @@ const $=id=>document.getElementById(id);
 const plans=[['Free',0,20,1,'🌱','เริ่มต้น'],['Starter',199,50,1,'🚀','ร้านเริ่มเติบโต'],['Basic',299,300,1,'🛡️','ร้านค้าประจำ'],['Growth',599,1500,3,'📈','ยอดขายเติบโต'],['Business',1290,5000,5,'🏢','ทีมธุรกิจ'],['Pro',1990,Infinity,10,'👑','มืออาชีพ']];
 const KEY='packtook-v61-production-local-files';
 let remoteQuota=null,recordingOp=null,remoteUser=null,finalizePending=false,accountRoleInfo=null;
+let promptPayTestEnabled=false;
 const credit=()=>window.PACKTOOK_FIREBASE;
 const pendingKey=()=>remoteUser?.uid?'packtook-pending-'+remoteUser.uid:null;
 function pending(){try{return JSON.parse(localStorage.getItem(pendingKey())||'null')}catch{return null}}
@@ -197,9 +198,9 @@ async function verifyAfterPaymentReturn(){
 }
 function displayOmiseQR(uri){
  const url=new URL(uri);
- if(url.protocol!=="https:"||!(url.hostname==="api.omise.co"||url.hostname.endsWith(".omise.co")))throw Error("URL รูป QR ไม่ปลอดภัย");
+ if(url.protocol!=="https:"||url.hostname!=="api.omise.co")throw Error("URL รูป QR ไม่ปลอดภัย");
  const container=$('paymentQrResult');container.replaceChildren();
- const label=document.createElement('p');label.textContent='PromptPay QR จาก Omise (Test Mode)';
+ const label=document.createElement('p');label.textContent='PromptPay QR · OMISE TEST MODE · ไม่มีการโอนเงินจริง';
  const img=document.createElement('img');img.src=url.href;img.alt='PromptPay QR (Test)';img.style.maxWidth='280px';
  container.append(label,img);container.scrollIntoView({behavior:'smooth',block:'center'});
 }
@@ -401,7 +402,7 @@ function subscriptionHero(details){
   card.append(subscriptionNode('small','',m[0]),subscriptionNode('strong','',m[1]),subscriptionNode('span','',m[2]));metrics.append(card);
  }
  hero.append(metrics);
- hero.append(subscriptionNode('p','sub-summary-foot','Production Beta • ปิดการชำระเงินและอัปเกรดแพ็กเกจ • ทดลองได้เฉพาะบัญชีที่ได้รับสิทธิ์'));
+ hero.append(subscriptionNode('p','sub-summary-foot','V6.3 PromptPay QR • Omise TEST MODE เท่านั้น • ไม่รับเงินจริงและไม่มีบัตรเครดิต'));
  return hero;
 }
 function subscriptionNotice(details){
@@ -531,20 +532,21 @@ async function renderPendingReservationReview(){
  }catch(e){loading.textContent='โหลดเครดิตจองค้างไม่สำเร็จ: '+e.message}
 }
 function planBuyStatus(plan){
- return {allowed:false,label:plan==='Free'?'แผนใช้ฟรี':'ยังไม่เปิดจำหน่าย'};
-}
-function legacyPlanBuyStatus_DO_NOT_CALL(plan){
- if(!remoteQuota||plan==='Free')return {allowed:false,label:plan==='Free'?'แผนใช้ฟรี':'กำลังโหลด'};
- const current=remoteQuota.plan===plan,active=remoteQuota.subscriptionStatus==='active'&&remoteQuota.plan!=='Free';
- const open=remoteQuota.openBillingRequestId;
- if(open)return {allowed:false,label:'มีคำขอชำระค้าง'};
- if((remoteQuota.reserved||0)>0)return {allowed:false,label:'ตรวจสอบเครดิตจองค้างด้านล่าง'};
- if(!active)return {allowed:true,label:'สมัครแพ็กเกจ'};
- const index=plans.findIndex(x=>x[0]===plan),currentIndex=plans.findIndex(x=>x[0]===remoteQuota.plan);
- if(index>currentIndex)return {allowed:true,label:'อัปเกรดแพ็กเกจ'};
- if(remoteQuota.purchaseReason==='exhausted_topup'&&current)return {allowed:true,label:'เติมเครดิต + ต่ออายุ'};
- if(remoteQuota.purchaseReason==='renewal'&&current)return {allowed:true,label:'ต่ออายุล่วงหน้า'};
- return {allowed:false,label:current?'แพ็กเกจปัจจุบัน':'ยังไม่สามารถซื้อ'};
+ if(plan==="Free")return {allowed:false,label:"แผนใช้ฟรี"};
+ if(!promptPayTestEnabled)return {allowed:false,label:"ยังไม่เปิด PromptPay Test"};
+ if(!remoteQuota)return {allowed:false,label:"กำลังโหลด"};
+ if(remoteQuota.openBillingRequestId)return {allowed:false,label:"มีรายการ QR ค้างอยู่"};
+ if((remoteQuota.reserved||0)>0)return {allowed:false,label:"มีเครดิตจองค้าง"};
+ const active=remoteQuota.subscriptionStatus==="active"&&remoteQuota.plan!=="Free";
+ if(!active)return {allowed:true,label:"ทดลอง PromptPay QR"};
+ const current=plans.findIndex(p=>p[0]===remoteQuota.plan),target=plans.findIndex(p=>p[0]===plan);
+ if(target>current)return {allowed:true,label:"ทดลองอัปเกรดด้วย QR"};
+ if(target<current)return {allowed:false,label:"ยังไม่รองรับการลดแพ็กเกจ"};
+ if(remoteQuota.remaining===0)return {allowed:true,label:"ทดลองเติมเครดิตด้วย QR"};
+ const expiry=Date.parse(remoteQuota.planExpiresAt||"");
+ if(Number.isFinite(expiry)&&expiry>Date.now()&&expiry-Date.now()<=7*86400000)
+  return {allowed:true,label:"ทดลองต่ออายุด้วย QR"};
+ return {allowed:false,label:"แพ็กเกจปัจจุบัน"};
 }
 function renderPlans(){
  const cards=plans.map(p=>{
@@ -566,7 +568,7 @@ function renderPlans(){
   const upgrading=remoteQuota?.subscriptionStatus==='active'&&remoteQuota.plan!=='Free'&&plans.findIndex(x=>x[0]===p)>plans.findIndex(x=>x[0]===remoteQuota.plan);
   const kind=upgrading?'upgrade':remoteQuota.purchaseReason;
   const note=kind==='upgrade'?'อัปเกรด '+remoteQuota.plan+' เป็น '+p+' โดยชำระราคาแพ็กเกจใหม่เต็มจำนวน เครดิตเดิมที่เหลือจะโอนมารวมกับเครดิต '+(plans.find(x=>x[0]===p)?.[2]===Infinity?'ไม่จำกัด':plans.find(x=>x[0]===p)?.[2])+' ของแพ็กเกจใหม่ และวันหมดอายุเดิมบวกเพิ่มอีก 30 วัน':kind==='exhausted_topup'?'หลังชำระสำเร็จ จะเพิ่มเครดิตแพ็กเกจใหม่ให้ยอดสะสม และเพิ่มวันหมดอายุจากวันเดิมอีก 30 วัน':kind==='renewal'?'เครดิตที่ยังเหลือจะโอนมารวมกับเครดิตใหม่ และวันหมดอายุจะเพิ่มจากวันเดิมอีก 30 วัน':'หลังชำระสำเร็จ จะเปิดแพ็กเกจ 30 วัน โดยโอนเครดิต Free ที่ยังเหลือ (ถ้ามี) มารวมกับเครดิตใหม่';
-  if(!confirm('สร้างคำขอ '+p+' ผ่าน ระบบยังไม่เปิดชำระเงิน?\\n'+note))return;
+  if(!confirm('สร้างรายการ PromptPay QR บน Omise TEST MODE สำหรับ '+p+'?\\nไม่มีการเก็บเงินจริงหรือรับบัตรเครดิต\\n'+note))return;
   button.disabled=true;
   try{const result=await credit().requestPlanChange(p);toast('บันทึกคำขอ '+result.plan+' แล้ว โปรดชำระในประวัติคำขอ');await refreshRemoteQuota();renderPlans()}catch(e){toast('ส่งคำขอไม่สำเร็จ: '+e.message);renderPlans()}
  }));
@@ -888,7 +890,16 @@ $('resetPassword').addEventListener('click',async()=>{
 $('logout').onclick=async()=>{if(activeBarcode||recordingOp)return toast('กรุณาหยุดการบันทึกและตรวจเครดิตก่อนออกจากระบบ');await credit().logout();remoteUser=null;remoteQuota=null;$('appPage').hidden=true;$('loginPage').hidden=false;stream?.getTracks().forEach(t=>t.stop());stream=null;cameraState(false)};
 document.querySelectorAll('[data-tab]').forEach(e=>e.onclick=()=>showTab(e.dataset.tab));$('refreshUserDevices').onclick=()=>{void renderDeviceManager();void refreshRemoteQuota().catch(e=>toast(e.message))};$('cameraBtn').onclick=toggleCamera;$('folderBtn').onclick=selectFolder;$('stopBtn').onclick=stopRecording;$('focusScan').onclick=()=>$('barcode').focus();$('refreshHistory').onclick=()=>{void renderHistory(false)};$('dateFilter').onchange=()=>{void renderHistory(false)};
 $('barcode').addEventListener('keydown',e=>{if(e.key!=='Enter')return;e.preventDefault();const code=$('barcode').value.trim();$('barcode').value='';if(!code){toast('กรุณาสแกนหรือพิมพ์ Barcode ก่อนกด Enter');return}if(ending||reservation){toast('ระบบกำลังดำเนินการ กรุณารอสักครู่');return}if(activeBarcode){if(code===activeBarcode)stopRecording();else toast('กำลังอัด '+activeBarcode+' ต้องสแกนรหัสเดิมเพื่อหยุด');return}reservation=true;startRecording(code).catch(e=>toast('เกิดข้อผิดพลาด: '+e.message)).finally(()=>{reservation=false;$('barcode').focus()})});
-function connectFirebaseUI(){if(!credit()?.ready)return;credit().onUser(u=>{remoteUser=u;if(u){void credit().accountRole().then(info=>{accountRoleInfo=info;const role=$('userRoleInfo');if(role)role.textContent=info.role==='admin'?'Admin — อนุมัติการบันทึกซ้ำได้':'Operator — ต้องขออนุมัติจาก Admin';}).catch(e=>toast('Role: '+e.message));showRecovery();showDeviceControl();const details=$('userAccountDetails');if(details)details.textContent='ยืนยันอีเมลแล้ว • Firebase Authentication';const em=$('userAccountEmail');if(em)em.textContent=u.email||'—';void setupDevice().catch(e=>toast('Device Management: '+e.message)).finally(()=>void renderDeviceManager());$('loginPage').hidden=true;$('appPage').hidden=false;void refreshRemoteQuota().then(()=>{showTab('packing');void verifyAfterPaymentReturn()}).catch(e=>{showTab('packing');toast('เชื่อมโควตาไม่สำเร็จ: '+e.message);void verifyAfterPaymentReturn()})}else{$('appPage').hidden=true;$('loginPage').hidden=false}});const msg=$('firebaseConnectStatus');if(msg)msg.textContent='เชื่อมต่อ Firebase แล้ว — เข้าสู่ระบบเพื่อเปิด Packing / Dashboard / Packages / Help'}
+function connectFirebaseUI(){if(!credit()?.ready)return;credit().onUser(u=>{remoteUser=u;if(u){
+ promptPayTestEnabled=false;
+ void credit().omiseConfig().then(cfg=>{
+  promptPayTestEnabled=cfg?.enabled===true&&cfg?.testMode===true&&cfg?.cardEnabled===false;
+  if(!$('plans').hidden)renderPlans();
+ }).catch(e=>{
+  promptPayTestEnabled=false;
+  console.warn('PromptPay Test Mode unavailable',e?.code||'not configured');
+ });
+void credit().accountRole().then(info=>{accountRoleInfo=info;const role=$('userRoleInfo');if(role)role.textContent=info.role==='admin'?'Admin — อนุมัติการบันทึกซ้ำได้':'Operator — ต้องขออนุมัติจาก Admin';}).catch(e=>toast('Role: '+e.message));showRecovery();showDeviceControl();const details=$('userAccountDetails');if(details)details.textContent='ยืนยันอีเมลแล้ว • Firebase Authentication';const em=$('userAccountEmail');if(em)em.textContent=u.email||'—';void setupDevice().catch(e=>toast('Device Management: '+e.message)).finally(()=>void renderDeviceManager());$('loginPage').hidden=true;$('appPage').hidden=false;void refreshRemoteQuota().then(()=>{showTab('packing');void verifyAfterPaymentReturn()}).catch(e=>{showTab('packing');toast('เชื่อมโควตาไม่สำเร็จ: '+e.message);void verifyAfterPaymentReturn()})}else{promptPayTestEnabled=false;$('appPage').hidden=true;$('loginPage').hidden=false}});const msg=$('firebaseConnectStatus');if(msg)msg.textContent='เชื่อมต่อ Firebase แล้ว — เข้าสู่ระบบเพื่อเปิด Packing / Dashboard / Packages / Help'}
 if(credit()?.ready)connectFirebaseUI();else window.addEventListener('packtook-firebase-ready',connectFirebaseUI,{once:true});
 $('subscriptionHistoryClose')?.addEventListener('click',()=>subscriptionHistoryDialog()?.close());
 $('subscriptionHistoryMore')?.addEventListener('click',()=>{ $('subscriptionHistoryMore').textContent='โหลดประวัติเพิ่ม';void subscriptionLoadHistory() });
