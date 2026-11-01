@@ -104,71 +104,127 @@ function renderCharts(){
  renderChart("customerChart",months,"newCustomers");
 }
 
+// V6.2.2 - Owner revenue charts; labels use only values returned by the read-only Production ledger.
+const revenueMoney=value=>thb.format(Number.isFinite(Number(value))?Number(value):0);
+const revenueAmount=value=>Number.isFinite(Number(value))&&Number(value)>0?Number(value):0;
+function revenueEmpty(id,description){
+ const host=$(id);host.replaceChildren();
+ const empty=element("div",null,"owner-sales-empty");
+ empty.append(element("span","▤","owner-sales-empty-icon"),element("strong","ยังไม่มีข้อมูลยอดขาย"),element("span",description,"owner-sales-empty-text"));
+ host.append(empty);
+ host.setAttribute("aria-label","ยังไม่มีข้อมูลยอดขาย: "+description);
+}
+function revenueTrack(value,max,kind){
+ const track=element("div",null,"owner-sales-track");
+ const bar=element("div",null,"owner-sales-fill "+kind);
+ bar.style.width=(max>0?100*value/max:0).toFixed(2)+"%";
+ track.append(bar);return track;
+}
+function renderRevenueModeChart(totals){
+ const host=$("revenueModeChart");host.replaceChildren();
+ const rows=[
+  {kind:"live",label:"Live",amount:revenueAmount(totals.liveSalesTHB),count:totals.livePayments||0},
+  {kind:"test",label:"Test",amount:revenueAmount(totals.testSalesTHB),count:totals.testPayments||0},
+  {kind:"unknown",label:"ไม่ยืนยัน",amount:revenueAmount(totals.unclassifiedSalesTHB),count:totals.unclassifiedPayments||0}
+ ];
+ const max=Math.max(...rows.map(x=>x.amount));
+ if(!max){revenueEmpty("revenueModeChart","ยังไม่พบธุรกรรม Paid ที่มีจำนวนเงินให้แสดง");return}
+ for(const item of rows){
+  const wrap=element("div",null,"owner-sales-bar-row"),head=element("div",null,"owner-sales-bar-head");
+  head.append(element("span",item.label,"owner-sales-name"),element("strong",revenueMoney(item.amount),"owner-sales-value"));
+  wrap.append(head,revenueTrack(item.amount,max,item.kind),element("small",(item.count||0)+" รายการ Paid","owner-sales-detail"));
+  host.append(wrap);
+ }
+ host.setAttribute("aria-label",rows.map(r=>r.label+" "+revenueMoney(r.amount)).join(", "));
+}
+function renderRevenuePlanChart(plans){
+ const host=$("revenuePlanChart");host.replaceChildren();
+ // Unknown-mode revenue is not exposed by package in the Production ledger API.
+ // Never infer it from unclassified count; show only genuinely classified Live/Test amounts.
+ const rows=(plans||[]).map(p=>({
+  plan:p.plan||"Unknown",live:revenueAmount(p.liveSalesTHB),test:revenueAmount(p.testSalesTHB)
+ })).filter(p=>p.live+p.test>0).sort((a,b)=>(b.live+b.test)-(a.live+a.test));
+ if(!rows.length){revenueEmpty("revenuePlanChart","ยังไม่มีรายการ Live หรือ Test ที่บันทึกตามแพ็กเกจ");return}
+ const max=Math.max(...rows.flatMap(p=>[p.live,p.test]));
+ for(const p of rows){
+  const item=element("div",null,"owner-sales-plan-row");
+  item.append(element("strong",p.plan,"owner-sales-plan-title"));
+  for(const [kind,amount,label] of [["live",p.live,"Live"],["test",p.test,"Test"]]){
+   const line=element("div",null,"owner-sales-plan-line");
+   line.append(element("span",label,"owner-sales-plan-kind"),revenueTrack(amount,max,kind),element("span",revenueMoney(amount),"owner-sales-plan-value"));
+   item.append(line);
+  }
+  host.append(item);
+ }
+ host.setAttribute("aria-label",rows.map(p=>p.plan+" Live "+revenueMoney(p.live)+" Test "+revenueMoney(p.test)).join("; "));
+}
+function renderRevenueTrendChart(months){
+ const host=$("revenueTrendChart");host.replaceChildren();
+ const rows=(months||[]).map(m=>({
+  month:m.month||"—",live:revenueAmount(m.liveSalesTHB),test:revenueAmount(m.testSalesTHB),unknown:revenueAmount(m.unclassifiedSalesTHB)
+ }));
+ const max=Math.max(0,...rows.flatMap(m=>[m.live,m.test,m.unknown]));
+ if(!rows.length||max===0){revenueEmpty("revenueTrendChart","รายเดือนยังไม่พบธุรกรรม Paid ที่มีจำนวนเงินให้แสดง");return}
+ const board=element("div",null,"owner-sales-trend-board");
+ const axes=element("div",null,"owner-sales-trend-plot");
+ const top=element("div",revenueMoney(max),"owner-sales-axis-top");
+ const bottom=element("div","฿0","owner-sales-axis-bottom");
+ axes.append(top,bottom);
+ const columns=element("div",null,"owner-sales-trend-columns");
+ for(const m of rows){
+  const col=element("div",null,"owner-sales-trend-col");
+  const bars=element("div",null,"owner-sales-trend-bars");
+  for(const kind of ["live","test","unknown"]){
+   const amount=m[kind];
+   const bar=element("div",null,"owner-sales-trend-bar "+kind);
+   bar.style.height=(100*amount/max).toFixed(2)+"%";
+   bar.title=m.month+" · "+kind+" · "+revenueMoney(amount);
+   bar.setAttribute("aria-label",bar.title);
+   bars.append(bar);
+  }
+  const stamp=/^\d{4}-\d{2}$/.test(m.month)?new Date(m.month+"-01T00:00:00Z"):null;
+  const label=stamp&&!Number.isNaN(stamp.getTime())?
+   stamp.toLocaleDateString("th-TH",{timeZone:"UTC",month:"short",year:"2-digit"}):m.month;
+  col.append(bars,element("span",label,"owner-sales-trend-month"));
+  columns.append(col);
+ }
+ board.append(axes,columns);host.append(board);
+ host.setAttribute("aria-label","ยอดขายรายเดือน "+rows.map(m=>m.month+" Live "+revenueMoney(m.live)+" Test "+revenueMoney(m.test)+" ไม่ยืนยัน "+revenueMoney(m.unknown)).join("; "));
+}
 function renderRevenueReport(data){
  const totals=data.totals||{};
- const fields=[
-  ["revenueLive","revenueLiveCount",totals.liveSalesTHB,totals.livePayments],
-  ["revenueTest","revenueTestCount",totals.testSalesTHB,totals.testPayments],
-  ["revenueUnknown","revenueUnknownCount",totals.unclassifiedSalesTHB,totals.unclassifiedPayments]
- ];
- for(const [id,countId,amount,count] of fields){
-  $(id).textContent=thb.format(amount||0);
-  $(countId).textContent=fmt.format(count||0)+" รายการบันทึก Paid";
- }
- $("revenueTransactions").textContent=fmt.format(
-  (totals.livePayments||0)+(totals.testPayments||0)+(totals.unclassifiedPayments||0));
- const hasTransactions=(totals.livePayments||0)+(totals.testPayments||0)+(totals.unclassifiedPayments||0)>0;
- const banner=$("revenueStatus");
- banner.textContent=data.billingEnabled===false
-  ?(hasTransactions?"Production ยังไม่เปิดชำระเงินจริง • ตัวเลขด้านล่างมาจากเอกสาร paid ใน Firestore เท่านั้น"
-   :"ยังไม่เปิดรับชำระเงินจริงใน Production และยังไม่มีธุรกรรม Paid ที่ตรวจพบ")
-  :"ยอดบันทึกจาก Firestore ไม่ใช่ยอดรับเงินที่กระทบยอดกับ Omise หรือธนาคารแล้ว";
- const partial=$("revenuePartial");
- partial.hidden=!data.truncated;
+ const n=(totals.livePayments||0)+(totals.testPayments||0)+(totals.unclassifiedPayments||0);
+ $("revenueStatus").textContent=data.billingEnabled===false?
+  (n?"Production ยังไม่เปิดรับเงินจริง • กราฟใช้เอกสาร Paid ใน Firestore ไม่ใช่ยอดที่กระทบยอดแล้ว":
+    "Production ยังไม่เปิดรับชำระเงินจริง และยังไม่มีรายการ Paid ให้แสดงเป็นกราฟ"):
+  "ตัวเลขจากเอกสาร Paid ใน Firestore ไม่ใช่ยอดสุทธิหลังคืนเงิน หรือยอดที่กระทบยอดกับธนาคาร";
+ const partial=$("revenuePartial");partial.hidden=!data.truncated;
  partial.textContent=data.truncated?
-  "ข้อมูลยอดขายอาจไม่ครบ: จำกัดสแกนบัญชีสูงสุด "+fmt.format(data.maxScannedAccounts)+
-  " และสูงสุด 100 รายการ Paid ต่อบัญชี • กรุณาตรวจสอบข้อมูลก่อนใช้ทางบัญชี":"";
- const months=$("revenueMonthly");months.replaceChildren();
- for(const m of data.months||[]){
-  const row=element("div",null,"revenue-row"),label=element("span",m.month,"revenue-month");
-  const bars=element("div",null,"revenue-bars");
-  for(const [kind,key] of [["live","liveSalesTHB"],["test","testSalesTHB"],["unknown","unclassifiedSalesTHB"]]){
-   const amount=Number(m[key]||0);
-   const v=element("span",thb.format(amount),"revenue-chip revenue-chip-"+kind);
-   bars.append(v);
-  }
-  row.append(label,bars);months.append(row);
- }
- const tbody=$("revenuePlanRows");tbody.replaceChildren();
- for(const p of data.plans||[]){
-  const tr=element("tr");
-  for(const value of [p.plan,thb.format(p.liveSalesTHB||0),fmt.format(p.livePayments||0),
-   thb.format(p.testSalesTHB||0),fmt.format(p.testPayments||0),fmt.format(p.unclassifiedPayments||0)])
-   tr.append(element("td",value));
-  tbody.append(tr);
- }
- if(!tbody.childElementCount){
-  const tr=element("tr"),cell=element("td","ยังไม่มีธุรกรรม","muted");cell.colSpan=6;tr.append(cell);tbody.append(tr);
- }
+  "รายงานอาจไม่ครบ: มีขีดจำกัดการสแกน 1,200 บัญชี / 100 รายการ Paid ต่อบัญชี • ไม่ควรใช้เป็นตัวเลขทางบัญชี":"";
+ renderRevenueModeChart(totals);
+ renderRevenuePlanChart(data.plans||[]);
+ renderRevenueTrendChart(data.months||[]);
 }
 async function fetchRevenue(){
  if(!authorized||revenueBusy)return;
  revenueBusy=true;
  const uid=ownerUser?.uid,button=$("reloadRevenue");
  button.disabled=true;button.textContent="กำลังโหลด…";
- $("revenueStatus").textContent="กำลังอ่านรายการชำระเงินที่บันทึกไว้ใน Production…";
+ $("revenueStatus").textContent="กำลังอ่านข้อมูลธุรกรรม Production…";
  try{
   const response=await api("ownerAnalyticsRevenue")({});
   if(!authorized||ownerUser?.uid!==uid)return;
   renderRevenueReport(response.data);
  }catch(error){
   console.error("Owner revenue load failed",error?.code);
-  $("revenueStatus").textContent="รายงานยอดขายโหลดไม่สำเร็จ: "+errorMessage(error)+
-   " • ห้ามตีความยอดเดิมเป็นตัวเลขปัจจุบัน";
-  for(const id of ["revenueLive","revenueTest","revenueUnknown","revenueTransactions"])$(id).textContent="—";
-  $("revenueMonthly").replaceChildren();$("revenuePlanRows").replaceChildren();
+  $("revenueStatus").textContent="โหลดกราฟไม่สำเร็จ: "+errorMessage(error)+" • ไม่สามารถยืนยันยอดได้";
+  $("revenuePartial").hidden=true;
+  for(const id of ["revenueModeChart","revenuePlanChart","revenueTrendChart"]){
+   const host=$(id);host.replaceChildren(element("p","โหลดกราฟไม่สำเร็จ","owner-sales-error"));
+   host.setAttribute("aria-label","โหลดกราฟไม่สำเร็จ");
+  }
  }finally{
-  revenueBusy=false;button.disabled=false;button.textContent="รีเฟรชยอดขาย";
+  revenueBusy=false;button.disabled=false;button.textContent="↻ รีเฟรชกราฟ";
  }
 }
 
