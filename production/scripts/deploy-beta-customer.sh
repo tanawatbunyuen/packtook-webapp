@@ -6,6 +6,8 @@ cd "$ROOT"
 PROD="${1:-}"
 [[ "$PROD" == "packtook-prod-01" ]] || { echo "ERROR: Refusing non-production project" >&2; exit 1; }
 node scripts/verify.mjs "$PROD"
+node scripts/test-auth-uid.mjs
+node --check app/app.js
 [[ -f .firebaserc ]] || { echo "ERROR: Missing Production Hosting targets (.firebaserc). Run V6.0 bootstrap first." >&2;exit 1; }
 node - "$PROD" <<'JS'
 const fs=require("fs"),id=process.argv[2],r=JSON.parse(fs.readFileSync(".firebaserc","utf8"));
