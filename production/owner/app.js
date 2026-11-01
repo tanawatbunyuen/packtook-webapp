@@ -9,8 +9,8 @@ if(firebaseConfig.projectId!=="packtook-prod-01"||firebaseConfig.authDomain!=="p
 const firebase=initializeApp(firebaseConfig),auth=getAuth(firebase),functions=getFunctions(firebase,"asia-southeast1");
 const api=name=>httpsCallable(functions,name,{timeout:190000});
 const $=id=>document.getElementById(id);
-const fmt=new Intl.NumberFormat("th-TH");
-let ownerUser=null,summary=null,cursor=null,customerBusy=false,refreshBusy=false,authorized=false;
+const fmt=new Intl.NumberFormat("th-TH"),thb=new Intl.NumberFormat("th-TH",{style:"currency",currency:"THB",maximumFractionDigits:0});
+let ownerUser=null,summary=null,cursor=null,customerBusy=false,refreshBusy=false,revenueBusy=false,authorized=false;
 
 function element(tag,value,cls){
  const e=document.createElement(tag);
@@ -42,6 +42,16 @@ function dateLabel(iso){
  if(!iso)return "—";
  const dt=new Date(iso);
  return Number.isFinite(dt.getTime())?dt.toLocaleDateString("th-TH",{timeZone:"Asia/Bangkok",day:"2-digit",month:"short",year:"numeric"}):"—";
+}
+function expiryLabel(a){
+ const state=a.expiryState||(a.plan==="Free"?"no_expiry":"not_set");
+ if(state==="no_expiry")return {text:"ไม่มีกำหนด (Free)",cls:"expiry-free"};
+ if(state==="not_set")return {text:"ยังไม่กำหนดวันหมดอายุ",cls:"expiry-missing"};
+ if(state==="invalid")return {text:"ข้อมูลวันหมดอายุไม่ถูกต้อง",cls:"expiry-missing"};
+ const date=dateLabel(a.expiresAt);
+ if(state==="expired")return {text:date+" • หมดอายุ",cls:"expiry-expired"};
+ if(state==="active")return {text:date+(Number.isSafeInteger(a.daysRemaining)?" • เหลือ "+fmt.format(a.daysRemaining)+" วัน":""),cls:"expiry-active"};
+ return {text:date!=="—"?date:"ยังไม่กำหนด",cls:"expiry-missing"};
 }
 function number(id,value){
  $(id).textContent=fmt.format(Number(value)||0);
@@ -93,6 +103,75 @@ function renderCharts(){
  const count=Number($("monthRange").value)||12,months=(summary.months||[]).slice(-count);
  renderChart("customerChart",months,"newCustomers");
 }
+
+function renderRevenueReport(data){
+ const totals=data.totals||{};
+ const fields=[
+  ["revenueLive","revenueLiveCount",totals.liveSalesTHB,totals.livePayments],
+  ["revenueTest","revenueTestCount",totals.testSalesTHB,totals.testPayments],
+  ["revenueUnknown","revenueUnknownCount",totals.unclassifiedSalesTHB,totals.unclassifiedPayments]
+ ];
+ for(const [id,countId,amount,count] of fields){
+  $(id).textContent=thb.format(amount||0);
+  $(countId).textContent=fmt.format(count||0)+" รายการบันทึก Paid";
+ }
+ $("revenueTransactions").textContent=fmt.format(
+  (totals.livePayments||0)+(totals.testPayments||0)+(totals.unclassifiedPayments||0));
+ const hasTransactions=(totals.livePayments||0)+(totals.testPayments||0)+(totals.unclassifiedPayments||0)>0;
+ const banner=$("revenueStatus");
+ banner.textContent=data.billingEnabled===false
+  ?(hasTransactions?"Production ยังไม่เปิดชำระเงินจริง • ตัวเลขด้านล่างมาจากเอกสาร paid ใน Firestore เท่านั้น"
+   :"ยังไม่เปิดรับชำระเงินจริงใน Production และยังไม่มีธุรกรรม Paid ที่ตรวจพบ")
+  :"ยอดบันทึกจาก Firestore ไม่ใช่ยอดรับเงินที่กระทบยอดกับ Omise หรือธนาคารแล้ว";
+ const partial=$("revenuePartial");
+ partial.hidden=!data.truncated;
+ partial.textContent=data.truncated?
+  "ข้อมูลยอดขายอาจไม่ครบ: จำกัดสแกนบัญชีสูงสุด "+fmt.format(data.maxScannedAccounts)+
+  " และสูงสุด 100 รายการ Paid ต่อบัญชี • กรุณาตรวจสอบข้อมูลก่อนใช้ทางบัญชี":"";
+ const months=$("revenueMonthly");months.replaceChildren();
+ for(const m of data.months||[]){
+  const row=element("div",null,"revenue-row"),label=element("span",m.month,"revenue-month");
+  const bars=element("div",null,"revenue-bars");
+  for(const [kind,key] of [["live","liveSalesTHB"],["test","testSalesTHB"],["unknown","unclassifiedSalesTHB"]]){
+   const amount=Number(m[key]||0);
+   const v=element("span",thb.format(amount),"revenue-chip revenue-chip-"+kind);
+   bars.append(v);
+  }
+  row.append(label,bars);months.append(row);
+ }
+ const tbody=$("revenuePlanRows");tbody.replaceChildren();
+ for(const p of data.plans||[]){
+  const tr=element("tr");
+  for(const value of [p.plan,thb.format(p.liveSalesTHB||0),fmt.format(p.livePayments||0),
+   thb.format(p.testSalesTHB||0),fmt.format(p.testPayments||0),fmt.format(p.unclassifiedPayments||0)])
+   tr.append(element("td",value));
+  tbody.append(tr);
+ }
+ if(!tbody.childElementCount){
+  const tr=element("tr"),cell=element("td","ยังไม่มีธุรกรรม","muted");cell.colSpan=6;tr.append(cell);tbody.append(tr);
+ }
+}
+async function fetchRevenue(){
+ if(!authorized||revenueBusy)return;
+ revenueBusy=true;
+ const uid=ownerUser?.uid,button=$("reloadRevenue");
+ button.disabled=true;button.textContent="กำลังโหลด…";
+ $("revenueStatus").textContent="กำลังอ่านรายการชำระเงินที่บันทึกไว้ใน Production…";
+ try{
+  const response=await api("ownerAnalyticsRevenue")({});
+  if(!authorized||ownerUser?.uid!==uid)return;
+  renderRevenueReport(response.data);
+ }catch(error){
+  console.error("Owner revenue load failed",error?.code);
+  $("revenueStatus").textContent="รายงานยอดขายโหลดไม่สำเร็จ: "+errorMessage(error)+
+   " • ห้ามตีความยอดเดิมเป็นตัวเลขปัจจุบัน";
+  for(const id of ["revenueLive","revenueTest","revenueUnknown","revenueTransactions"])$(id).textContent="—";
+  $("revenueMonthly").replaceChildren();$("revenuePlanRows").replaceChildren();
+ }finally{
+  revenueBusy=false;button.disabled=false;button.textContent="รีเฟรชยอดขาย";
+ }
+}
+
 async function fetchSummary(){
  if(!authorized||refreshBusy)return;
  refreshBusy=true;const button=$("refreshButton");
@@ -132,7 +211,7 @@ async function fetchCustomers(reset=false){
    row.append(element("td",creditLabel,"credit-balance"));
    row.append(element("td",Number.isSafeInteger(a.reservedCredits)?fmt.format(a.reservedCredits):"—","credit-reserved"));
    row.append(element("td",dateLabel(a.joinedAt)));
-   row.append(element("td",dateLabel(a.expiresAt)));
+   const expiry=expiryLabel(a);row.append(element("td",expiry.text,expiry.cls));
    body.append(row);
   }
   if(!body.childElementCount){
@@ -155,6 +234,7 @@ async function ensureAccess(user){
   }
   displayDashboard(user);
   void fetchSummary();
+  void fetchRevenue();
   void fetchCustomers(true);
  }catch(e){displayLogin("ตรวจสอบสิทธิ์ไม่สำเร็จ: "+errorMessage(e))}
 }
@@ -174,7 +254,8 @@ $("resetPassword").addEventListener("click",async()=>{
  catch(e){showError("ส่งลิงก์ไม่สำเร็จ: "+errorMessage(e))}
 });
 $("logoutButton").addEventListener("click",async()=>{await signOut(auth);displayLogin()});
-$("refreshButton").addEventListener("click",()=>{void fetchSummary()});
+$("refreshButton").addEventListener("click",()=>{void fetchSummary();void fetchRevenue()});
+$("reloadRevenue").addEventListener("click",()=>{void fetchRevenue()});
 $("reloadCustomers").addEventListener("click",()=>{void fetchCustomers(true)});
 $("moreCustomers").addEventListener("click",()=>{void fetchCustomers()});
 $("monthRange").addEventListener("change",renderCharts);
