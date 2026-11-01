@@ -7,6 +7,7 @@ PROD="$1"
 node scripts/verify.mjs "$PROD"
 node scripts/test-owner.mjs
 node scripts/test-owner-charts.mjs
+node scripts/test-owner-management.mjs
 node --input-type=module --check < owner/app.js
 [[ -f .firebaserc ]] || { echo "ERROR: Missing .firebaserc from Production V6.0 bootstrap" >&2;exit 1; }
 [[ -f owner/firebase-config.js ]] || { echo "ERROR: Owner Web config not ready; run prepare-owner.sh" >&2;exit 1; }
