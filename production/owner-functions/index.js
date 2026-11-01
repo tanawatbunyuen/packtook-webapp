@@ -152,3 +152,89 @@ exports.ownerAnalyticsCustomers=onCall(options,async req=>{
  });
  return {customers,nextCursor:snap.docs.length>PER_PAGE&&docs.length?docs[docs.length-1].id:null};
 });
+
+/**
+ * PACKTOOK V6.2.1 - read-only sales ledger, never a payment endpoint.
+ * Source: Production accounts/{uid}/billingRequests where status == "paid".
+ * These are database records, NOT real-time Omise reconciliation or net receipts.
+ * Missing or conflicting mode metadata is counted separately as unclassified.
+ */
+const BILLING_SCAN_LIMIT=100;
+const BILLING_WORKERS=8;
+function classifyPaidBilling(p){
+ if(p?.status!=="paid")return null;
+ const amount=p.amountTHB;
+ if(!Number.isSafeInteger(amount)||amount<0)
+  return {mode:"unclassified",amount:0,invalidAmount:true};
+ const id=typeof p.omiseChargeId==="string"?p.omiseChargeId:"";
+ const provider=p.paymentProvider==="omise";
+ if(provider&&p.omiseLivemode===false&&id.startsWith("chrg_test_"))return {mode:"test",amount};
+ if(provider&&p.omiseLivemode===true&&/^chrg_[A-Za-z0-9]+$/.test(id)&&!id.startsWith("chrg_test_"))
+  return {mode:"live",amount};
+ return {mode:"unclassified",amount,invalidAmount:false};
+}
+exports.ownerAnalyticsRevenue=onCall(options,async req=>{
+ await requireOwner(req);
+ const now=Date.now(),currentMonth=monthTH(now);
+ const [year,month]=currentMonth.split("-").map(Number);
+ const months=Array.from({length:12},(_,i)=>new Date(Date.UTC(year,month-1-(11-i),1)).toISOString().slice(0,7));
+ const monthly=new Map(months.map(m=>[m,{month:m,liveSalesTHB:0,livePayments:0,testSalesTHB:0,testPayments:0,
+   unclassifiedSalesTHB:0,unclassifiedPayments:0}]));
+ const byPlan=new Map(plans.map(p=>[p,{plan:p,liveSalesTHB:0,livePayments:0,testSalesTHB:0,testPayments:0,
+   unclassifiedPayments:0}]));
+ const total={liveSalesTHB:0,livePayments:0,testSalesTHB:0,testPayments:0,
+   unclassifiedSalesTHB:0,unclassifiedPayments:0,invalidAmountRecords:0};
+ let cursor=null,scanned=0,truncated=false,limitedBillingAccounts=0,firstError=null;
+ while(scanned<MAX_ACCOUNTS){
+  let q=db.collection("accounts").orderBy(admin.firestore.FieldPath.documentId())
+   .limit(Math.min(BATCH,MAX_ACCOUNTS-scanned));
+  if(cursor)q=q.startAfter(cursor);
+  const snap=await q.get();
+  if(snap.empty)break;
+  for(let i=0;i<snap.docs.length;i+=BILLING_WORKERS){
+   const group=snap.docs.slice(i,i+BILLING_WORKERS);
+   // Per-account bounded scan. Do not query other accounts from client code.
+   const pages=await Promise.all(group.map(async doc=>{
+    try{
+     const paid=await doc.ref.collection("billingRequests").where("status","==","paid")
+      .limit(BILLING_SCAN_LIMIT+1).get();
+     return {docs:paid.docs,accountId:doc.id};
+    }catch(e){
+     console.error("Owner billing read failed",{code:e.code||"unknown"});
+     throw new HttpsError("unavailable","Cannot read Production billing ledger; report not shown");
+    }
+   }));
+   for(const page of pages){
+    if(page.docs.length>BILLING_SCAN_LIMIT){truncated=true;limitedBillingAccounts++}
+    for(const bill of page.docs.slice(0,BILLING_SCAN_LIMIT)){
+     const p=bill.data(),classified=classifyPaidBilling(p);
+     if(!classified)continue;
+     const mode=classified.mode;
+     const moneyKey=mode+"SalesTHB",countKey=mode==="unclassified"?"unclassifiedPayments":mode+"Payments";
+     total[moneyKey]+=classified.amount;total[countKey]++;
+     if(classified.invalidAmount)total.invalidAmountRecords++;
+     const stamp=millis(p.paidAt)||millis(p.createdAt),bucket=stamp===null?null:monthly.get(monthTH(stamp));
+     if(bucket){bucket[moneyKey]+=classified.amount;bucket[countKey]++}
+     const tier=byPlan.get(p.plan);
+     if(tier){
+      tier[countKey]++;
+      if(mode!=="unclassified")tier[moneyKey]+=classified.amount;
+     }
+    }
+   }
+  }
+  scanned+=snap.size;cursor=snap.docs[snap.docs.length-1];
+  if(snap.size<BATCH)break;
+ }
+ if(scanned>=MAX_ACCOUNTS){
+  const more=await db.collection("accounts").orderBy(admin.firestore.FieldPath.documentId())
+   .startAfter(cursor).limit(1).get();
+  if(!more.empty)truncated=true;
+ }
+ return {asOf:new Date(now).toISOString(),timezone:"Asia/Bangkok",billingEnabled:false,
+  source:"Production Firestore billingRequests (status=paid)",
+  reconciliation:"NOT_RECONCILED",truncated,scannedAccounts:scanned,
+  maxScannedAccounts:MAX_ACCOUNTS,limitedBillingAccounts,
+  totals:total,months:[...monthly.values()],plans:[...byPlan.values()],
+  caveat:"ยอดจากรายการ paid ใน Firestore เท่านั้น ไม่ใช่เงินเข้าบัญชีจริงหรือยอดสุทธิหลังหักคืนเงิน; ไม่ใช้แทนรายงานจาก Omise/ธนาคาร"};
+});
