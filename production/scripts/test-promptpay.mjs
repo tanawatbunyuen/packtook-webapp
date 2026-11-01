@@ -157,7 +157,10 @@ const repeated=await webhook(signature);
 assert(repeated.code===200&&documents.get("accounts/"+userId).creditWalletRemaining===70,"Webhook replay must not grant credits twice");
 const status=await api.promptpayChargeStatus(request({requestId:pending.requestId}));
 assert(status.status==="paid"&&documents.get("accounts/"+userId).creditWalletRemaining===70,"Polling must be idempotent");
-assert(chargeCreateCount===1&&apiGetCount>=4,"Provider status must be checked independently");
+const retryPaidCheckout=await api.promptpayCreateCharge(request({requestId:pending.requestId,method:"promptpay"}));
+assert(retryPaidCheckout.status==="paid"&&!retryPaidCheckout.qrImage,
+ "Reopening paid checkout must return Paid, never show QR or create another Charge");
+assert(chargeCreateCount===1&&apiGetCount>=4,"Provider status must be checked independently");\n
 chargeStatus="failed";paid=false;
 const anomaly=await api.promptpayChargeStatus(request({requestId:pending.requestId}));
 assert(anomaly.status==="payment_review"&&anomaly.alreadyApplied===true,
@@ -182,6 +185,9 @@ for(const terminal of ["expired","failed"]){
  const closed=await api.promptpayChargeStatus(request({requestId:next.requestId}));
  const account=documents.get("accounts/"+userId);
  const bill=documents.get("accounts/"+userId+"/billingRequests/"+next.requestId);
+ const retryTerminal=await api.promptpayCreateCharge(request({requestId:next.requestId,method:"promptpay"}));
+ assert(retryTerminal.status===terminal&&!retryTerminal.qrImage,
+  "Terminal "+terminal+" retry must not create new Charge");
  assert(closed.status===terminal&&bill.status===terminal&&bill.closedAt,
   "Provider "+terminal+" must close billing request only after Omise GET");
  assert(bill.providerVerifiedStatus===terminal&&bill.providerVerifiedAt,
