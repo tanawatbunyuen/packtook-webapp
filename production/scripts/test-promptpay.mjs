@@ -10,7 +10,7 @@ const fail=msg=>{throw Error("V6.3 PromptPay regression: "+msg)};
 const assert=(yes,msg)=>{if(!yes)fail(msg)};
 assert(source.includes('PACKTOOK_OMISE_TEST_SECRET_KEY')&&source.includes('PACKTOOK_OMISE_TEST_WEBHOOK_SECRET'),"Secret Manager test-only names required");
 assert(source.includes("skey_test_")&&!source.includes("skey_live_"),"Test mode hard gate missing");
-assert(source.includes('method!=="promptpay"')&&source.includes('"source[type]"']="promptpay"'),"Payment must only create PromptPay sources");
+assert(source.includes('method!=="promptpay"')&&source.includes('form["source[type]"]="promptpay"'),"Payment must only create PromptPay sources");
 assert(source.includes('webhook_endpoints[]')&&source.includes('ref_id:"pt63-"'),"Production webhook routing/idempotent charge reference missing");
 assert(source.includes('timingSafeEqual')&&source.includes('req.rawBody'),"Webhook signatures must be checked over the original body");
 assert(source.includes('charge.source?.type!=="promptpay"'),"Reconciled charge must be verified as PromptPay");
