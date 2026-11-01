@@ -1,5 +1,5 @@
 import {initializeApp} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
-import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+import {getAuth,onIdTokenChanged,signInWithEmailAndPassword,signOut} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 import {getFunctions,httpsCallable} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-functions.js";
 import {firebaseConfig} from "./firebase-v4-config.js";
 const EXPECTED_PROD="packtook-prod-01";
@@ -10,7 +10,14 @@ const deviceKey="packtook-device-v61-production";
 const deviceId=()=>{let id=localStorage.getItem(deviceKey);if(!id||!/^[a-zA-Z0-9_-]{16,100}$/.test(id)){id=crypto.randomUUID();localStorage.setItem(deviceKey,id)}return id};
 let user=null;
 const listeners=new Set();
-onAuthStateChanged(auth,u=>{user=u?.emailVerified?u:null;for(const cb of listeners)cb(user)});
+onIdTokenChanged(auth,async u=>{
+ try{
+  const token=u?.emailVerified?await u.getIdTokenResult():null;
+  user=token?.claims?.packtookProductionBeta===true?u:null;
+  if(u&&!user){await signOut(auth);}
+ }catch(e){user=null;console.warn("Production Beta authorization not ready",e?.code||"error");}
+ for(const cb of listeners)cb(user);
+});
 window.PACKTOOK_FIREBASE={
  ready:true,
  get deviceId(){return deviceId()},
@@ -18,7 +25,11 @@ window.PACKTOOK_FIREBASE={
  async removeDevice(targetId){return (await api("removeDevice")({deviceId:deviceId(),targetId})).data},
  async deviceStatus(){return (await api("deviceStatus")({deviceId:deviceId()})).data},
  onUser(cb){listeners.add(cb);cb(user);return()=>listeners.delete(cb)},
- async login(email,password){const result=await signInWithEmailAndPassword(auth,email,password);if(!result.user.emailVerified){await signOut(auth);throw Error("กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ")}return result.user},
+ async login(email,password){const result=await signInWithEmailAndPassword(auth,email,password);
+ if(!result.user.emailVerified){await signOut(auth);throw Error("กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ")}
+ const token=await result.user.getIdTokenResult(true);
+ if(token.claims.packtookProductionBeta!==true){await signOut(auth);throw Error("บัญชีนี้ยังไม่ได้รับสิทธิ์ Production Beta กรุณาติดต่อผู้ดูแล")}
+ return result.user;},
  async logout(){await signOut(auth)},
  async usage(){return (await api("usageStatus")({})).data},
  async recordingStatus(operationId){return (await api("recordingStatus")({operationId})).data},
