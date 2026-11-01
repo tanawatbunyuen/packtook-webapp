@@ -4,3 +4,8 @@ firebase-debug.log
 .env*
 *.pem
 serviceAccount*.json
+
+# Production Beta files generated locally by controlled setup
+app/firebase-v4-config.js
+app/login-background.png
+functions/package-lock.json
