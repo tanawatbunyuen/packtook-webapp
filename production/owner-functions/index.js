@@ -66,9 +66,19 @@ function credits(a){
  if(!Number.isSafeInteger(used)||used<0||!Number.isSafeInteger(reserved)||reserved<0)return {balance:null,status:"review"};
  return {balance:Math.max(0,limits[a.plan]-used-reserved),status:"available"};
 }
+function expiryDetails(a){
+ if(a.plan==="Free")return {expiresAt:null,expiryState:"no_expiry",daysRemaining:null};
+ if(!a.planExpiresAt)return {expiresAt:null,expiryState:"not_set",daysRemaining:null};
+ if(typeof a.planExpiresAt!=="string")return {expiresAt:null,expiryState:"invalid",daysRemaining:null};
+ const at=Date.parse(a.planExpiresAt);
+ if(!Number.isFinite(at))return {expiresAt:null,expiryState:"invalid",daysRemaining:null};
+ const now=Date.now();
+ return {expiresAt:new Date(at).toISOString(),expiryState:at<=now?"expired":"active",
+   daysRemaining:at<=now?0:Math.ceil((at-now)/86400000)};
+}
 function baseAccount(a){
  return {plan:typeof a.plan==="string"?a.plan:"Unknown",status:state(a),
-  joinedAt:millis(a.createdAt),expiresAt:typeof a.planExpiresAt==="string"?a.planExpiresAt:null,
+  joinedAt:millis(a.createdAt),...expiryDetails(a),
   reservedCredits:Number.isSafeInteger(a.reserved)&&a.reserved>=0?a.reserved:0};
 }
 function assertCursor(cursor){
@@ -135,7 +145,8 @@ exports.ownerAnalyticsCustomers=onCall(options,async req=>{
   const a=doc.data(),basic=baseAccount(a),c=credits(a);
   return {accountId:doc.id,email:names.get(doc.id)||null,plan:basic.plan,status:basic.status,
    joinedAt:basic.joinedAt===null?null:new Date(basic.joinedAt).toISOString(),
-   expiresAt:basic.expiresAt,creditsRemaining:c.balance,
+   expiresAt:basic.expiresAt,expiryState:basic.expiryState,daysRemaining:basic.daysRemaining,
+   creditsRemaining:c.balance,
    creditsUnlimited:c.status==="unlimited",creditsStatus:c.status,reservedCredits:basic.reservedCredits,
    hasBilling:false};
  });
