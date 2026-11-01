@@ -160,7 +160,7 @@ assert(status.status==="paid"&&documents.get("accounts/"+userId).creditWalletRem
 const retryPaidCheckout=await api.promptpayCreateCharge(request({requestId:pending.requestId,method:"promptpay"}));
 assert(retryPaidCheckout.status==="paid"&&!retryPaidCheckout.qrImage,
  "Reopening paid checkout must return Paid, never show QR or create another Charge");
-assert(chargeCreateCount===1&&apiGetCount>=4,"Provider status must be checked independently");\n
+assert(chargeCreateCount===1&&apiGetCount>=4,"Provider status must be checked independently");
 chargeStatus="failed";paid=false;
 const anomaly=await api.promptpayChargeStatus(request({requestId:pending.requestId}));
 assert(anomaly.status==="payment_review"&&anomaly.alreadyApplied===true,
