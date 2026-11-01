@@ -179,7 +179,7 @@ function monthKey(date=new Date()){return `${date.getFullYear()}-${String(date.g
 function plan(){return plans.find(p=>p[0]===store.plan)||plans[0]}
 function updateQuota(){const q=remoteQuota;const p=q?plans.find(x=>x[0]===q.plan)||plans[0]:plans[0];const u=q?.used??0,unlimited=q?.limit===null;const left=q?.remaining??0;$('planName').textContent=p[0].toUpperCase();$('usedCount').textContent=u.toLocaleString();$('remainingCount').textContent=unlimited?'∞':left.toLocaleString();$('limitLabel').textContent=unlimited?'ไม่จำกัดวิดีโอ':q?.walletEnabled?'เครดิตสะสมที่ใช้ได้':'เครดิตคงเหลือในเดือนนี้';$('quotaText').textContent=unlimited?'เครดิตไม่จำกัด':q?.walletEnabled?`เครดิตสะสมคงเหลือ ${left.toLocaleString('th-TH')} วิดีโอ จาก ${Number(q.walletStartingCredits||left).toLocaleString('th-TH')} เครดิตหลังซื้อล่าสุด`:`ใช้แล้ว ${u.toLocaleString('th-TH')} / ${(q?.limit??20).toLocaleString('th-TH')}`;$('quotaProgress').style.width=unlimited?'0%':q?.walletEnabled?`${Math.min(100,100*left/Math.max(1,q.walletStartingCredits||left||1))}%`:`${Math.min(100,u/(q?.limit||20)*100)}%`}
 
-function showTab(tab){document.querySelectorAll('.tabcontent').forEach(e=>e.hidden=e.id!==tab);document.querySelectorAll('.nav').forEach(e=>e.classList.toggle('active',e.dataset.tab===tab));$('crumb').textContent=tab.toUpperCase();$('pageTitle').textContent={packing:'บันทึกวิดีโอการแพ็กสินค้า',dashboard:'ค้นหาประวัติวิดีโอ',plans:'แพ็กเกจและโควตาวิดีโอ',help:'คู่มือการใช้งาน',users:'จัดการผู้ใช้และอุปกรณ์'}[tab];if(tab==='dashboard'){renderHistory();void runRetention(false)}if(tab==='plans'){renderPlans();void refreshQrTestAccess();}if(tab==='users'){updateUsersSummary();void refreshRemoteQuota().catch(e=>toast(e.message));void renderDeviceManager()}}
+function showTab(tab){document.querySelectorAll('.tabcontent').forEach(e=>e.hidden=e.id!==tab);document.querySelectorAll('.nav').forEach(e=>e.classList.toggle('active',e.dataset.tab===tab));$('crumb').textContent=tab.toUpperCase();$('pageTitle').textContent={packing:'บันทึกวิดีโอการแพ็กสินค้า',dashboard:'ค้นหาประวัติวิดีโอ',plans:'แพ็กเกจและโควตาวิดีโอ',help:'คู่มือการใช้งาน',users:'จัดการผู้ใช้และอุปกรณ์'}[tab];if(tab==='dashboard'){renderHistory();void runRetention(false)}if(tab==='plans'){renderPlans();void refreshQrTestAccess();if(displayedPaymentQr)scheduleQrPoll();}if(tab==='users'){updateUsersSummary();void refreshRemoteQuota().catch(e=>toast(e.message));void renderDeviceManager()}}
 async function verifyAfterPaymentReturn(){
  if(new URLSearchParams(location.search).get('payment')!=='return')return;
  showTab('plans');
@@ -196,20 +196,108 @@ async function verifyAfterPaymentReturn(){
  }catch(e){status.textContent='การตรวจสถานะมีปัญหา: '+e.message}
  history.replaceState(null,'',location.pathname);
 }
-function displayOmiseQR(uri){
+// V6.3.2 — The QR is transient UI, owned by one billing request and one Auth user.
+// A successful Charge/Firestore status must invalidate this QR everywhere.
+let displayedPaymentQr=null,qrPollTimer=null,qrPollBusy=false;
+const QR_TERMINAL_STATES=new Set(["paid","failed","expired","cancelled","payment_review"]);
+function stopQrPoll(){
+ if(qrPollTimer!==null)clearTimeout(qrPollTimer);
+ qrPollTimer=null;
+}
+function clearDisplayedPaymentQr(){
+ stopQrPoll();
+ displayedPaymentQr=null;
+ const host=$("paymentQrResult");
+ if(host){host.replaceChildren();host.hidden=true}
+}
+function finishDisplayedPaymentQr(status,requestId){
+ // Never let a stale async result for another transaction clear its QR.
+ if(displayedPaymentQr&&requestId&&displayedPaymentQr.requestId!==requestId)return;
+ stopQrPoll();
+ displayedPaymentQr=null;
+ const host=$("paymentQrResult");
+ if(!host)return;
+ host.replaceChildren();
+ const messages={
+  paid:"✓ ยืนยันการชำระเงินสำเร็จแล้ว (Omise Test Mode) • ระบบอัปเดตแพ็กเกจและเครดิตแล้ว",
+  failed:"การชำระเงินไม่สำเร็จ • QR เดิมไม่สามารถใช้งานได้",
+  expired:"QR หมดอายุแล้ว • โปรดสร้างรายการใหม่เมื่อระบบอนุญาต",
+  cancelled:"รายการชำระเงินถูกยกเลิก • QR เดิมไม่สามารถใช้งานได้",
+  payment_review:"Omise พบการชำระแล้ว แต่การเปิดสิทธิ์ต้องตรวจสอบเพิ่มเติม • กรุณาติดต่อผู้ดูแล"
+ };
+ const message=document.createElement("p");
+ message.className=status==="paid"?"qr-terminal-paid":"qr-terminal-warning";
+ message.textContent=messages[status]||"สถานะรายการเปลี่ยนแล้ว โปรดตรวจสอบประวัติแพ็กเกจ";
+ host.append(message);
+ host.hidden=false;
+}
+function syncDisplayedPaymentQr(details){
+ const current=displayedPaymentQr;
+ if(!current||current.userId!==remoteUser?.uid)return;
+ const record=(details?.requests||[]).find(x=>x.id===current.requestId);
+ if(record&&QR_TERMINAL_STATES.has(record.status))finishDisplayedPaymentQr(record.status,current.requestId);
+}
+function scheduleQrPoll(){
+ if(qrPollTimer!==null||!displayedPaymentQr)return;
+ qrPollTimer=setTimeout(()=>{
+  qrPollTimer=null;
+  if(!displayedPaymentQr)return;
+  if(document.hidden||$("plans")?.hidden){scheduleQrPoll();return}
+  void checkDisplayedPaymentQr();
+ },10000);
+}
+async function checkDisplayedPaymentQr(){
+ if(qrPollBusy||!displayedPaymentQr)return;
+ const pending=displayedPaymentQr;
+ if(remoteUser?.uid!==pending.userId){clearDisplayedPaymentQr();return}
+ qrPollBusy=true;
+ try{
+  const response=await credit().omisePaymentStatus(pending.requestId);
+  if(displayedPaymentQr!==pending||remoteUser?.uid!==pending.userId)return;
+  if(QR_TERMINAL_STATES.has(response.status)){
+   finishDisplayedPaymentQr(response.status,pending.requestId);
+   try{await refreshRemoteQuota()}catch(e){console.warn("Quota refresh after QR status",e?.code||"unavailable")}
+   if(!$("plans")?.hidden)await renderSubscriptionRequests();
+  }else{
+   const indicator=$("qrPendingStatus");
+   if(indicator)indicator.textContent="ยังรอการยืนยันจาก Omise Test • ตรวจสอบอัตโนมัติทุก 10 วินาที";
+  }
+ }catch(e){
+  if(displayedPaymentQr===pending){
+   const indicator=$("qrPendingStatus");
+   if(indicator)indicator.textContent="ยังตรวจสอบสถานะ QR ไม่สำเร็จ • ระบบจะลองอีกครั้ง และสามารถกดตรวจสถานะเองได้";
+   console.warn("QR Test status check delayed",e?.code||"unavailable");
+  }
+ }finally{
+  qrPollBusy=false;
+  if(displayedPaymentQr)scheduleQrPoll();
+ }
+}
+function displayOmiseQR(uri,requestId){
+ if(typeof requestId!=="string"||!requestId||!remoteUser?.uid)throw Error("ไม่สามารถติดตาม QR ที่ไม่มีรายการชำระเงินหรือบัญชีผู้ใช้");
  const url=new URL(uri);
  if(url.protocol!=="https:"||url.hostname!=="api.omise.co")throw Error("URL รูป QR ไม่ปลอดภัย");
- const container=$('paymentQrResult');container.replaceChildren();
- const label=document.createElement('p');label.textContent='PromptPay QR · OMISE TEST MODE · ไม่มีการโอนเงินจริง';
- const img=document.createElement('img');img.src=url.href;img.alt='PromptPay QR (Test)';img.style.maxWidth='280px';
- container.append(label,img);container.scrollIntoView({behavior:'smooth',block:'center'});
+ stopQrPoll();
+ displayedPaymentQr={requestId,userId:remoteUser.uid};
+ const container=$("paymentQrResult");container.replaceChildren();container.hidden=false;
+ const label=document.createElement("p");
+ label.textContent="PromptPay QR · OMISE TEST MODE · ไม่มีการโอนเงินจริง";
+ const img=document.createElement("img");img.src=url.href;img.alt="PromptPay QR (Test)";img.style.maxWidth="280px";
+ const status=document.createElement("p");status.id="qrPendingStatus";
+ status.textContent="รอการชำระเงิน (Test Mode) • ตรวจสอบอัตโนมัติทุก 10 วินาที";
+ const check=document.createElement("button");check.type="button";check.className="secondary";
+ check.textContent="ตรวจสถานะ QR ตอนนี้";check.onclick=()=>{void checkDisplayedPaymentQr()};
+ container.append(label,img,status,check);
+ container.scrollIntoView({behavior:"smooth",block:"center"});
+ scheduleQrPoll();
 }
 async function startOmiseUI(id,method,amountTHB){
  if(method!=='promptpay'){toast('ขณะนี้รองรับเฉพาะการชำระผ่าน PromptPay QR Code');return}
  if(!confirm('สร้าง QR Code ผ่าน Omise TEST MODE สำหรับแพ็กเกจราคา ฿'+Number(amountTHB).toLocaleString('th-TH')+'? ยังไม่มีการเก็บเงินจริง'))return;
  try{
   const result=await credit().startOmisePayment(id,'promptpay');
-  if(result.qrImage){if(subscriptionHistoryDialog()?.open)subscriptionHistoryDialog().close();displayOmiseQR(result.qrImage)}
+  if(result.status==="paid"){finishDisplayedPaymentQr("paid",id)}
+  else if(result.qrImage){if(subscriptionHistoryDialog()?.open)subscriptionHistoryDialog().close();displayOmiseQR(result.qrImage,id)}
   toast('สถานะ Omise: '+result.status);
   await renderSubscriptionRequests();
  }catch(e){toast('Omise: '+e.message)}
@@ -226,6 +314,7 @@ async function testPaidRecheck(requestId,button){
   const after=await credit().subscriptionOverview();
   const unchanged=before.plan===after.plan&&before.expiresAt===after.expiresAt&&before.remaining===after.remaining;
   const allPaid=results.every(v=>v==='paid');
+  if(allPaid)finishDisplayedPaymentQr("paid",requestId);
   const passed=allPaid&&unchanged;
   const text='Payment Recheck: '+(passed?'PASS':'FAIL')+'\\n3 calls: '+results.join(', ')+'\\nExpiry before: '+(before.expiresAt||'none')+'\\nExpiry after: '+(after.expiresAt||'none')+'\\nPlan before/after: '+before.plan+' / '+after.plan+'\\nCredits before/after: '+before.remaining+' / '+after.remaining;
   alert(text);
@@ -320,7 +409,8 @@ function subscriptionRequestActions(x,details){
    recover.disabled=true;
    try{
     const response=await credit().recoverOmiseCharge(x.id);
-    if(response.qrImage){if(subscriptionHistoryDialog()?.open)subscriptionHistoryDialog().close();displayOmiseQR(response.qrImage)}
+    if(QR_TERMINAL_STATES.has(response.status)){finishDisplayedPaymentQr(response.status,x.id)}
+    else if(response.qrImage){if(subscriptionHistoryDialog()?.open)subscriptionHistoryDialog().close();displayOmiseQR(response.qrImage,x.id)}
     if(!response.found)alert(response.matchCount>1?'พบหลาย Charge กรุณาตรวจสอบกับผู้ดูแล':'ไม่พบ Charge กรุณาตรวจ Omise Test Dashboard ก่อนสร้างคำขอใหม่');
     else toast('สถานะรายการ: '+response.status);
     await subscriptionRefreshAfterAction();
@@ -334,7 +424,8 @@ function subscriptionRequestActions(x,details){
    check.disabled=true;
    try{
     const result=await credit().omisePaymentStatus(x.id);
-    if(result.qrImage){if(subscriptionHistoryDialog()?.open)subscriptionHistoryDialog().close();displayOmiseQR(result.qrImage)}
+    if(QR_TERMINAL_STATES.has(result.status)){finishDisplayedPaymentQr(result.status,x.id)}
+    else if(result.qrImage){if(subscriptionHistoryDialog()?.open)subscriptionHistoryDialog().close();displayOmiseQR(result.qrImage,x.id)}
     if(result.needsReconciliation)toast('กรุณากู้คืน Charge เพื่อค้นหารายการ');
     else toast('สถานะ Omise: '+result.status);
     await subscriptionRefreshAfterAction();
@@ -428,6 +519,7 @@ async function renderSubscriptionRequests(){
  try{
   const details=await credit().subscriptionOverview();
   subscriptionDashboardData=details;
+  syncDisplayedPaymentQr(details);
   host.replaceChildren();
   const page=subscriptionNode('div','subscription-dashboard');
   page.append(subscriptionHero(details));
@@ -939,7 +1031,7 @@ document.querySelectorAll('[data-tab]').forEach(e=>e.onclick=()=>showTab(e.datas
 $('barcode').addEventListener('keydown',e=>{if(e.key!=='Enter')return;e.preventDefault();const code=$('barcode').value.trim();$('barcode').value='';if(!code){toast('กรุณาสแกนหรือพิมพ์ Barcode ก่อนกด Enter');return}if(ending||reservation){toast('ระบบกำลังดำเนินการ กรุณารอสักครู่');return}if(activeBarcode){if(code===activeBarcode)stopRecording();else toast('กำลังอัด '+activeBarcode+' ต้องสแกนรหัสเดิมเพื่อหยุด');return}reservation=true;startRecording(code).catch(e=>toast('เกิดข้อผิดพลาด: '+e.message)).finally(()=>{reservation=false;$('barcode').focus()})});
 function connectFirebaseUI(){if(!credit()?.ready)return;credit().onUser(u=>{remoteUser=u;if(u){
  void refreshQrTestAccess();
-void credit().accountRole().then(info=>{accountRoleInfo=info;const role=$('userRoleInfo');if(role)role.textContent=info.role==='admin'?'Admin — อนุมัติการบันทึกซ้ำได้':'Operator — ต้องขออนุมัติจาก Admin';}).catch(e=>toast('Role: '+e.message));showRecovery();showDeviceControl();const details=$('userAccountDetails');if(details)details.textContent='ยืนยันอีเมลแล้ว • Firebase Authentication';const em=$('userAccountEmail');if(em)em.textContent=u.email||'—';void setupDevice().catch(e=>toast('Device Management: '+e.message)).finally(()=>void renderDeviceManager());$('loginPage').hidden=true;$('appPage').hidden=false;void refreshRemoteQuota().then(()=>{showTab('packing');void verifyAfterPaymentReturn()}).catch(e=>{showTab('packing');toast('เชื่อมโควตาไม่สำเร็จ: '+e.message);void verifyAfterPaymentReturn()})}else{promptPayAccessSeq++;promptPayTestEnabled=false;promptPayAccessState='loading';updateQrAccessNotice();$('appPage').hidden=true;$('loginPage').hidden=false}});const msg=$('firebaseConnectStatus');if(msg)msg.textContent='เชื่อมต่อ Firebase แล้ว — เข้าสู่ระบบเพื่อเปิด Packing / Dashboard / Packages / Help'}
+void credit().accountRole().then(info=>{accountRoleInfo=info;const role=$('userRoleInfo');if(role)role.textContent=info.role==='admin'?'Admin — อนุมัติการบันทึกซ้ำได้':'Operator — ต้องขออนุมัติจาก Admin';}).catch(e=>toast('Role: '+e.message));showRecovery();showDeviceControl();const details=$('userAccountDetails');if(details)details.textContent='ยืนยันอีเมลแล้ว • Firebase Authentication';const em=$('userAccountEmail');if(em)em.textContent=u.email||'—';void setupDevice().catch(e=>toast('Device Management: '+e.message)).finally(()=>void renderDeviceManager());$('loginPage').hidden=true;$('appPage').hidden=false;void refreshRemoteQuota().then(()=>{showTab('packing');void verifyAfterPaymentReturn()}).catch(e=>{showTab('packing');toast('เชื่อมโควตาไม่สำเร็จ: '+e.message);void verifyAfterPaymentReturn()})}else{clearDisplayedPaymentQr();promptPayAccessSeq++;promptPayTestEnabled=false;promptPayAccessState='loading';updateQrAccessNotice();$('appPage').hidden=true;$('loginPage').hidden=false}});const msg=$('firebaseConnectStatus');if(msg)msg.textContent='เชื่อมต่อ Firebase แล้ว — เข้าสู่ระบบเพื่อเปิด Packing / Dashboard / Packages / Help'}
 if(credit()?.ready)connectFirebaseUI();else window.addEventListener('packtook-firebase-ready',connectFirebaseUI,{once:true});
 $('refreshQrAccess')?.addEventListener('click',()=>{void refreshQrTestAccess()});
 $('subscriptionHistoryClose')?.addEventListener('click',()=>subscriptionHistoryDialog()?.close());
@@ -952,7 +1044,7 @@ $('trialBtn').addEventListener('click',()=>toast('Production Beta สำหร�
 
 $('restoreFolder').addEventListener('click',()=>restoreFolder(true));
 $('closeVideo').addEventListener('click',closePlayback);
-window.addEventListener('pagehide',()=>{closePlayback();clearHealth();if(activeBarcode||ending||pending())console.warn('PACKTOOK: page closed while video/credit operation is pending. Reconcile using operation ID before recording more.')});
+window.addEventListener('pagehide',()=>{stopQrPoll();closePlayback();clearHealth();if(activeBarcode||ending||pending())console.warn('PACKTOOK: page closed while video/credit operation is pending. Reconcile using operation ID before recording more.')});
 window.addEventListener('beforeunload',e=>{if(activeBarcode||ending){e.preventDefault();e.returnValue='';}});
 window.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&stream&&!streamGood()){updateHealth('⚠ กรุณาตรวจสอบกล้อง','danger-health')}});
 restoreFolder(false).catch(()=>{});
