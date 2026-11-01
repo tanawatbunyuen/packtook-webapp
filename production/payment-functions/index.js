@@ -298,10 +298,15 @@ exports.promptpayCreateCharge=onCall(paymentSecrets,async req=>{
   const item=snap.data();
   if(!item.purchaseKind)throw new HttpsError("failed-precondition","This billing request was created before V5.0. Create a new request to purchase.");
   if(!accountSnap.exists)throw new HttpsError("not-found","Account missing");
+  // A retry of a previously linked charge must NEVER start a new charge.
+  // Account plan/credits may have changed because the original payment succeeded.
+  // Validate fresh purchase eligibility only when the request has not yet begun.
+  if(item.status!=="pending_payment_setup"){
+   return {claimed:false,status:item.status,chargeId:item.omiseChargeId};
+  }
   const purchase=purchaseDecision(accountSnap.data(),item.plan);
   if(!purchase.allowed||item.purchaseKind&&(!billingOpen(accountSnap.data())||accountSnap.data().openBillingRequestId!==id||(accountSnap.data().billingVersion||0)!==(item.baseBillingVersion||0))||item.purchaseKind==="upgrade"&&(purchase.kind!=="upgrade"||item.basePlan!==accountSnap.data().plan||item.baseExpiresAt!==accountSnap.data().planExpiresAt))throw new HttpsError("failed-precondition",purchase.reason||"Billing request is no longer valid");
   if(!Object.hasOwn(pricesTHB,item.plan)||item.plan==="Free"||item.amountTHB!==pricesTHB[item.plan])throw new HttpsError("failed-precondition","Invalid price");
-  if(item.status!=="pending_payment_setup")return {claimed:false,status:item.status,chargeId:item.omiseChargeId};
   tx.update(ticket,{status:"creating_charge",paymentMethod:method,paymentProvider:"omise",claimedAt:FieldValue.serverTimestamp()});
   return {claimed:true,amount:item.amountTHB,plan:item.plan};
  });
