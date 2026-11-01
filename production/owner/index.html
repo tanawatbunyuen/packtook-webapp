@@ -2,7 +2,7 @@
 <html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#07152e">
 <meta name="robots" content="noindex,nofollow"><meta name="description" content="PACKTOOK Owner Analytics — private business dashboard">
 <title>PACKTOOK Owner | Production Beta Dashboard</title>
-<link rel="stylesheet" href="./style.css?v=6.2.3"></head>
+<link rel="stylesheet" href="./style.css?v=6.4.0"></head>
 <body>
 <section id="loginScreen" class="login-screen">
  <div class="login-bg"></div>
@@ -22,12 +22,12 @@
 <div id="ownerApp" class="app" hidden>
  <aside class="sidebar">
   <div class="brand brand-sidebar"><span class="brand-symbol"><img src="./logo.svg" alt="โลโก้ PACKTOOK"></span><div><strong>PACK<span>TOOK</span></strong><small>OWNER CONTROL CENTER</small></div></div>
-  <div class="sidebar-menu"><a href="#overview" class="sidebar-link active">▦ <span>ภาพรวมธุรกิจ</span></a><a href="#trends" class="sidebar-link">▥ <span>แนวโน้มรายเดือน</span></a><a href="#revenue" class="sidebar-link">฿ <span>รายงานยอดขาย</span></a><a href="#plans" class="sidebar-link">◈ <span>รายงานแพ็กเกจ</span></a><a href="#customers" class="sidebar-link">♙ <span>บัญชีลูกค้า</span></a></div>
+  <div class="sidebar-menu"><a href="#overview" class="sidebar-link active">▦ <span>ภาพรวมธุรกิจ</span></a><a href="#trends" class="sidebar-link">▥ <span>แนวโน้มรายเดือน</span></a><a href="#revenue" class="sidebar-link">฿ <span>รายงานยอดขาย</span></a><a href="#paymentHealth" class="sidebar-link">◎ <span>ตรวจธุรกรรม QR</span></a><a href="#plans" class="sidebar-link">◈ <span>รายงานแพ็กเกจ</span></a><a href="#customers" class="sidebar-link">♙ <span>บัญชีลูกค้า</span></a></div>
   <div class="sidebar-bottom"><div class="environment"><span class="dot"></span> PRODUCTION · OWNER BETA</div><small>ส่วนจัดการแยกจากเว็บไซต์ของลูกค้า</small><button type="button" class="secondary logout" id="logoutButton">ออกจากระบบ</button></div>
  </aside>
  <main class="content">
   <header class="topbar">
-   <div><p class="eyebrow">BUSINESS INTELLIGENCE / V6.2.3</p><h1>Owner Analytics Dashboard</h1><p class="muted">สมาชิก ยอดธุรกรรมที่บันทึก และวันหมดอายุจาก Firebase Production</p></div>
+   <div><p class="eyebrow">BUSINESS INTELLIGENCE / V6.4</p><h1>Owner Analytics Dashboard</h1><p class="muted">สมาชิก ยอดธุรกรรมที่บันทึก และวันหมดอายุจาก Firebase Production</p></div>
    <div class="top-actions"><span id="currentEmail" class="owner-email"></span><button type="button" id="refreshButton" class="primary">↻ รีเฟรชข้อมูล</button></div>
   </header>
   <div class="test-banner"><span class="test-banner-icon" aria-hidden="true">i</span><div><strong>PRODUCTION OWNER BETA — CONTROLLED MANAGEMENT</strong><p>ส่วนรายงานอ่านอย่างเดียว • การปรับเครดิต/วันหมดอายุต้องมี Owner Manager และเปิดใช้แยกต่างหาก • ยังไม่รับเงินจริง</p></div></div>
@@ -69,6 +69,32 @@
    </article>
    <p class="hint">ยอดจากเอกสาร Paid ไม่ใช่ยอดเงินสุทธิหลัง Refund หรือยอดฝากเข้าบัญชี • ไม่มีการเปิดชำระเงินจริงผ่านหน้านี้</p>
   </section>
+
+  <section id="paymentHealth" class="report-section">
+   <div class="section-heading">
+    <div><p class="eyebrow">03 / TEST PAYMENT OPERATIONS</p>
+     <h2>ติดตามธุรกรรม PromptPay QR</h2>
+     <p class="muted">สถานะจาก Firestore Production เท่านั้น • ระบุรายการที่ควรตรวจจาก Omise Test Dashboard • ไม่มีการเปลี่ยนเครดิตหรือเปิดชำระเงินจริง</p>
+    </div>
+    <button type="button" id="reloadPaymentHealth" class="secondary">↻ รีเฟรชการตรวจสอบ</button>
+   </div>
+   <p id="paymentHealthStatus" class="revenue-note" role="status">กำลังโหลดข้อมูลธุรกรรมที่ต้องตรวจสอบ…</p>
+   <p id="paymentHealthLimit" class="partial-notice" hidden></p>
+   <div class="metric-grid">
+    <article class="metric"><span class="metric-icon blue">▣</span><p>QR ที่รอการชำระ</p><strong id="phPending">—</strong><small>ยังไม่ถือว่าเป็นยอดขาย</small></article>
+    <article class="metric"><span class="metric-icon amber">◷</span><p>QR เลยกำหนด ควรตรวจ</p><strong id="phPastExpiry">—</strong><small>ต้องยืนยันสถานะจริงกับ Omise</small></article>
+    <article class="metric"><span class="metric-icon purple">◎</span><p>รายการที่ต้องตรวจสอบ</p><strong id="phReview">—</strong><small>Payment Review / Charge ค้าง</small></article>
+    <article class="metric"><span class="metric-icon green">✓</span><p>Paid พร้อมหลักฐานยืนยัน</p><strong id="phEvidence">—</strong><small>หลักฐาน ณ เวลาปิดรายการ ไม่ใช่เงินเข้าธนาคาร</small></article>
+   </div>
+   <div class="panel owner-payment-health-panel">
+    <div class="panel-head"><h3>รายการที่ควรตรวจสอบใน Omise Test</h3>
+     <span class="muted" id="phAlertsCount">—</span></div>
+    <div class="table-scroll"><table><thead><tr>
+     <th>บัญชีลูกค้า (UID)</th><th>รายการ</th><th>แพ็กเกจ</th><th>ยอด (บาท)</th><th>เหตุผล</th><th>อายุรายการ</th>
+    </tr></thead><tbody id="paymentHealthRows"><tr><td colspan="6">กำลังโหลด…</td></tr></tbody></table></div>
+   </div>
+   <p id="phCaveat" class="hint">รายงานนี้ไม่ตรวจ Omise แบบ Real Time และไม่ใช่รายงานรับเงินจริง</p>
+  </section>
   <section id="trends" class="report-section">
    <div class="section-heading"><div><p class="eyebrow">03 / GROWTH TRENDS</p><h2>แนวโน้มรายเดือน</h2></div><label class="chart-control" for="monthRange">ดูย้อนหลัง <select id="monthRange"><option value="6">6 เดือน</option><option value="12" selected>12 เดือน</option></select></label></div>
    <div class="charts-grid">
@@ -109,5 +135,5 @@
   <footer class="footer"><span>PACKTOOK OWNER · Production Beta</span><span>Read-only • ยังไม่มีระบบ Omise Live Payment</span></footer>
  </main>
 </div>
-<script type="module" src="./app.js?v=6.2.3"></script>
+<script type="module" src="./app.js?v=6.4.0"></script>
 </body></html>
