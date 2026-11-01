@@ -336,8 +336,8 @@ exports.ownerManageCustomer=onCall(options,async req=>{
      summary.balance!==d.expectedCreditsRemaining)
    throw new HttpsError("failed-precondition","Customer account changed. Refresh before retrying");
   if(a.openBillingRequestId)throw new HttpsError("failed-precondition","Pending billing request must be resolved first");
-  // Critical: no in-flight video. Converting legacy credits while reserved
-  // could otherwise alter credit recovery semantics for ongoing recordings.
+  // Critical: no in-flight video. Never adjust wallet/expiry while a
+  // reservation is active, to preserve credit reserve/finalize consistency.
   if(a.reserved!==0)throw new HttpsError("failed-precondition","Complete all reservations before Owner adjustment");
   const patch={updatedAt:admin.firestore.FieldValue.serverTimestamp()};
   let newBalance=summary.balance,newExpiresAt=basics.expiresAt;
