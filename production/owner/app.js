@@ -1,6 +1,6 @@
 'use strict';
 import {initializeApp} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
-import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,sendEmailVerification,sendPasswordResetEmail,signOut} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 import {getFunctions,httpsCallable} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-functions.js";
 import {firebaseConfig} from "./firebase-config.js";
 if(firebaseConfig.projectId!=="packtook-prod-01"||firebaseConfig.authDomain!=="packtook-prod-01.firebaseapp.com")
@@ -163,9 +163,15 @@ $("loginForm").addEventListener("submit",async e=>{
  const button=$("loginButton");button.disabled=true;button.textContent="กำลังเข้าสู่ระบบ…";
  try{
   const response=await signInWithEmailAndPassword(auth,$("loginEmail").value.trim(),$("loginPassword").value);
-  if(!response.user.emailVerified){await signOut(auth);throw Error("กรุณายืนยันอีเมล Firebase ก่อนใช้ Owner Dashboard")}
+  if(!response.user.emailVerified){await sendEmailVerification(response.user);await signOut(auth);throw Error("ส่งลิงก์ยืนยันอีเมลแล้ว โปรดตรวจกล่องจดหมายก่อนเข้า Owner Dashboard")}
  }catch(e){showError(errorMessage(e))}
  finally{button.disabled=false;button.textContent="เข้าสู่ Owner Dashboard"}
+});
+$("resetPassword").addEventListener("click",async()=>{
+ const email=$("loginEmail").value.trim();
+ if(!email)return showError("กรุณากรอกอีเมลก่อนขอรีเซ็ตรหัสผ่าน");
+ try{await sendPasswordResetEmail(auth,email);showError("หากมีบัญชีนี้ ระบบจะส่งอีเมลตั้งรหัสผ่านใหม่ให้")}
+ catch(e){showError("ส่งลิงก์ไม่สำเร็จ: "+errorMessage(e))}
 });
 $("logoutButton").addEventListener("click",async()=>{await signOut(auth);displayLogin()});
 $("refreshButton").addEventListener("click",()=>{void fetchSummary()});
