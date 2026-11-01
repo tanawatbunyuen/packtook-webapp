@@ -265,8 +265,10 @@ function updateManagementFields(){
  $("manageCreditsGroup").hidden=action!=="grant_credits";
  $("manageExpiryGroup").hidden=action!=="set_expiry";
  const account=selectedManagedAccount;
+ $("manageResult").textContent=action==="grant_credits"&&account.walletEnabled!==true?
+  "บัญชีนี้ยังใช้โควตารายเดือน ไม่สามารถเพิ่มเครดิตแบบ Wallet ได้โดยไม่เปลี่ยนนโยบายโควตา":"";
  $("manageSubmit").disabled=action==="grant_credits"?
-  account.creditsStatus!=="available"||!Number.isSafeInteger(account.creditsRemaining)||
+  account.creditsStatus!=="available"||account.walletEnabled!==true||!Number.isSafeInteger(account.creditsRemaining)||
   account.reservedCredits!==0:
   account.plan==="Free"||account.reservedCredits!==0;
  pendingManagementId=null;
@@ -283,7 +285,7 @@ function selectManagedCustomer(id){
  $("manageCreditAmount").value="10";
  $("manageResult").textContent="";
  $("manageAction").value=a.plan==="Free"?"grant_credits":
-  a.creditsStatus==="available"?"grant_credits":"set_expiry";
+  a.walletEnabled===true&&a.creditsStatus==="available"?"grant_credits":"set_expiry";
  const expiry=a.expiresAt?new Date(a.expiresAt):null;
  if(expiry&&!Number.isNaN(expiry.getTime())){
   // The saved expiry is UTC; show its calendar day in Thailand.
