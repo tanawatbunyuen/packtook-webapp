@@ -20,5 +20,9 @@ const expected="test-uid-123";
 assert(pendingKeyFor({uid:expected})==="packtook-pending-"+expected,"pending key must be UID scoped");
 assert(pendingKeyFor(true)===null,"boolean session must not generate a key");
 assert(pendingKeyFor(null)===null,"logged-out session must not generate a key");
-assert(index.includes('app.js?v=6.1.1'),"browser asset URL must invalidate V6.1 cached login code");
-console.log("PASS: PACKTOOK V6.1.1 UID login/pending regression checks");
+// Keep this test forward-compatible with later Customer UI releases.
+const scriptVersion=index.match(/<script\\s+src="app\\.js\\?v=(\\d+)\\.(\\d+)\\.(\\d+)"\\s*><\\/script>/);
+assert(!!scriptVersion,"app.js script must include a semver cache-busting query parameter");
+const [major,minor,patch]=scriptVersion.slice(1).map(Number);
+assert(major>6||(major===6&&(minor>1||(minor===1&&patch>=1))),"app.js cache version must be at least 6.1.1");
+console.log("PASS: PACKTOOK Firebase UID login/pending regression checks (app.js v"+[major,minor,patch].join(".")+")");
