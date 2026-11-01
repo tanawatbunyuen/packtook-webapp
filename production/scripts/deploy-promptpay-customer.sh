@@ -8,6 +8,7 @@ node scripts/verify.mjs "$PROD"
 node scripts/test-auth-uid.mjs
 node scripts/test-customer-ui.mjs
 node scripts/test-promptpay.mjs
+node scripts/test-qr-lifecycle.mjs
 node --check app/app.js
 [[ -s app/login-background.png && -s app/firebase-v4-config.js ]] || {
  echo "ERROR: Copy verified Production app/login-background.png and app/firebase-v4-config.js from V6.1." >&2;exit 1; }
