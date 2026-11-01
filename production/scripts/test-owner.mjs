@@ -25,13 +25,15 @@ const accounts=[
 const billing=new Map([
  ["cust1",[
   {status:"paid",paymentProvider:"omise",omiseLivemode:true,omiseChargeId:"chrg_ABC123",
-   plan:"Starter",amountTHB:199,paidAt:"2026-11-01T08:00:00Z"},
+   plan:"Starter",amountTHB:199,paidAt:new Date().toISOString()},
   {status:"paid",paymentProvider:"omise",omiseLivemode:false,omiseChargeId:"chrg_test_ABC123",
-   plan:"Basic",amountTHB:299,paidAt:"2026-11-01T09:00:00Z"},
+   plan:"Basic",amountTHB:299,paidAt:new Date().toISOString()},
+  {status:"paid",paymentProvider:"omise",omiseChargeId:"chrg_test_LEGACY123",
+   plan:"Basic",amountTHB:99,paidAt:new Date().toISOString()},
   {status:"paid",paymentProvider:"omise",omiseChargeId:"chrg_old_ABC123",
-   plan:"Starter",amountTHB:199,paidAt:"2026-11-01T10:00:00Z"},
+   plan:"Starter",amountTHB:199,paidAt:new Date().toISOString()},
   {status:"failed",paymentProvider:"omise",omiseLivemode:true,omiseChargeId:"chrg_fail_ABC123",
-   plan:"Starter",amountTHB:599,paidAt:"2026-11-01T11:00:00Z"}
+   plan:"Starter",amountTHB:599,paidAt:new Date().toISOString()}
  ]],
  ["cust2",[]],["cust3",[]]
 ]);
@@ -95,10 +97,10 @@ assert(customers.customers[2].creditsRemaining===0&&customers.customers[2].credi
 const revenue=await exportsObj.ownerAnalyticsRevenue(valid);
 assert(revenue.billingEnabled===false&&revenue.reconciliation==="NOT_RECONCILED","Production payment must remain closed");
 assert(revenue.totals.liveSalesTHB===199&&revenue.totals.livePayments===1,"Explicit live ledger amount counted");
-assert(revenue.totals.testSalesTHB===299&&revenue.totals.testPayments===1,"Test transaction separated");
+assert(revenue.totals.testSalesTHB===398&&revenue.totals.testPayments===2,"Test transaction separated");
 assert(revenue.totals.unclassifiedSalesTHB===199&&revenue.totals.unclassifiedPayments===1,"Unclassified transaction not mislabeled live");
-assert(revenue.totals.liveSalesTHB!==199+299+199,"Live revenue must not include Test or unclassified records");
-assert(revenue.months.some(x=>x.liveSalesTHB===199&&x.testSalesTHB===299),"Monthly categories must be populated");
+assert(revenue.totals.liveSalesTHB!==199+398+199,"Live revenue must not include Test or unclassified records");
+assert(revenue.months.some(x=>x.liveSalesTHB===199&&x.testSalesTHB===398),"Monthly categories must be populated");
 let denied=false;try{await exportsObj.ownerAnalyticsCustomers({...valid,data:{afterId:"../../other"}})}catch(e){denied=e.code==="invalid-argument"}
 assert(denied,"Invalid pagination cursor should be rejected");
 ownerClaimActive=false;
