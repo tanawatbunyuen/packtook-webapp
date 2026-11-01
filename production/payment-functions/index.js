@@ -230,7 +230,7 @@ async function reconcileCharge(accountId,requestId,chargeId){
    tx.update(acc,{plan:item.plan,planExpiresAt:expiresAt,lastPaidAt:FieldValue.serverTimestamp(),billingVersion:FieldValue.increment(1),
     creditWalletV1:true,creditWalletRemaining:credits.total,walletStartingCredits:credits.total,period:periodId(Date.now()),used:0,reserved:0,
     ...(lockOk?{openBillingRequestId:FieldValue.delete()}:{}),updatedAt:FieldValue.serverTimestamp()});
-   tx.update(ref,{status:"paid",paidAt:FieldValue.serverTimestamp(),paymentProvider:"omise",activationExpiresAt:expiresAt,
+   tx.update(ref,{status:"paid",paidAt:FieldValue.serverTimestamp(),paymentProvider:"omise",omiseLivemode:false,paymentMethod:"promptpay",activationExpiresAt:expiresAt,
     creditsPurchased:credits.purchased,transferredCredits:credits.transferred,balanceAfter:credits.total,expiryBefore:a.planExpiresAt||null});
    tx.create(acc.collection("audit").doc(),{action:"subscription_credits_merged",billingRequestId:requestId,omiseChargeId:chargeId,plan:item.plan,creditsPurchased:credits.purchased,transferredCredits:credits.transferred,balanceAfter:credits.total,createdAt:FieldValue.serverTimestamp()});
    return {status:"paid",plan:item.plan,expiresAt,creditsPurchased:credits.purchased,transferredCredits:credits.transferred,balanceAfter:credits.total};
@@ -277,7 +277,7 @@ exports.promptpayCreateCharge=onCall(paymentSecrets,async req=>{
   form["source[type]"]="promptpay";
   charge=await omiseAPI("/charges","POST",form);
   if(!charge.id||charge.livemode!==false||charge.source?.type!=="promptpay")throw Error("Unexpected charge");
-  await ticket.update({status:"payment_pending",omiseChargeId:charge.id,omiseStatus:charge.status,createdChargeAt:FieldValue.serverTimestamp()});
+  await ticket.update({status:"payment_pending",omiseChargeId:charge.id,omiseLivemode:false,omiseStatus:charge.status,createdChargeAt:FieldValue.serverTimestamp()});
  }catch(e){
   if(e instanceof HttpsError&&e.details?.providerRejected===true){
    await db.runTransaction(async tx=>{const t=await tx.get(ticket);if(t.exists&&t.data().status==="creating_charge"&&!t.data().omiseChargeId)tx.update(ticket,{status:"pending_payment_setup",omiseErrorCode:String(e.message).slice(0,160)})});
