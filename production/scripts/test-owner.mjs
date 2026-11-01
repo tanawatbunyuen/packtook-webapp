@@ -39,11 +39,11 @@ const billing=new Map([
   {status:"failed",paymentProvider:"omise",omiseLivemode:true,omiseChargeId:"chrg_fail_ABC123",
    plan:"Starter",amountTHB:599,paidAt:new Date().toISOString()},
   {status:"payment_pending",plan:"Starter",amountTHB:199,
-   createdAt:new Date(Date.now()-55*60000),qrExpiresAt:new Date(Date.now()-10*60000).toISOString()},
+   createdAt:new Date(Date.now()-55*60000).toISOString(),qrExpiresAt:new Date(Date.now()-10*60000).toISOString()},
   {status:"creating_charge",plan:"Starter",amountTHB:199,
-   claimedAt:new Date(Date.now()-11*60000)},
+   claimedAt:new Date(Date.now()-11*60000).toISOString()},
   {status:"payment_review",plan:"Starter",amountTHB:199,
-   createdAt:new Date(Date.now()-15*60000)}
+   createdAt:new Date(Date.now()-15*60000).toISOString()}
  ]],
  ["cust2",[]],["cust3",[]]
 ]);
