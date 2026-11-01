@@ -61,17 +61,17 @@
    <p class="hint">รายงานนี้อ่านจากเอกสารการชำระเงิน ไม่คำนวณรายได้จากจำนวนผู้ใช้งานหรือราคาแพ็กเกจ และไม่ยืนยันสถานะ Refund กับผู้ให้บริการชำระเงิน</p>
   </section>
   <section id="trends" class="report-section">
-   <div class="section-heading"><div><p class="eyebrow">02 / GROWTH TRENDS</p><h2>แนวโน้มรายเดือน</h2></div><label class="chart-control" for="monthRange">ดูย้อนหลัง <select id="monthRange"><option value="6">6 เดือน</option><option value="12" selected>12 เดือน</option></select></label></div>
+   <div class="section-heading"><div><p class="eyebrow">03 / GROWTH TRENDS</p><h2>แนวโน้มรายเดือน</h2></div><label class="chart-control" for="monthRange">ดูย้อนหลัง <select id="monthRange"><option value="6">6 เดือน</option><option value="12" selected>12 เดือน</option></select></label></div>
    <div class="charts-grid">
     <article class="panel"><div class="panel-head"><h3>ลูกค้าใหม่รายเดือน</h3><span class="chart-swatch">● จำนวนบัญชี</span></div><div id="customerChart" class="bar-chart" aria-label="กราฟลูกค้าใหม่ต่อเดือน"></div></article>
    </div>
   </section>
   <section id="plans" class="report-section">
-   <div class="section-heading"><div><p class="eyebrow">03 / PLAN MIX</p><h2>สัดส่วนสมาชิกตามแพ็กเกจ</h2></div><span class="hint">บัญชีจาก Firestore Production</span></div>
+   <div class="section-heading"><div><p class="eyebrow">04 / PLAN MIX</p><h2>สัดส่วนสมาชิกตามแพ็กเกจ</h2></div><span class="hint">บัญชีจาก Firestore Production</span></div>
    <div class="panel plan-panel"><div class="table-scroll"><table><thead><tr><th>แพ็กเกจ</th><th>บัญชีทั้งหมด</th><th>Active</th><th>หมดอายุ</th></tr></thead><tbody id="planRows"><tr><td colspan="4">กำลังโหลดข้อมูล…</td></tr></tbody></table></div></div>
   </section>
   <section id="customers" class="report-section">
-   <div class="section-heading"><div><p class="eyebrow">04 / CUSTOMER ACCOUNTS</p><h2>บัญชีสมาชิก PACKTOOK</h2><p class="muted">บัญชี Free ไม่มีวันหมดอายุ ส่วนบัญชีเสียเงินที่ไม่มีวันหมดอายุในฐานข้อมูลจะแสดงว่า ยังไม่กำหนด · ข้อมูลทั้งหมดเป็นแบบอ่านอย่างเดียว</p></div><button id="reloadCustomers" type="button" class="secondary">รีโหลดรายชื่อ</button></div>
+   <div class="section-heading"><div><p class="eyebrow">05 / CUSTOMER ACCOUNTS</p><h2>บัญชีสมาชิก PACKTOOK</h2><p class="muted">บัญชี Free ไม่มีวันหมดอายุ ส่วนบัญชีเสียเงินที่ไม่มีวันหมดอายุในฐานข้อมูลจะแสดงว่า ยังไม่กำหนด · ข้อมูลทั้งหมดเป็นแบบอ่านอย่างเดียว</p></div><button id="reloadCustomers" type="button" class="secondary">รีโหลดรายชื่อ</button></div>
    <div class="panel"><div class="table-scroll"><table><thead><tr><th>Email ลูกค้า</th><th>บัญชี Firebase</th><th>แพ็กเกจ</th><th>สถานะ</th><th>เครดิตวิดีโอคงเหลือ</th><th>เครดิตที่จองอยู่</th><th>วันที่สร้าง</th><th>วันหมดอายุ / สถานะ</th></tr></thead><tbody id="customerRows"><tr><td colspan="8">กำลังโหลดข้อมูล…</td></tr></tbody></table></div><div class="customer-pager"><span id="customerPageStatus">เรียงตามรหัสบัญชี · 25 รายการต่อครั้ง</span><button id="moreCustomers" type="button" class="secondary" hidden>โหลดลูกค้าเพิ่ม 25 รายการ</button></div></div>
   </section>
   <footer class="footer"><span>PACKTOOK OWNER · Production Beta</span><span>Read-only • ยังไม่มีระบบ Omise Live Payment</span></footer>
