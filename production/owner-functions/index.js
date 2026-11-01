@@ -168,6 +168,11 @@ function classifyPaidBilling(p){
   return {mode:"unclassified",amount:0,invalidAmount:true};
  const id=typeof p.omiseChargeId==="string"?p.omiseChargeId:"";
  const provider=p.paymentProvider==="omise";
+ // Omise Test charges may use normal chrg_ identifiers; explicit verified
+ // mode evidence takes precedence over an ID naming convention.
+ if(provider&&p.omiseLivemode===false&&p.paymentMethod==="promptpay"&&
+    p.paymentEvidenceVersion===1&&p.providerVerifiedLivemode===false&&
+    /^chrg_[A-Za-z0-9_]+$/.test(id))return {mode:"test",amount};
  if(provider&&p.omiseLivemode!==true&&id.startsWith("chrg_test_"))return {mode:"test",amount};
  if(provider&&p.omiseLivemode===true&&/^chrg_[A-Za-z0-9]+$/.test(id)&&!id.startsWith("chrg_test_"))
   return {mode:"live",amount};
