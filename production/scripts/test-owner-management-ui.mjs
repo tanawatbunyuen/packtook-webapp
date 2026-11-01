@@ -6,7 +6,7 @@ const assert=(ok,msg)=>{if(!ok)throw Error("Owner management UI: "+msg)};
 for(const id of ["ownerManageStatus","managePanel","manageForm","manageAction","manageSubmit","manageConfirmEmail","manageExpiryDate","manageCreditAmount","manageHistory"]){
  assert(html.includes('id="'+id+'"'),"Missing UI element "+id);
 }
-assert(html.includes("app.js?v=6.2.3")&&html.includes("style.css?v=6.2.3"),"Cache version mismatch");
+assert(html.includes("app.js?v=6.4.0")&&html.includes("style.css?v=6.4.0"),"Owner V6.4 asset cache version mismatch");
 assert(app.includes('api("ownerManagementStatus")')&&app.includes('api("ownerManageCustomer")')&&app.includes('api("ownerCustomerManagementHistory")'),"Missing Owner management callables");
 assert(app.includes("crypto.randomUUID()"),"Idempotent operation identifier missing");
 assert(app.includes("window.confirm("),"Operator confirmation missing");
