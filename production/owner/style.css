@@ -22,3 +22,8 @@
 .owner-eagle{display:flex;align-items:center;gap:11px;margin:7px 0 19px;color:#647d9c;font-size:13px;font-weight:800}.owner-eagle img{width:49px;height:49px;object-fit:contain}
 
 .owner-reset{margin-top:10px;font-size:13px}
+
+/* V6.2 production layout: four customer KPIs and one full-width growth chart */
+@media(min-width:1141px){.metric-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.charts-grid{grid-template-columns:minmax(0,1fr)}
+.test-banner{background:#eaf4ff;border-color:#c9e2fa;color:#174c79}.test-banner p{color:#456f92}.test-banner-icon{background:#d0e7fd}
