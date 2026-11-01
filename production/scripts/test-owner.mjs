@@ -27,9 +27,9 @@ const billing=new Map([
  ["cust1",[
   {status:"paid",paymentProvider:"omise",omiseLivemode:true,omiseChargeId:"chrg_ABC123",
    plan:"Starter",amountTHB:199,paidAt:new Date().toISOString()},
-  {status:"paid",paymentProvider:"omise",omiseLivemode:false,omiseChargeId:"chrg_test_ABC123",
+  {status:"paid",paymentProvider:"omise",paymentMethod:"promptpay",omiseLivemode:false,omiseChargeId:"chrg_OMISE123",
    plan:"Basic",amountTHB:299,paidAt:new Date().toISOString(),
-   paymentEvidenceVersion:1,providerVerifiedChargeId:"chrg_test_ABC123",
+   paymentEvidenceVersion:1,providerVerifiedChargeId:"chrg_OMISE123",
    providerVerifiedAmountSatang:29900,providerVerifiedStatus:"successful",providerVerifiedPaid:true,
    providerVerifiedSource:"promptpay",providerVerifiedCurrency:"thb",providerVerifiedLivemode:false},
   {status:"paid",paymentProvider:"omise",omiseChargeId:"chrg_test_LEGACY123",
