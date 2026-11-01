@@ -1,0 +1,65 @@
+// PACKTOOK V6.2 owner unit/smoke test. No network, no Firebase project changes.
+import fs from "node:fs";
+import vm from "node:vm";
+import {createRequire} from "node:module";
+const require=createRequire(import.meta.url);
+const backend=fs.readFileSync(new URL("../owner-functions/index.js",import.meta.url),"utf8");
+const html=fs.readFileSync(new URL("../owner/index.html",import.meta.url),"utf8");
+const client=fs.readFileSync(new URL("../owner/app.js",import.meta.url),"utf8");
+const config=JSON.parse(fs.readFileSync(new URL("../firebase.json",import.meta.url),"utf8"));
+function assert(ok,msg){if(!ok)throw Error("V6.2 Owner test: "+msg)}
+assert(html.includes('noindex,nofollow')&&html.includes("OWNER BETA"),"Owner portal must not be indexable");
+assert(html.includes("mascot-eagle.svg")&&html.includes("logo.svg"),"Branding missing");
+assert(!/packtook-staging|firebase-staging|skey_live_/.test(html+client),"Staging references forbidden");
+assert(client.includes('firebaseConfig.projectId!=="packtook-prod-01"'),"Client Production guard missing");
+assert(!client.includes('api("ownerAdjustCredits")')&&!client.includes('api("requestPlanChange")'),"No Owner writes in Beta");
+const ownerConfig=config.functions.find(x=>x.codebase==="owner");
+assert(ownerConfig?.source==="owner-functions","Owner Functions codebase is not isolated");
+const exportsObj={};
+const accounts=[
+ {id:"cust1",data:()=>({plan:"Free",period:new Date().toISOString().slice(0,7),used:2,reserved:1,createdAt:new Date("2026-11-01T08:00:00Z")})},
+ {id:"cust2",data:()=>({plan:"Starter",planExpiresAt:"2099-12-31T23:59:59Z",creditWalletV1:true,creditWalletRemaining:42,reserved:0,createdAt:new Date("2026-11-01T08:00:00Z")})},
+ {id:"cust3",data:()=>({plan:"Starter",planExpiresAt:"2026-01-01T00:00:00Z",creditWalletV1:true,creditWalletRemaining:10,reserved:0,createdAt:new Date("2026-09-10T02:00:00Z")})}
+];
+const query=(after=null,count=100)=>({
+ orderBy(){return this},
+ limit(n){return query(after,n)},
+ startAfter(doc){return query(typeof doc==="string"?doc:doc.id,count)},
+ async get(){
+  const selected=accounts.filter(x=>!after||x.id>after).slice(0,count);
+  return {docs:selected,size:selected.length,empty:selected.length===0};
+ }
+});
+const admin={
+ initializeApp(){},
+ firestore:Object.assign(()=>({collection:name=>{assert(name==="accounts","Unexpected collection "+name);return query()}}),{FieldPath:{documentId:()=>".documentId"}}),
+ auth:()=>({getUsers:async list=>({users:list.map(x=>({uid:x.uid,email:x.uid+"@example.test"}))})})
+};
+class HttpsError extends Error{constructor(code,message){super(message);this.code=code}}
+const fakeRequire=id=>{
+ if(id==="firebase-admin")return admin;
+ if(id==="firebase-functions/v2/https")return {onCall:(_,fn)=>fn,HttpsError};
+ throw Error("Unexpected dependency "+id);
+};
+vm.runInNewContext(backend,{exports:exportsObj,require:fakeRequire,process:{env:{PACKTOOK_PRODUCTION_PROJECT_ID:"packtook-prod-01",GCLOUD_PROJECT:"packtook-prod-01"}},console,Date,Map,Set,Object,Number,Math,Promise,Array,String,RegExp}, {filename:"owner-functions/index.js"});
+const exported=Object.keys(exportsObj).sort();
+assert(exported.join(",")==="ownerAnalyticsCustomers,ownerAnalyticsSummary","Only two read-only Owner endpoints allowed");
+const valid={auth:{uid:"owner-test",token:{email_verified:true,packtookPlatformOwner:true}},data:{}};
+async function rejected(request,expected){
+ let error;try{await exportsObj.ownerAnalyticsSummary(request)}catch(e){error=e}
+ assert(error?.code===expected,"Unexpected permission response for "+expected+": "+(error?.code||"none"));
+}
+await rejected({}, "unauthenticated");
+await rejected({auth:{uid:"customer",token:{email_verified:true,packtookProductionBeta:true}}},"permission-denied");
+await rejected({auth:{uid:"owner",token:{email_verified:false,packtookPlatformOwner:true}}},"permission-denied");
+const sum=await exportsObj.ownerAnalyticsSummary(valid);
+assert(sum.mode==="production-beta"&&sum.billingEnabled===false,"No payment-enabled state may be reported");
+assert(sum.totals.customers===3&&sum.totals.free===1&&sum.totals.activePaid===1&&sum.totals.expiredPaid===1,"Summary counts incorrect");
+const customers=await exportsObj.ownerAnalyticsCustomers(valid);
+assert(customers.customers.length===3&&customers.customers[0].email==="cust1@example.test","Customer Auth emails missing");
+assert(customers.customers[0].creditsRemaining===17,"Free credits must account for used and reserved");
+assert(customers.customers[1].creditsRemaining===42,"Wallet credit remaining incorrect");
+assert(customers.customers[2].creditsRemaining===0&&customers.customers[2].creditsStatus==="expired","Expired membership should not show usable credits");
+let denied=false;try{await exportsObj.ownerAnalyticsCustomers({...valid,data:{afterId:"../../other"}})}catch(e){denied=e.code==="invalid-argument"}
+assert(denied,"Invalid pagination cursor should be rejected");
+console.log("PASS: V6.2 Production Owner read-only data, Firebase email and claim security checks");
