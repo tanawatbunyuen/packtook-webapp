@@ -246,7 +246,11 @@ async function reconcileCharge(accountId,requestId,chargeId){
 }
 exports.promptpayConfig=onCall(options,async req=>{
  uid(req);
- return {enabled:PROMPTPAY_TEST_ENABLED&&req.auth.token.packtookPaymentTester===true,testMode:true,method:"promptpay",cardEnabled:false};
+ const testerAuthorized=req.auth.token.packtookPaymentTester===true;
+ return {enabled:PROMPTPAY_TEST_ENABLED&&testerAuthorized,
+  featureEnabled:PROMPTPAY_TEST_ENABLED,testerAuthorized,
+  reason:!PROMPTPAY_TEST_ENABLED?"feature_disabled":!testerAuthorized?"tester_permission_missing":"ready",
+  testMode:true,method:"promptpay",cardEnabled:false};
 });
 exports.promptpayCreateCharge=onCall(paymentSecrets,async req=>{
  const user=uid(req);paymentTester(req);const d=data(req),id=d.requestId,method=d.method;
