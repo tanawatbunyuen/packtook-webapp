@@ -30,10 +30,14 @@ const query=(after=null,count=100)=>({
   return {docs:selected,size:selected.length,empty:selected.length===0};
  }
 });
+let ownerClaimActive=true;
 const admin={
  initializeApp(){},
  firestore:Object.assign(()=>({collection:name=>{assert(name==="accounts","Unexpected collection "+name);return query()}}),{FieldPath:{documentId:()=>".documentId"}}),
- auth:()=>({getUsers:async list=>({users:list.map(x=>({uid:x.uid,email:x.uid+"@example.test"}))})})
+ auth:()=>({
+  getUser:async uid=>({uid,emailVerified:true,disabled:false,customClaims:{packtookPlatformOwner:ownerClaimActive}}),
+  getUsers:async list=>({users:list.map(x=>({uid:x.uid,email:x.uid+"@example.test"}))})
+ })
 };
 class HttpsError extends Error{constructor(code,message){super(message);this.code=code}}
 const fakeRequire=id=>{
@@ -62,4 +66,7 @@ assert(customers.customers[1].creditsRemaining===42,"Wallet credit remaining inc
 assert(customers.customers[2].creditsRemaining===0&&customers.customers[2].creditsStatus==="expired","Expired membership should not show usable credits");
 let denied=false;try{await exportsObj.ownerAnalyticsCustomers({...valid,data:{afterId:"../../other"}})}catch(e){denied=e.code==="invalid-argument"}
 assert(denied,"Invalid pagination cursor should be rejected");
+ownerClaimActive=false;
+await rejected(valid,"permission-denied");
+ownerClaimActive=true;
 console.log("PASS: V6.2 Production Owner read-only data, Firebase email and claim security checks");
