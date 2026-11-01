@@ -65,7 +65,7 @@ assert(ownerBackend.includes('PACKTOOK_OWNER_MANAGEMENT_ENABLED')&&ownerBackend.
 assert(ownerHTML.includes('id="manageForm"')&&ownerHTML.includes('id="ownerManageStatus"'),"Owner Customer Management UX missing");
 assert(ownerClient.includes("async function submitManagement(")&&ownerClient.includes("async function fetchManagementStatus()"),"Owner Customer Management client missing");
 const payments=fs.readFileSync(path.join(root,"payment-functions","index.js"),"utf8");
-const payExports=[...payments.matchAll(/exports\\.([A-Za-z0-9_]+)=/g)].map(x=>x[1]);
+const payExports=[...payments.matchAll(/exports\.([A-Za-z0-9_]+)=/g)].map(x=>x[1]);
 assert(payExports.length===10&&payExports.every(x=>x.startsWith("promptpay")),"Only 10 PromptPay scoped functions allowed");
 assert(payments.includes('PACKTOOK_PROMPTPAY_TEST_ENABLED')&&payments.includes('skey_test_'),"Test-mode fail-closed gates missing");
 assert(payments.includes("omise-signature")&&payments.includes("timingSafeEqual")&&payments.includes("reconcileCharge"),"Signed Webhook and verified charge reconciliation required");
