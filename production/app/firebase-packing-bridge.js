@@ -1,5 +1,5 @@
 import {initializeApp} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
-import {getAuth,onIdTokenChanged,signInWithEmailAndPassword,signOut} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+import {getAuth,onIdTokenChanged,signInWithEmailAndPassword,sendEmailVerification,sendPasswordResetEmail,signOut} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 import {getFunctions,httpsCallable} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-functions.js";
 import {firebaseConfig} from "./firebase-v4-config.js";
 const EXPECTED_PROD="packtook-prod-01";
@@ -14,7 +14,7 @@ onIdTokenChanged(auth,async u=>{
  try{
   const token=u?.emailVerified?await u.getIdTokenResult():null;
   user=token?.claims?.packtookProductionBeta===true?u:null;
-  if(u&&!user){await signOut(auth);}
+  if(u?.emailVerified&&!user){await signOut(auth);}
  }catch(e){user=null;console.warn("Production Beta authorization not ready",e?.code||"error");}
  for(const cb of listeners)cb(user);
 });
@@ -26,11 +26,12 @@ window.PACKTOOK_FIREBASE={
  async deviceStatus(){return (await api("deviceStatus")({deviceId:deviceId()})).data},
  onUser(cb){listeners.add(cb);cb(user);return()=>listeners.delete(cb)},
  async login(email,password){const result=await signInWithEmailAndPassword(auth,email,password);
- if(!result.user.emailVerified){await signOut(auth);throw Error("กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ")}
+ if(!result.user.emailVerified){await sendEmailVerification(result.user);await signOut(auth);throw Error("ระบบส่งลิงก์ยืนยันอีเมลแล้ว โปรดตรวจกล่องจดหมายก่อนเข้าสู่ระบบ")}
  const token=await result.user.getIdTokenResult(true);
  if(token.claims.packtookProductionBeta!==true){await signOut(auth);throw Error("บัญชีนี้ยังไม่ได้รับสิทธิ์ Production Beta กรุณาติดต่อผู้ดูแล")}
  return result.user;},
  async logout(){await signOut(auth)},
+ async resetPassword(email){if(typeof email!=="string"||!email.trim())throw Error("กรุณากรอกอีเมลก่อน");await sendPasswordResetEmail(auth,email.trim());return true;},
  async usage(){return (await api("usageStatus")({})).data},
  async recordingStatus(operationId){return (await api("recordingStatus")({operationId})).data},
  async pendingVideoReservations(){return (await api("pendingVideoReservations")({})).data},
