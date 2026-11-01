@@ -656,7 +656,7 @@ async function startRecording(barcode){
  const scanRequestedAt=performance.now();
  if(recordingOp||pending())return toast('มีรายการจองเครดิตที่ยังไม่ยืนยัน กรุณากดตรวจสอบเครดิตจองค้าง');
  if(ending||activeBarcode)return;
- if(!remoteUser||!credit())return toast('กรุณาเข้าสู่ระบบ Firebase ก่อน');
+ if(!remoteUser?.uid||!credit())return toast('กรุณาเข้าสู่ระบบ Firebase ใหม่เพื่อยืนยันบัญชีก่อนเริ่มบันทึก');
  if(!streamGood())return toast('กรุณาเปิดกล้องและตรวจสอบสัญญาณ');
  if(!folder)return toast('กรุณาเลือกโฟลเดอร์บันทึกก่อน');
  if(!window.MediaRecorder||!window.PACKTOOK_VIDEO_WRITER)return toast('Browser ไม่รองรับระบบ Streaming Video');
@@ -877,7 +877,7 @@ async function stopRecording(reason='manual'){
   showRecovery();$('barcode').focus();
  }
 }
-$('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginError').hidden=true;try{await credit().login($('email').value.trim(),$('password').value);remoteUser=true;$('loginPage').hidden=true;$('appPage').hidden=false;await refreshRemoteQuota();showTab('packing');$('barcode').focus()}catch(err){$('loginError').hidden=false;$('loginError').textContent=err.message}});
+$('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginError').hidden=true;try{const signedInUser=await credit().login($('email').value.trim(),$('password').value);if(!signedInUser?.uid)throw Error('Firebase ไม่ส่งข้อมูล UID ของบัญชีผู้ใช้');remoteUser=signedInUser;$('loginPage').hidden=true;$('appPage').hidden=false;await refreshRemoteQuota();showTab('packing');$('barcode').focus()}catch(err){$('loginError').hidden=false;$('loginError').textContent=err.message}});
 $('showPassword').onclick=()=>{$('password').type=$('password').type==='password'?'text':'password'};
 $('resetPassword').addEventListener('click',async()=>{
  const email=$('email').value.trim();
