@@ -87,6 +87,20 @@ function purchaseDecision(a,target,now=Date.now()){
  return {allowed:false,reason:"Active subscriptions cannot downgrade. Same-tier purchases require exhausted credits or at most 7 days until expiry; upgrades to higher tiers are allowed now."};
 }
 function billingOpen(a){return typeof a.openBillingRequestId==="string"&&a.openBillingRequestId.length>0}
+// V6.4: an expired QR must be confirmed by the provider, not local clock alone.
+function providerExpiryIso(value){
+ if(typeof value!=="string")return null;
+ const parsed=Date.parse(value);
+ return Number.isFinite(parsed)?new Date(parsed).toISOString():null;
+}
+function paidEvidence(charge){
+ return {paymentEvidenceVersion:1,providerVerifiedAt:FieldValue.serverTimestamp(),
+  providerVerifiedStatus:"successful",providerVerifiedPaid:true,
+  providerVerifiedChargeId:charge.id,providerVerifiedAmountSatang:charge.amount,
+  providerVerifiedCurrency:"thb",providerVerifiedSource:"promptpay",
+  providerVerifiedLivemode:false,providerVerifiedReference:typeof charge.reference==="string"?charge.reference:null};
+}
+
 
 async function ensureAccount(id){
  const ref=await ownerRef(id);
@@ -102,6 +116,8 @@ function publicBillingRequest(doc){
   transferredCredits:x.transferredCredits??null,creditsPurchased:x.creditsPurchased??null,
   balanceAfter:x.balanceAfter??null,activationExpiresAt:x.activationExpiresAt||null,
   purchaseKind:x.purchaseKind||"new",status:x.status||"unknown",
+  qrExpiresAt:x.qrExpiresAt||null,
+  paymentEvidenceVersion:x.paymentEvidenceVersion||null,
   createdAt:x.createdAt?.toDate?.()?.toISOString()||null};
 }
 exports.promptpaySubscriptionOverview=onCall(options,async req=>{
@@ -206,7 +222,19 @@ async function reconcileCharge(accountId,requestId,chargeId){
   if(!tSnap.exists||!aSnap.exists)throw Error("Billing record missing");
   const item=tSnap.data(),a=aSnap.data();
   if(item.omiseChargeId!==chargeId||item.requestedBy!==accountId||charge.id!==chargeId||charge.currency.toLowerCase()!=="thb"||charge.amount!==item.amountTHB*100||item.amountTHB!==pricesTHB[item.plan]||charge.metadata?.requestId!==requestId||charge.metadata?.uid!==accountId||charge.livemode!==false||charge.source?.type!=="promptpay"||item.paymentMethod!=="promptpay"||item.paymentProvider!=="omise")throw Error("Charge mismatch");
-  if(item.status==="paid")return {status:"paid",plan:item.plan,alreadyApplied:true};
+  if(item.status==="paid"){
+   if(charge.status!=="successful"||charge.paid!==true){
+    // Never reverse wallet credits automatically after the ledger was settled.
+    // Flag an integrity exception for manual Owner review and do not resettle.
+    if(item.postSettlementAlert!=="provider_status_changed")tx.update(ref,{
+     postSettlementAlert:"provider_status_changed",
+     postSettlementAlertAt:FieldValue.serverTimestamp(),
+     lastObservedProviderStatus:String(charge.status||"unknown").slice(0,48)
+    });
+    return {status:"payment_review",requiresSupport:true,alreadyApplied:true};
+   }
+   return {status:"paid",plan:item.plan,alreadyApplied:true};
+  }
   if(item.status==="payment_review")return {status:"payment_review",requiresSupport:true};
   if(charge.status==="successful"&&charge.paid===true){
    const legacy=!item.purchaseKind;
@@ -236,11 +264,18 @@ async function reconcileCharge(accountId,requestId,chargeId){
     creditWalletV1:true,creditWalletRemaining:credits.total,walletStartingCredits:credits.total,period:periodId(Date.now()),used:0,reserved:0,
     ...(lockOk?{openBillingRequestId:FieldValue.delete()}:{}),updatedAt:FieldValue.serverTimestamp()});
    tx.update(ref,{status:"paid",paidAt:FieldValue.serverTimestamp(),paymentProvider:"omise",omiseLivemode:false,paymentMethod:"promptpay",activationExpiresAt:expiresAt,
-    creditsPurchased:credits.purchased,transferredCredits:credits.transferred,balanceAfter:credits.total,expiryBefore:a.planExpiresAt||null});
+    creditsPurchased:credits.purchased,transferredCredits:credits.transferred,balanceAfter:credits.total,expiryBefore:a.planExpiresAt||null,
+    ...paidEvidence(charge)});
    tx.create(acc.collection("audit").doc(),{action:"subscription_credits_merged",billingRequestId:requestId,omiseChargeId:chargeId,plan:item.plan,creditsPurchased:credits.purchased,transferredCredits:credits.transferred,balanceAfter:credits.total,createdAt:FieldValue.serverTimestamp()});
    return {status:"paid",plan:item.plan,expiresAt,creditsPurchased:credits.purchased,transferredCredits:credits.transferred,balanceAfter:credits.total};
   }
-  if(["failed","expired"].includes(charge.status)&&!["failed","expired"].includes(item.status)){tx.update(ref,{status:charge.status});if(a.openBillingRequestId===requestId)tx.update(acc,{openBillingRequestId:FieldValue.delete()})}
+  if(["failed","expired"].includes(charge.status)&&!["failed","expired"].includes(item.status)){
+   tx.update(ref,{status:charge.status,closedAt:FieldValue.serverTimestamp(),
+    providerVerifiedAt:FieldValue.serverTimestamp(),providerVerifiedStatus:charge.status,
+    providerFailureCode:typeof charge.failure_code==="string"?charge.failure_code.slice(0,80):null,
+    providerFailureMessage:typeof charge.failure_message==="string"?charge.failure_message.slice(0,200):null});
+   if(a.openBillingRequestId===requestId)tx.update(acc,{openBillingRequestId:FieldValue.delete()});
+  }
   return {status:charge.status};
  });
 }
@@ -271,7 +306,15 @@ exports.promptpayCreateCharge=onCall(paymentSecrets,async req=>{
   return {claimed:true,amount:item.amountTHB,plan:item.plan};
  });
  if(!claim.claimed){
-  if(claim.chargeId){const prev=await omiseAPI("/charges/"+encodeURIComponent(claim.chargeId));return {status:prev.status,chargeId:prev.id,authorizeUri:prev.authorize_uri||null,qrImage:prev.source?.scannable_code?.image?.download_uri||null};}
+  if(claim.chargeId){
+   const outcome=await reconcileCharge(user,id,claim.chargeId);
+   const terminal=["paid","failed","expired","cancelled","payment_review"].includes(outcome.status);
+   const prev=terminal?null:await omiseAPI("/charges/"+encodeURIComponent(claim.chargeId));
+   return {status:outcome.status,chargeId:claim.chargeId,
+    authorizeUri:terminal?null:prev.authorize_uri||null,
+    qrImage:terminal?null:prev.source?.scannable_code?.image?.download_uri||null,
+    qrExpiresAt:terminal?null:providerExpiryIso(prev.expires_at)};
+  }
   throw new HttpsError("failed-precondition","Payment already started; contact support for reconciliation if stuck");
  }
  let charge;
@@ -286,7 +329,9 @@ exports.promptpayCreateCharge=onCall(paymentSecrets,async req=>{
   form["source[type]"]="promptpay";
   charge=await omiseAPI("/charges","POST",form);
   if(!charge.id||charge.livemode!==false||charge.source?.type!=="promptpay")throw Error("Unexpected charge");
-  await ticket.update({status:"payment_pending",omiseChargeId:charge.id,omiseLivemode:false,omiseStatus:charge.status,createdChargeAt:FieldValue.serverTimestamp()});
+  await ticket.update({status:"payment_pending",omiseChargeId:charge.id,
+   omiseLivemode:false,omiseStatus:charge.status,createdChargeAt:FieldValue.serverTimestamp(),
+   qrExpiryRequestedAt:form.expires_at,qrExpiresAt:providerExpiryIso(charge.expires_at)});
  }catch(e){
   if(e instanceof HttpsError&&e.details?.providerRejected===true){
    await db.runTransaction(async tx=>{const t=await tx.get(ticket);if(t.exists&&t.data().status==="creating_charge"&&!t.data().omiseChargeId)tx.update(ticket,{status:"pending_payment_setup",omiseErrorCode:String(e.message).slice(0,160)})});
@@ -295,7 +340,11 @@ exports.promptpayCreateCharge=onCall(paymentSecrets,async req=>{
   throw new HttpsError("unavailable","Charge creation outcome is uncertain. Check Omise Test Dashboard before submitting a new request.");
  }
  const status=await reconcileCharge(user,id,charge.id);
- return {status:status.status,chargeId:charge.id,authorizeUri:charge.authorize_uri||null,qrImage:charge.source?.scannable_code?.image?.download_uri||null};
+ const terminal=["paid","failed","expired","cancelled","payment_review"].includes(status.status);
+ return {status:status.status,chargeId:charge.id,
+  authorizeUri:terminal?null:charge.authorize_uri||null,
+  qrImage:terminal?null:charge.source?.scannable_code?.image?.download_uri||null,
+  qrExpiresAt:terminal?null:providerExpiryIso(charge.expires_at)};
 });
 exports.promptpayRecoverCharge=onCall(paymentSecrets,async req=>{
  const user=uid(req),requestId=data(req).requestId;paymentTester(req);
@@ -327,7 +376,9 @@ exports.promptpayRecoverCharge=onCall(paymentSecrets,async req=>{
   if(!t.data().omiseChargeId&&t.data().status==="creating_charge")tx.update(ref,{omiseChargeId:charge.id,status:"payment_pending",recoveredAt:FieldValue.serverTimestamp()});
  });
  const verified=await reconcileCharge(user,requestId,charge.id);
- return {...verified,found:true,chargeId:charge.id,qrImage:charge.source?.scannable_code?.image?.download_uri||null};
+ return {...verified,found:true,chargeId:charge.id,
+  qrImage:verified.status==="pending"?charge.source?.scannable_code?.image?.download_uri||null:null,
+  qrExpiresAt:verified.status==="pending"?providerExpiryIso(charge.expires_at):null};
 });
 exports.promptpayChargeStatus=onCall(paymentSecrets,async req=>{
  const user=uid(req),id=data(req).requestId;paymentTester(req);
@@ -336,7 +387,9 @@ exports.promptpayChargeStatus=onCall(paymentSecrets,async req=>{
  if(!snap.exists||snap.data().requestedBy!==user)throw new HttpsError("not-found","Billing request not found");
  if(!snap.data().omiseChargeId)return {status:snap.data().status,needsReconciliation:snap.data().status==="creating_charge"};
  const result=await reconcileCharge(user,id,snap.data().omiseChargeId);
- if(result.status==="pending"){const charge=await omiseAPI("/charges/"+encodeURIComponent(snap.data().omiseChargeId));return {...result,qrImage:charge.source?.scannable_code?.image?.download_uri||null,chargeId:charge.id}}
+ if(result.status==="pending"){const charge=await omiseAPI("/charges/"+encodeURIComponent(snap.data().omiseChargeId));
+  return {...result,qrImage:charge.source?.scannable_code?.image?.download_uri||null,
+   qrExpiresAt:providerExpiryIso(charge.expires_at),chargeId:charge.id}}
  return result;
 });
 exports.promptpayWebhook=onRequest({region,maxInstances:3,timeoutSeconds:45,secrets:[omiseKey,omiseWebhookKey],invoker:"public"},async(req,res)=>{
@@ -374,6 +427,14 @@ exports.promptpayAudit=onCall(paymentSecrets,async req=>{
    const charge=await omiseAPI("/charges/"+encodeURIComponent(item.omiseChargeId));
    result.providerStatus=charge.status;result.providerPaid=charge.paid===true;result.providerTest=charge.livemode===false;
    result.amountMatches=charge.amount===item.amountTHB*100&&String(charge.currency).toLowerCase()==="thb";
+   result.paymentEvidenceVersion=item.paymentEvidenceVersion||null;
+   result.providerEvidenceRecorded=item.paymentEvidenceVersion===1&&
+    item.providerVerifiedStatus==="successful"&&item.providerVerifiedPaid===true&&
+    item.providerVerifiedChargeId===item.omiseChargeId&&
+    item.providerVerifiedAmountSatang===item.amountTHB*100&&
+    item.providerVerifiedCurrency==="thb"&&item.providerVerifiedSource==="promptpay"&&
+    item.providerVerifiedLivemode===false;
+   result.postSettlementAlert=item.postSettlementAlert||null;
  }
  return result;
 });
