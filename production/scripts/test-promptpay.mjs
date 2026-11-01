@@ -15,7 +15,7 @@ assert(source.includes('webhook_endpoints[]')&&source.includes('ref_id:"pt63-"')
 assert(source.includes('timingSafeEqual')&&source.includes('req.rawBody'),"Webhook signatures must be checked over the original body");
 assert(source.includes('charge.source?.type!=="promptpay"'),"Reconciled charge must be verified as PromptPay");
 assert(!/exports\.(?:.*Card|.*CreditCard|.*Visa|.*Mastercard)/.test(source),"Card payment API found");
-assert(html.includes("OMISE PROMPTPAY QR TEST MODE")&&html.includes("app.js?v=6.3.0"),"Customer Test-only banner/cache version absent");
+assert(html.includes("OMISE PROMPTPAY QR TEST MODE")&&html.includes("app.js?v=6.3.1"),"Customer Test-only banner/cache version absent");
 assert(bridge.includes('api("promptpayCreateCharge")')&&!bridge.includes('api("createOmisePayment")'),"Customer bridge must use QR-only endpoint");
 const documents=new Map();
 const deleted=Symbol("delete"),timestamp=()=>new Date();
@@ -101,12 +101,15 @@ async function rejects(op,code){
  assert(e?.code===code,"Expected "+code+" but received "+(e?.code||"success"));
 }
 const disabled=createService(false);
-assert((await disabled.promptpayConfig(request({}))).enabled===false,"QR test flag must default disabled");
+const disabledConfig=await disabled.promptpayConfig(request({}));
+assert(disabledConfig.enabled===false&&disabledConfig.reason==="feature_disabled","QR test flag must default disabled");
 await rejects(disabled.promptpayRequestPlanChange(request({plan:"Starter"})),"failed-precondition");
 const api=createService(true);
 await rejects(api.promptpayRequestPlanChange({auth:{uid:userId,token:{email_verified:true,packtookProductionBeta:true}},data:{plan:"Starter"}}),"permission-denied");
-assert((await api.promptpayConfig({auth:{uid:userId,token:{email_verified:true,packtookProductionBeta:true}},data:{}})).enabled===false,"Unapproved Beta users must not see purchase actions");
-assert((await api.promptpayConfig(request({}))).cardEnabled===false,"Credit card must never be enabled");
+const blockedConfig=await api.promptpayConfig({auth:{uid:userId,token:{email_verified:true,packtookProductionBeta:true}},data:{}});
+assert(blockedConfig.enabled===false&&blockedConfig.reason==="tester_permission_missing","Unapproved Beta users must be told QR Tester permission is missing");
+const readyConfig=await api.promptpayConfig(request({}));
+assert(readyConfig.enabled===true&&readyConfig.reason==="ready"&&readyConfig.cardEnabled===false,"Explicit QR Tester should see ready and never cards");
 const pending=await api.promptpayRequestPlanChange(request({plan:"Starter"}));
 assert(pending.amountTHB===199&&pending.status==="pending_payment_setup","Unpaid request must not upgrade membership");
 assert(documents.get("accounts/"+userId).plan==="Free","Plan changed before payment");
