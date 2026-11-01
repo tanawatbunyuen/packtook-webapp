@@ -21,6 +21,7 @@ node --input-type=module --check < owner/app.js
 node --check owner-functions/index.js
 node --check owner-functions/scripts/manage-platform-owner.js
 node --check owner-functions/scripts/manage-owner-manager.js
+node --check owner-functions/scripts/provision-beta-wallet-test.js
 node scripts/test-owner.mjs
 node scripts/test-owner-charts.mjs
 node scripts/test-owner-management.mjs
