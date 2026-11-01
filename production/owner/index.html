@@ -2,7 +2,7 @@
 <html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#07152e">
 <meta name="robots" content="noindex,nofollow"><meta name="description" content="PACKTOOK Owner Analytics — private business dashboard">
 <title>PACKTOOK Owner | Production Beta Dashboard</title>
-<link rel="stylesheet" href="./style.css?v=6.2.2"></head>
+<link rel="stylesheet" href="./style.css?v=6.2.3"></head>
 <body>
 <section id="loginScreen" class="login-screen">
  <div class="login-bg"></div>
@@ -27,10 +27,10 @@
  </aside>
  <main class="content">
   <header class="topbar">
-   <div><p class="eyebrow">BUSINESS INTELLIGENCE / V6.2.2</p><h1>Owner Analytics Dashboard</h1><p class="muted">สมาชิก ยอดธุรกรรมที่บันทึก และวันหมดอายุจาก Firebase Production</p></div>
+   <div><p class="eyebrow">BUSINESS INTELLIGENCE / V6.2.3</p><h1>Owner Analytics Dashboard</h1><p class="muted">สมาชิก ยอดธุรกรรมที่บันทึก และวันหมดอายุจาก Firebase Production</p></div>
    <div class="top-actions"><span id="currentEmail" class="owner-email"></span><button type="button" id="refreshButton" class="primary">↻ รีเฟรชข้อมูล</button></div>
   </header>
-  <div class="test-banner"><span class="test-banner-icon" aria-hidden="true">i</span><div><strong>PRODUCTION OWNER BETA — READ ONLY</strong><p>เฉพาะบัญชี Owner ที่ได้รับสิทธิ์ · ยังไม่เปิดรับเงินจริงและยังไม่สามารถปรับเครดิตหรือวันหมดอายุจากหน้านี้ได้</p></div></div>
+  <div class="test-banner"><span class="test-banner-icon" aria-hidden="true">i</span><div><strong>PRODUCTION OWNER BETA — CONTROLLED MANAGEMENT</strong><p>ส่วนรายงานอ่านอย่างเดียว • การปรับเครดิต/วันหมดอายุต้องมี Owner Manager และเปิดใช้แยกต่างหาก • ยังไม่รับเงินจริง</p></div></div>
   <section id="overview" class="report-section">
    <div class="section-heading"><div><p class="eyebrow">01 / BUSINESS PULSE</p><h2>ภาพรวมสมาชิก</h2></div><span class="last-update" id="lastUpdate">ยังไม่โหลดข้อมูล</span></div>
    <div class="metric-grid">
@@ -80,11 +80,34 @@
    <div class="panel plan-panel"><div class="table-scroll"><table><thead><tr><th>แพ็กเกจ</th><th>บัญชีทั้งหมด</th><th>Active</th><th>หมดอายุ</th></tr></thead><tbody id="planRows"><tr><td colspan="4">กำลังโหลดข้อมูล…</td></tr></tbody></table></div></div>
   </section>
   <section id="customers" class="report-section">
-   <div class="section-heading"><div><p class="eyebrow">05 / CUSTOMER ACCOUNTS</p><h2>บัญชีสมาชิก PACKTOOK</h2><p class="muted">บัญชี Free ไม่มีวันหมดอายุ ส่วนบัญชีเสียเงินที่ไม่มีวันหมดอายุในฐานข้อมูลจะแสดงว่า ยังไม่กำหนด · ข้อมูลทั้งหมดเป็นแบบอ่านอย่างเดียว</p></div><button id="reloadCustomers" type="button" class="secondary">รีโหลดรายชื่อ</button></div>
-   <div class="panel"><div class="table-scroll"><table><thead><tr><th>Email ลูกค้า</th><th>บัญชี Firebase</th><th>แพ็กเกจ</th><th>สถานะ</th><th>เครดิตวิดีโอคงเหลือ</th><th>เครดิตที่จองอยู่</th><th>วันที่สร้าง</th><th>วันหมดอายุ / สถานะ</th></tr></thead><tbody id="customerRows"><tr><td colspan="8">กำลังโหลดข้อมูล…</td></tr></tbody></table></div><div class="customer-pager"><span id="customerPageStatus">เรียงตามรหัสบัญชี · 25 รายการต่อครั้ง</span><button id="moreCustomers" type="button" class="secondary" hidden>โหลดลูกค้าเพิ่ม 25 รายการ</button></div></div>
+   <div class="section-heading"><div><p class="eyebrow">05 / CUSTOMER ACCOUNTS</p><h2>บัญชีสมาชิก PACKTOOK</h2><p class="muted">ตรวจสอบบัญชี แพ็กเกจ เครดิตและวันหมดอายุ • กดจัดการได้เฉพาะ Owner Manager ที่ได้รับสิทธิ์</p></div><button id="reloadCustomers" type="button" class="secondary">รีโหลดรายชื่อ</button></div>
+   <div class="panel"><div class="table-scroll"><table><thead><tr><th>Email ลูกค้า</th><th>บัญชี Firebase</th><th>แพ็กเกจ</th><th>สถานะ</th><th>เครดิตวิดีโอคงเหลือ</th><th>เครดิตที่จองอยู่</th><th>วันที่สร้าง</th><th>วันหมดอายุ / สถานะ</th><th>จัดการ</th></tr></thead><tbody id="customerRows"><tr><td colspan="9">กำลังโหลดข้อมูล…</td></tr></tbody></table></div><div class="customer-pager"><span id="customerPageStatus">เรียงตามรหัสบัญชี · 25 รายการต่อครั้ง</span><button id="moreCustomers" type="button" class="secondary" hidden>โหลดลูกค้าเพิ่ม 25 รายการ</button></div></div>
+
+   <div class="owner-management-status" id="ownerManageStatus" role="status">การแก้ไขเครดิตและวันหมดอายุปิดอยู่ (เฉพาะ Owner Manager)</div>
+   <section id="managePanel" class="panel owner-manage-panel" hidden aria-labelledby="manageTitle">
+     <div class="panel-head"><div><p class="eyebrow">OWNER MANUAL ADJUSTMENTS / V6.2.3</p><h3 id="manageTitle">จัดการบัญชีลูกค้า</h3></div><button id="manageClose" type="button" class="secondary">ปิด</button></div>
+     <p id="manageCustomerInfo" class="owner-manage-customer"></p>
+     <form id="manageForm" class="owner-manage-form">
+       <label for="manageAction">ประเภทการแก้ไข</label>
+       <select id="manageAction" required>
+         <option value="grant_credits">เพิ่มเครดิตวิดีโอ</option>
+         <option value="set_expiry">กำหนดวันหมดอายุแพ็กเกจที่ชำระเงิน</option>
+       </select>
+       <div id="manageCreditsGroup"><label for="manageCreditAmount">จำนวนเครดิตที่เพิ่ม (1–500)</label><input id="manageCreditAmount" type="number" inputmode="numeric" min="1" max="500" step="1" value="10"></div>
+       <div id="manageExpiryGroup" hidden><label for="manageExpiryDate">วันหมดอายุใหม่ (สิ้นวันเวลาไทย)</label><input id="manageExpiryDate" type="date"></div>
+       <label for="manageReason">เหตุผลการแก้ไข (10–300 ตัวอักษร)</label>
+       <textarea id="manageReason" rows="3" maxlength="300" placeholder="ตัวอย่าง: ชดเชยเครดิตสำหรับปัญหาระบบที่ตรวจสอบแล้ว" required></textarea>
+       <label for="manageConfirmEmail">พิมพ์อีเมลลูกค้าเพื่อยืนยันว่ากำลังแก้ไขบัญชีถูกต้อง</label>
+       <input id="manageConfirmEmail" type="email" autocomplete="off" spellcheck="false" placeholder="พิมพ์ Email ลูกค้าอีกครั้ง" required>
+       <p class="owner-manage-warning">การเปลี่ยนแปลงมีผลต่อบัญชี Production จริง และมี Audit Log ถาวร • ห้ามทำขณะมีเครดิตจองค้าง • ไม่ถือเป็นรายการชำระเงิน</p>
+       <button id="manageSubmit" type="submit" class="primary">ตรวจสอบและบันทึกการแก้ไข</button>
+       <p id="manageResult" role="status"></p>
+     </form>
+     <div class="owner-manage-history"><h3>ประวัติการจัดการบัญชีนี้</h3><div id="manageHistory">ยังไม่เลือกลูกค้า</div></div>
+   </section>
   </section>
   <footer class="footer"><span>PACKTOOK OWNER · Production Beta</span><span>Read-only • ยังไม่มีระบบ Omise Live Payment</span></footer>
  </main>
 </div>
-<script type="module" src="./app.js?v=6.2.2"></script>
+<script type="module" src="./app.js?v=6.2.3"></script>
 </body></html>
