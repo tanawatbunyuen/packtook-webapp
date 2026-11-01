@@ -12,8 +12,8 @@ for(const id of ["revenueModeChart","revenuePlanChart","revenueTrendChart","reve
 for(const old of ["revenueLive","revenueTest","revenueUnknown","revenueTransactions","revenueMonthly","revenuePlanRows"]){
  check(!html.includes('id="'+old+'"'),"Legacy numeric/table component "+old+" still rendered");
 }
-const appVersion=html.match(/app\\.js\\?v=(\\d+)\\.(\\d+)\\.(\\d+)/);
-const styleVersion=html.match(/style\\.css\\?v=(\\d+)\\.(\\d+)\\.(\\d+)/);
+const appVersion=html.match(/app\.js\?v=(\d+)\.(\d+)\.(\d+)/);
+const styleVersion=html.match(/style\.css\?v=(\d+)\.(\d+)\.(\d+)/);
 check(appVersion&&styleVersion&&appVersion[0].split("v=")[1]===styleVersion[0].split("v=")[1],"Chart assets must have matching version queries");
 const [major,minor,patch]=appVersion.slice(1).map(Number);
 check(major>6||(major===6&&(minor>2||(minor===2&&patch>=2))),"Chart assets must be at least V6.2.2");
