@@ -125,6 +125,16 @@ assert(health.totals.reviewRequired===1,"Payment review cases must be visible to
 assert(health.totals.paidEvidenceVerified===1&&health.totals.legacyPaidEvidenceMissing===3,
  "Verified evidence versus legacy paid records should be distinguished");
 assert(health.issues.every(x=>x.accountId&&x.requestId&&x.issue),"Issues must provide bounded account and request IDs");
+billing.get("cust2").push({
+ status:"paid",paymentProvider:"omise",omiseLivemode:false,omiseChargeId:"chrg_test_BADPROOF",
+ plan:"Starter",amountTHB:199,paidAt:new Date().toISOString(),
+ paymentEvidenceVersion:1,providerVerifiedChargeId:"chrg_test_BADPROOF",
+ providerVerifiedAmountSatang:100,providerVerifiedStatus:"successful",providerVerifiedPaid:true,
+ providerVerifiedSource:"promptpay",providerVerifiedCurrency:"thb",providerVerifiedLivemode:false
+});
+const integrity=await exportsObj.ownerPaymentHealth(valid);
+assert(integrity.totals.paidEvidenceMismatch===1&&
+ integrity.issues.some(x=>x.issue==="paid_evidence_mismatch"),"Tampered Paid evidence must appear in Owner alerts");
 let healthDenied=false;
 try{await exportsObj.ownerPaymentHealth({auth:{uid:"not-owner",token:{email_verified:true,packtookProductionBeta:true}}})}
 catch(e){healthDenied=e.code==="permission-denied"}
