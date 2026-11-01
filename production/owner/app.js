@@ -11,6 +11,8 @@ const api=name=>httpsCallable(functions,name,{timeout:190000});
 const $=id=>document.getElementById(id);
 const fmt=new Intl.NumberFormat("th-TH"),thb=new Intl.NumberFormat("th-TH",{style:"currency",currency:"THB",maximumFractionDigits:0});
 let ownerUser=null,summary=null,cursor=null,customerBusy=false,refreshBusy=false,revenueBusy=false,authorized=false;
+let canManageCustomers=false,selectedManagedAccount=null,pendingManagementId=null;
+const customerDirectory=new Map();
 
 function element(tag,value,cls){
  const e=document.createElement(tag);
@@ -31,7 +33,8 @@ function showError(message){
 }
 function clearError(){const el=$("loginError");el.textContent="";el.hidden=true}
 function displayLogin(message=""){
- authorized=false;ownerUser=null;$("ownerApp").hidden=true;$("loginScreen").hidden=false;
+ authorized=false;ownerUser=null;canManageCustomers=false;selectedManagedAccount=null;pendingManagementId=null;customerDirectory.clear();
+ $("managePanel").hidden=true;$("ownerApp").hidden=true;$("loginScreen").hidden=false;
  if(message)showError(message);else clearError();
 }
 function displayDashboard(user){
@@ -243,17 +246,138 @@ async function fetchSummary(){
   refreshBusy=false;button.disabled=false;button.textContent="↻ รีเฟรชข้อมูล";
  }
 }
+async function fetchManagementStatus(){
+ canManageCustomers=false;
+ try{
+  const response=await api("ownerManagementStatus")({});
+  canManageCustomers=response.data?.canManage===true&&response.data?.enabled===true;
+  $("ownerManageStatus").textContent=canManageCustomers?
+   "Owner Manager เปิดใช้งาน • เลือกลูกค้าแล้วกด จัดการ เพื่อเพิ่มเครดิตหรือกำหนดวันหมดอายุ":
+   "โหมดอ่านอย่างเดียว • ต้องเปิด Owner Management และสิทธิ์ Owner Manager จึงจะแก้ไขได้";
+ }catch(error){
+  $("ownerManageStatus").textContent="โหมดอ่านอย่างเดียว • ยังไม่สามารถตรวจสอบสิทธิ์ Owner Management ได้";
+  console.warn("Owner Management feature check unavailable",error?.code||"unknown");
+ }
+}
+function updateManagementFields(){
+ if(!selectedManagedAccount)return;
+ const action=$("manageAction").value;
+ $("manageCreditsGroup").hidden=action!=="grant_credits";
+ $("manageExpiryGroup").hidden=action!=="set_expiry";
+ const account=selectedManagedAccount;
+ $("manageSubmit").disabled=action==="grant_credits"?
+  account.creditsStatus!=="available"||!Number.isSafeInteger(account.creditsRemaining)||
+  account.reservedCredits!==0:
+  account.plan==="Free"||account.reservedCredits!==0;
+ pendingManagementId=null;
+}
+function selectManagedCustomer(id){
+ if(!canManageCustomers)return;
+ const a=customerDirectory.get(id);
+ if(!a||!a.email)return;
+ selectedManagedAccount=a;pendingManagementId=null;
+ $("managePanel").hidden=false;
+ $("manageCustomerInfo").textContent=a.email+" | UID: "+a.accountId+" | "+a.plan+
+  " | เครดิต "+(a.creditsRemaining??"ไม่พร้อมใช้งาน")+" | วันหมดอายุ "+expiryLabel(a).text;
+ $("manageReason").value="";$("manageConfirmEmail").value="";
+ $("manageCreditAmount").value="10";
+ $("manageResult").textContent="";
+ $("manageAction").value=a.plan==="Free"?"grant_credits":
+  a.creditsStatus==="available"?"grant_credits":"set_expiry";
+ const expiry=a.expiresAt?new Date(a.expiresAt):null;
+ if(expiry&&!Number.isNaN(expiry.getTime())){
+  // The saved expiry is UTC; show its calendar day in Thailand.
+  $("manageExpiryDate").value=new Date(expiry.getTime()+7*3600000).toISOString().slice(0,10);
+ }else $("manageExpiryDate").value="";
+ updateManagementFields();
+ $("managePanel").scrollIntoView({behavior:"smooth",block:"start"});
+ void fetchManagementHistory();
+}
+async function fetchManagementHistory(){
+ if(!selectedManagedAccount)return;
+ const id=selectedManagedAccount.accountId,host=$("manageHistory");
+ host.replaceChildren(element("p","กำลังโหลดประวัติ…","muted"));
+ try{
+  const response=await api("ownerCustomerManagementHistory")({accountId:id});
+  if(selectedManagedAccount?.accountId!==id)return;
+  host.replaceChildren();
+  const items=response.data?.items||[];
+  if(!items.length){host.append(element("p","ยังไม่มีประวัติการแก้ไขจาก Owner","muted"));return}
+  for(const item of items){
+   const line=element("div",null,"owner-manage-audit-row");
+   const at=item.createdAt?new Date(item.createdAt).toLocaleString("th-TH",{timeZone:"Asia/Bangkok"}):"—";
+   const action=item.action==="grant_credits"?"เพิ่ม "+fmt.format(item.creditDelta)+" เครดิต":"กำหนดวันหมดอายุ";
+   line.append(element("strong",action+" • "+at),element("small",item.reason+" • Owner UID: "+item.ownerId));
+   host.append(line);
+  }
+ }catch(e){host.replaceChildren(element("p","โหลดประวัติไม่สำเร็จ: "+errorMessage(e),"owner-sales-error"))}
+}
+async function submitManagement(event){
+ event.preventDefault();
+ const a=selectedManagedAccount;
+ if(!authorized||!canManageCustomers||!a||!ownerUser)return;
+ const action=$("manageAction").value;
+ const reason=$("manageReason").value.trim(),confirmation=$("manageConfirmEmail").value.trim().toLowerCase();
+ const amount=Number($("manageCreditAmount").value),date=$("manageExpiryDate").value;
+ if(confirmation!==a.email.toLowerCase()){ $("manageResult").textContent="อีเมลที่พิมพ์ไม่ตรงกับบัญชีลูกค้า";return }
+ if(reason.length<10||reason.length>300){ $("manageResult").textContent="กรุณาระบุเหตุผล 10–300 ตัวอักษร";return }
+ if(a.reservedCredits!==0){ $("manageResult").textContent="มีรายการจองเครดิตค้างอยู่ ห้ามแก้ไขระหว่างอัดวิดีโอ";return }
+ if(action==="grant_credits"&&(!Number.isSafeInteger(amount)||amount<1||amount>500)){
+  $("manageResult").textContent="เพิ่มเครดิตได้ครั้งละ 1–500 เครดิต";return
+ }
+ if(action==="set_expiry"&&(a.plan==="Free"||!/^\d{4}-\d{2}-\d{2}$/.test(date))){
+  $("manageResult").textContent="วันหมดอายุใช้ได้เฉพาะแพ็กเกจเสียเงิน";return
+ }
+ const newExpiresAt=action==="set_expiry"?new Date(date+"T23:59:59+07:00").toISOString():null;
+ const detail=action==="grant_credits"?
+  "เพิ่ม "+fmt.format(amount)+" เครดิต":"กำหนดวันหมดอายุ "+date+" (เวลาไทย)";
+ const verified=window.confirm("ยืนยันแก้ไข Production จริง?\n"+a.email+"\n"+detail+
+  "\nเหตุผล: "+reason+"\nระบบจะบันทึก Audit Log และไม่บันทึกยอดขาย");
+ if(!verified)return;
+ const btn=$("manageSubmit");btn.disabled=true;
+ $("manageResult").textContent="กำลังบันทึกอย่างปลอดภัย…";
+ // Retain the operation UUID for retry after network ambiguity; never generate
+ // a fresh ID for retry of the same payload.
+ if(!pendingManagementId)pendingManagementId=crypto.randomUUID();
+ const payload={requestId:pendingManagementId,accountId:a.accountId,
+  confirmAccountId:a.accountId,confirmEmail:a.email,action,reason,
+  expectedPlan:a.plan,expectedExpiresAt:a.expiresAt||null,
+  expectedCreditsRemaining:a.creditsRemaining??null,
+  expectedReservedCredits:a.reservedCredits,
+  ...(action==="grant_credits"?{creditAmount:amount}:{newExpiresAt})};
+ try{
+  const result=await api("ownerManageCustomer")(payload);
+  $("manageResult").textContent=(result.data.idempotent?"เคยบันทึกแล้ว (ไม่ทำซ้ำ)":"บันทึกสำเร็จ")+
+   " • กรุณารีโหลดข้อมูลเพื่อดูยอดล่าสุด";
+  pendingManagementId=null;
+  await fetchCustomers(true);
+  // Keep panel open only for a known currently selected account.
+  selectedManagedAccount=customerDirectory.get(a.accountId)||null;
+  if(selectedManagedAccount){
+   $("manageCustomerInfo").textContent=selectedManagedAccount.email+" | "+
+    selectedManagedAccount.plan+" | เครดิต "+
+    (selectedManagedAccount.creditsRemaining??"—")+" | "+expiryLabel(selectedManagedAccount).text;
+  }
+  void fetchManagementHistory();
+ }catch(e){
+  $("manageResult").textContent="ยังยืนยันผลการบันทึกไม่ได้: "+errorMessage(e)+
+   " • หากเป็น Network Error สามารถกดยืนยันอีกครั้งโดยใช้ Operation ID เดิม";
+  // Server will reject stale snapshot rather than overwrite concurrent changes.
+ }finally{btn.disabled=false}
+}
+
 async function fetchCustomers(reset=false){
  if(!authorized||customerBusy)return;
  customerBusy=true;
  const more=$("moreCustomers"),body=$("customerRows");
  more.disabled=true;
- if(reset){cursor=null;body.replaceChildren();$("customerPageStatus").textContent="กำลังโหลดสมาชิก…"}
+ if(reset){cursor=null;customerDirectory.clear();body.replaceChildren();$("customerPageStatus").textContent="กำลังโหลดสมาชิก…"}
  try{
   const res=await api("ownerAnalyticsCustomers")({afterId:cursor});
   if(!authorized)return;
   const result=res.data;
   for(const a of result.customers||[]){
+   customerDirectory.set(a.accountId,a);
    const row=document.createElement("tr");
    row.append(element("td",a.email||"ไม่พบ Email ใน Firebase Auth",a.email?"customer-email":"muted"));
    row.append(element("td",a.accountId,"uid"));
@@ -268,10 +392,15 @@ async function fetchCustomers(reset=false){
    row.append(element("td",Number.isSafeInteger(a.reservedCredits)?fmt.format(a.reservedCredits):"—","credit-reserved"));
    row.append(element("td",dateLabel(a.joinedAt)));
    const expiry=expiryLabel(a);row.append(element("td",expiry.text,expiry.cls));
+   const cell=element("td");
+   const manageButton=element("button","จัดการ","secondary owner-manage-button");
+   manageButton.type="button";manageButton.disabled=!canManageCustomers||!a.email;
+   manageButton.addEventListener("click",()=>selectManagedCustomer(a.accountId));
+   cell.append(manageButton);row.append(cell);
    body.append(row);
   }
   if(!body.childElementCount){
-   const tr=document.createElement("tr"),td=element("td","ยังไม่มีข้อมูลบัญชี");td.colSpan=8;tr.append(td);body.append(tr);
+   const tr=document.createElement("tr"),td=element("td","ยังไม่มีข้อมูลบัญชี");td.colSpan=9;tr.append(td);body.append(tr);
   }
   cursor=result.nextCursor||null;
   more.hidden=!cursor;
@@ -291,7 +420,7 @@ async function ensureAccess(user){
   displayDashboard(user);
   void fetchSummary();
   void fetchRevenue();
-  void fetchCustomers(true);
+  void (async()=>{await fetchManagementStatus();await fetchCustomers(true)})();
  }catch(e){displayLogin("ตรวจสอบสิทธิ์ไม่สำเร็จ: "+errorMessage(e))}
 }
 $("loginForm").addEventListener("submit",async e=>{
@@ -314,6 +443,12 @@ $("refreshButton").addEventListener("click",()=>{void fetchSummary();void fetchR
 $("reloadRevenue").addEventListener("click",()=>{void fetchRevenue()});
 $("reloadCustomers").addEventListener("click",()=>{void fetchCustomers(true)});
 $("moreCustomers").addEventListener("click",()=>{void fetchCustomers()});
+$("manageAction").addEventListener("change",updateManagementFields);
+$("manageClose").addEventListener("click",()=>{$("managePanel").hidden=true;selectedManagedAccount=null;pendingManagementId=null});
+$("manageForm").addEventListener("submit",e=>{void submitManagement(e)});
+for(const id of ["manageReason","manageConfirmEmail","manageCreditAmount","manageExpiryDate"]){
+ $(id).addEventListener("input",()=>{pendingManagementId=null});
+}
 $("monthRange").addEventListener("change",renderCharts);
 const links=[...document.querySelectorAll(".sidebar-link")];
 for(const link of links)link.addEventListener("click",()=>{links.forEach(l=>l.classList.toggle("active",l===link))});
