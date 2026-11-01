@@ -3,6 +3,10 @@
 set -Eeuo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+echo "V6.1 uses independent guarded deploy scripts: deploy-beta-functions.sh, deploy-beta-customer.sh, deploy-beta-marketing.sh." >&2
+echo "The legacy V6.0 all-sites deployment is disabled on this V6.1 branch to avoid unintended Hosting changes." >&2
+exit 2
+
 PROD="${1:-}"
 if [[ ! "$PROD" =~ ^[a-z][a-z0-9-]{5,29}$ || "$PROD" == "packtook-staging" || "$PROD" != *prod* ]]; then
  echo "ERROR: Pass the isolated Firebase Production project ID containing prod." >&2; exit 1
