@@ -8,6 +8,7 @@ node scripts/verify.mjs "$PROD"
 node scripts/test-owner.mjs
 node scripts/test-owner-charts.mjs
 node scripts/test-owner-management.mjs
+node scripts/test-owner-management-ui.mjs
 node --check owner-functions/index.js
 [[ -d owner-functions/node_modules ]] || { echo "ERROR: Run prepare-owner.sh first." >&2; exit 1; }
 [[ "$(cat "owner-functions/.env.$PROD" 2>/dev/null)" == "PACKTOOK_PRODUCTION_PROJECT_ID=$PROD" ]] || { echo "ERROR: Missing Production Owner environment guard. Run prepare-owner.sh" >&2; exit 1; }
