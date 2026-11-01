@@ -17,7 +17,6 @@ const PROMPTPAY_TEST_ENABLED=process.env.PACKTOOK_PROMPTPAY_TEST_ENABLED==="true
 function requireTest(){if(process.env.PACKTOOK_PRODUCTION_PROJECT_ID!=="packtook-prod-01"||!PROMPTPAY_TEST_ENABLED)
  throw new HttpsError("failed-precondition","PromptPay Test Mode is disabled");}
 function uid(req){
- requireTest();
  if(process.env.PACKTOOK_PRODUCTION_PROJECT_ID!=="packtook-prod-01")
   throw new HttpsError("failed-precondition","Production project guard missing");
  if(!req.auth?.uid)throw new HttpsError("unauthenticated","Sign in");
@@ -157,7 +156,7 @@ exports.promptpayBillingHistory=onCall(options,async req=>{
   nextCursor:snap.docs.length>12&&items.length?items[items.length-1].id:null};
 });
 exports.promptpayRequestPlanChange=onCall(options,async req=>{
- const id=uid(req);const plan=data(req).plan;
+ const id=uid(req);requireTest();const plan=data(req).plan;
  const acc=await ensureAccount(id),ticket=acc.collection("billingRequests").doc();
  return db.runTransaction(async tx=>{
   const snap=await tx.get(acc),current=snap.data(),decision=purchaseDecision(current,plan);
@@ -245,7 +244,7 @@ exports.promptpayConfig=onCall(options,async req=>{
  return {enabled:PROMPTPAY_TEST_ENABLED,testMode:true,method:"promptpay",cardEnabled:false};
 });
 exports.promptpayCreateCharge=onCall(paymentSecrets,async req=>{
- const user=uid(req);const d=data(req),id=d.requestId,method=d.method;
+ const user=uid(req);requireTest();const d=data(req),id=d.requestId,method=d.method;
  // V4.8.9: PromptPay-only launch. Re-enable cards in a future reviewed release.
  if(!validOp(id)||method!=="promptpay")throw new HttpsError("invalid-argument","Only PromptPay QR payment is currently supported");
  const acc=await ensureAccount(user),ticket=acc.collection("billingRequests").doc(id);
@@ -284,7 +283,7 @@ exports.promptpayCreateCharge=onCall(paymentSecrets,async req=>{
  return {status:status.status,chargeId:charge.id,authorizeUri:charge.authorize_uri||null,qrImage:charge.source?.scannable_code?.image?.download_uri||null};
 });
 exports.promptpayRecoverCharge=onCall(paymentSecrets,async req=>{
- const user=uid(req),requestId=data(req).requestId;
+ const user=uid(req);requireTest(),requestId=data(req).requestId;
  if(!validOp(requestId))throw new HttpsError("invalid-argument","Invalid request ID");
  const ref=own(user).collection("billingRequests").doc(requestId),snap=await ref.get();
  if(!snap.exists||snap.data().requestedBy!==user)throw new HttpsError("not-found","Billing request not found");
@@ -316,7 +315,7 @@ exports.promptpayRecoverCharge=onCall(paymentSecrets,async req=>{
  return {...verified,found:true,chargeId:charge.id,qrImage:charge.source?.scannable_code?.image?.download_uri||null};
 });
 exports.promptpayChargeStatus=onCall(paymentSecrets,async req=>{
- const user=uid(req),id=data(req).requestId;
+ const user=uid(req);requireTest(),id=data(req).requestId;
  if(!validOp(id))throw new HttpsError("invalid-argument","Invalid request");
  const snap=await own(user).collection("billingRequests").doc(id).get();
  if(!snap.exists||snap.data().requestedBy!==user)throw new HttpsError("not-found","Billing request not found");
