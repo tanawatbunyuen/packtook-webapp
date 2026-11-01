@@ -12,7 +12,11 @@ for(const id of ["revenueModeChart","revenuePlanChart","revenueTrendChart","reve
 for(const old of ["revenueLive","revenueTest","revenueUnknown","revenueTransactions","revenueMonthly","revenuePlanRows"]){
  check(!html.includes('id="'+old+'"'),"Legacy numeric/table component "+old+" still rendered");
 }
-check(html.includes("app.js?v=6.2.2")&&html.includes("style.css?v=6.2.2"),"Chart files not cache-busted");
+const appVersion=html.match(/app\\.js\\?v=(\\d+)\\.(\\d+)\\.(\\d+)/);
+const styleVersion=html.match(/style\\.css\\?v=(\\d+)\\.(\\d+)\\.(\\d+)/);
+check(appVersion&&styleVersion&&appVersion[0].split("v=")[1]===styleVersion[0].split("v=")[1],"Chart assets must have matching version queries");
+const [major,minor,patch]=appVersion.slice(1).map(Number);
+check(major>6||(major===6&&(minor>2||(minor===2&&patch>=2))),"Chart assets must be at least V6.2.2");
 check(!/packtook-staging|firebase-staging/.test(html+app),"Owner chart not isolated to Production");
 check(style.includes(".owner-sales-trend-bars")&&style.includes(".owner-sales-empty"),"Chart styles or zero state missing");
 check(app.includes('api("ownerAnalyticsRevenue")'),"Revenue must use existing read-only Owner endpoint");
@@ -64,4 +68,4 @@ check(cols.length===2&&cols[0].children[0].children.length===3,"Each month must 
 check(cols[0].children[0].children[1].style.height==="100.00%","Monthly chart must scale to largest measured revenue");
 check(cols[1].children[0].children.every(b=>b.style.height==="0.00%"),"Zero-valued month must not invent visible bars");
 check($("revenueStatus").textContent.includes("ไม่ใช่ยอดที่กระทบยอดแล้ว"),"Live-sounding values must be qualified");
-console.log("PASS: PACKTOOK V6.2.2 revenue graphs, zero states, and read-only safety");
+console.log("PASS: PACKTOOK revenue graphs, zero states, and payment safety");
