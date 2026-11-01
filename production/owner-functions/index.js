@@ -12,7 +12,7 @@ const plans=["Free","Starter","Basic","Growth","Business","Pro"];
 const limits={Free:20,Starter:50,Basic:300,Growth:1500,Business:5000,Pro:null};
 const BATCH=100,MAX_ACCOUNTS=1200,PER_PAGE=25;
 
-function requireOwner(req){
+async function requireOwner(req){
  if(process.env.PACKTOOK_PRODUCTION_PROJECT_ID!==PROJECT||
     (process.env.GCLOUD_PROJECT&&process.env.GCLOUD_PROJECT!==PROJECT)||
     (process.env.GCP_PROJECT&&process.env.GCP_PROJECT!==PROJECT)){
@@ -22,6 +22,17 @@ function requireOwner(req){
  if(req.auth.token?.email_verified!==true)throw new HttpsError("permission-denied","Verify your email first");
  // A customer's admin role and Production Beta permission are NOT Owner rights.
  if(req.auth.token?.packtookPlatformOwner!==true)throw new HttpsError("permission-denied","Platform Owner claim required");
+ // Check the canonical Production Auth record on every privileged request.
+ // This makes a revoked or disabled Owner ineligible without waiting for ID-token expiry.
+ let liveUser;
+ try{liveUser=await admin.auth().getUser(req.auth.uid)}
+ catch(e){
+  if(e.code==="auth/user-not-found")throw new HttpsError("permission-denied","Owner account no longer exists");
+  console.error("Owner authorization directory lookup failed",{code:e.code||"unknown"});
+  throw new HttpsError("unavailable","Cannot verify current Owner permission");
+ }
+ if(liveUser.disabled||!liveUser.emailVerified||liveUser.customClaims?.packtookPlatformOwner!==true)
+  throw new HttpsError("permission-denied","Owner permission disabled or revoked");
  return req.auth.uid;
 }
 function monthTH(ms){return new Date(ms+7*3600000).toISOString().slice(0,7)}
@@ -67,7 +78,7 @@ function assertCursor(cursor){
  return cursor;
 }
 exports.ownerAnalyticsSummary=onCall(options,async req=>{
- requireOwner(req);
+ await requireOwner(req);
  const now=Date.now(),localMonth=monthTH(now);
  const [year,month]=localMonth.split("-").map(Number);
  const months=Array.from({length:12},(_,i)=>new Date(Date.UTC(year,month-1-(11-i),1)).toISOString().slice(0,7));
@@ -105,7 +116,7 @@ exports.ownerAnalyticsSummary=onCall(options,async req=>{
   caveat:"รายงานแสดงบัญชีที่มีเอกสาร accounts ใน Production เท่านั้น ไม่รวมบัญชี Firebase Auth ที่ยังไม่เคยเริ่มใช้งาน"};
 });
 exports.ownerAnalyticsCustomers=onCall(options,async req=>{
- requireOwner(req);
+ await requireOwner(req);
  const afterId=assertCursor(req.data?.afterId);
  let q=db.collection("accounts").orderBy(admin.firestore.FieldPath.documentId()).limit(PER_PAGE+1);
  if(afterId)q=q.startAfter(afterId);
