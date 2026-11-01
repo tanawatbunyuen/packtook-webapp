@@ -1,6 +1,5 @@
 "use strict";
 const {onCall,onRequest,HttpsError}=require("firebase-functions/v2/https");
-const {onRequest}=require("firebase-functions/v2/https");
 const {defineSecret}=require("firebase-functions/params");
 const omiseKey=defineSecret("PACKTOOK_OMISE_TEST_SECRET_KEY");
 const omiseWebhookKey=defineSecret("PACKTOOK_OMISE_TEST_WEBHOOK_SECRET");
@@ -101,7 +100,7 @@ function publicBillingRequest(doc){
   createdAt:x.createdAt?.toDate?.()?.toISOString()||null};
 }
 exports.promptpaySubscriptionOverview=onCall(options,async req=>{
- const id=uid(req);requireTest(),ref=await ensureAccount(id),input=data(req);
+ const id=uid(req);requireTest();const ref=await ensureAccount(id),input=data(req);
  // V5.3.1: reuse the established, callable subscriptionOverview endpoint for
  // paginated read-only billing history. New billingHistory may lack Cloud Run invoker IAM.
  if(input.historyOnly===true){
@@ -157,7 +156,7 @@ exports.promptpayBillingHistory=onCall(options,async req=>{
   nextCursor:snap.docs.length>12&&items.length?items[items.length-1].id:null};
 });
 exports.promptpayRequestPlanChange=onCall(options,async req=>{
- const id=uid(req);requireTest(),plan=data(req).plan;
+ const id=uid(req);requireTest();const plan=data(req).plan;
  const acc=await ensureAccount(id),ticket=acc.collection("billingRequests").doc();
  return db.runTransaction(async tx=>{
   const snap=await tx.get(acc),current=snap.data(),decision=purchaseDecision(current,plan);
@@ -201,7 +200,7 @@ async function reconcileCharge(accountId,requestId,chargeId){
   const [tSnap,aSnap]=await Promise.all([tx.get(ref),tx.get(acc)]);
   if(!tSnap.exists||!aSnap.exists)throw Error("Billing record missing");
   const item=tSnap.data(),a=aSnap.data();
-  if(item.omiseChargeId!==chargeId||item.requestedBy!==accountId||charge.id!==chargeId||charge.currency.toLowerCase()!=="thb"||charge.amount!==item.amountTHB*100||item.amountTHB!==pricesTHB[item.plan]||charge.metadata?.requestId!==requestId||charge.metadata?.uid!==accountId||charge.livemode!==false)throw Error("Charge mismatch");
+  if(item.omiseChargeId!==chargeId||item.requestedBy!==accountId||charge.id!==chargeId||charge.currency.toLowerCase()!=="thb"||charge.amount!==item.amountTHB*100||item.amountTHB!==pricesTHB[item.plan]||charge.metadata?.requestId!==requestId||charge.metadata?.uid!==accountId||charge.livemode!==false||charge.source?.type!=="promptpay"||item.paymentMethod!=="promptpay"||item.paymentProvider!=="omise")throw Error("Charge mismatch");
   if(item.status==="paid")return {status:"paid",plan:item.plan,alreadyApplied:true};
   if(item.status==="payment_review")return {status:"payment_review",requiresSupport:true};
   if(charge.status==="successful"&&charge.paid===true){
@@ -245,7 +244,7 @@ exports.promptpayConfig=onCall(options,async req=>{
  return {enabled:PROMPTPAY_TEST_ENABLED,testMode:true,method:"promptpay",cardEnabled:false};
 });
 exports.promptpayCreateCharge=onCall(paymentSecrets,async req=>{
- const user=uid(req);requireTest(),d=data(req),id=d.requestId,method=d.method;
+ const user=uid(req);requireTest();const d=data(req),id=d.requestId,method=d.method;
  // V4.8.9: PromptPay-only launch. Re-enable cards in a future reviewed release.
  if(!validOp(id)||method!=="promptpay")throw new HttpsError("invalid-argument","Only PromptPay QR payment is currently supported");
  const acc=await ensureAccount(user),ticket=acc.collection("billingRequests").doc(id);
@@ -271,7 +270,7 @@ exports.promptpayCreateCharge=onCall(paymentSecrets,async req=>{
   const form={amount:String(claim.amount*100),currency:"thb",description:"PACKTOOK "+claim.plan+" 30 days", "metadata[uid]":user,"metadata[requestId]":id};
   form["source[type]"]="promptpay";
   charge=await omiseAPI("/charges","POST",form);
-  if(!charge.id||charge.livemode!==false)throw Error("Unexpected charge");
+  if(!charge.id||charge.livemode!==false||charge.source?.type!=="promptpay")throw Error("Unexpected charge");
   await ticket.update({status:"payment_pending",omiseChargeId:charge.id,omiseStatus:charge.status,createdChargeAt:FieldValue.serverTimestamp()});
  }catch(e){
   if(e instanceof HttpsError&&e.details?.providerRejected===true){
@@ -300,7 +299,7 @@ exports.promptpayRecoverCharge=onCall(paymentSecrets,async req=>{
   params.set("offset",String(offset));
   const page=await omiseAPI("/charges?"+params.toString());
   for(const ch of page.data||[]){
-   if(ch.livemode===false&&ch.metadata?.uid===user&&ch.metadata?.requestId===requestId&&ch.amount===bill.amountTHB*100&&String(ch.currency).toLowerCase()==="thb")matches.push(ch);
+   if(ch.livemode===false&&ch.source?.type==="promptpay"&&ch.metadata?.uid===user&&ch.metadata?.requestId===requestId&&ch.amount===bill.amountTHB*100&&String(ch.currency).toLowerCase()==="thb")matches.push(ch);
   }
   if(!(page.data||[]).length||!(page.has_more||page.data?.length===100))break;
  }
@@ -325,7 +324,8 @@ exports.promptpayChargeStatus=onCall(paymentSecrets,async req=>{
  if(result.status==="pending"){const charge=await omiseAPI("/charges/"+encodeURIComponent(snap.data().omiseChargeId));return {...result,qrImage:charge.source?.scannable_code?.image?.download_uri||null,chargeId:charge.id}}
  return result;
 });
-exports.promptpayWebhook=onRequest({region,secrets:[omiseKey,omiseWebhookKey],invoker:"public"},async(req,res)=>{
+exports.promptpayWebhook=onRequest({region,maxInstances:3,timeoutSeconds:45,secrets:[omiseKey,omiseWebhookKey],invoker:"public"},async(req,res)=>{
+ try{requireTest()}catch{res.status(503).send("disabled");return}
  if(req.method!=="POST"){res.status(405).send("Method not allowed");return}
  const ts=String(req.headers["omise-signature-timestamp"]||"");
  const sigs=String(req.headers["omise-signature"]||"").split(",");
@@ -338,7 +338,7 @@ exports.promptpayWebhook=onRequest({region,secrets:[omiseKey,omiseWebhookKey],in
  // charge.update is useful for non-3DS cards where charge.complete may not arrive.
  // All notifications are independently verified with GET /charges/{id} before any activation.
  const event=req.body;
- if(!["charge.complete","charge.update","charge.create"].includes(event?.key)||!/^chrg_test_[a-zA-Z0-9]+$/.test(event?.data?.id||"")){res.status(200).send("ignored");return}
+ if(!["charge.complete","charge.update"].includes(event?.key)||!/^chrg_[a-zA-Z0-9_]+$/.test(event?.data?.id||"")){res.status(200).send("ignored");return}
  const id=event.data.metadata?.requestId,user=event.data.metadata?.uid;
  if(!validOp(id)||!user){res.status(400).send("invalid metadata");return}
  try{await reconcileCharge(user,id,event.data.id);res.status(200).send("verified")}
