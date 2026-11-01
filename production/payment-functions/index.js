@@ -267,7 +267,13 @@ exports.promptpayCreateCharge=onCall(paymentSecrets,async req=>{
  }
  let charge;
  try{
-  const form={amount:String(claim.amount*100),currency:"thb",description:"PACKTOOK "+claim.plan+" 30 days", "metadata[uid]":user,"metadata[requestId]":id};
+  const form={amount:String(claim.amount*100),currency:"thb",
+   description:"PACKTOOK "+claim.plan+" 30 days (TEST ONLY)",
+   "metadata[uid]":user,"metadata[requestId]":id,"metadata[channel]":"packtook_promptpay_test",
+   ref_id:"pt63-"+id,
+   expires_at:new Date(Date.now()+30*60000).toISOString(),
+   // Dynamic webhook avoids overwriting the existing Staging account-wide endpoint.
+   "webhook_endpoints[]":"https://asia-southeast1-packtook-prod-01.cloudfunctions.net/promptpayWebhook"};
   form["source[type]"]="promptpay";
   charge=await omiseAPI("/charges","POST",form);
   if(!charge.id||charge.livemode!==false||charge.source?.type!=="promptpay")throw Error("Unexpected charge");
@@ -335,10 +341,10 @@ exports.promptpayWebhook=onRequest({region,maxInstances:3,timeoutSeconds:45,secr
  const expected=crypto.createHmac("sha256",Buffer.from(secret,"base64")).update(ts+"."+req.rawBody.toString("utf8")).digest();
  const valid=sigs.some(sig=>{if(!/^[a-f0-9]{64}$/i.test(sig.trim()))return false;return crypto.timingSafeEqual(Buffer.from(sig.trim(),"hex"),expected)});
  if(!valid){res.status(401).send("Invalid signature");return}
- // charge.update is useful for non-3DS cards where charge.complete may not arrive.
+ // charge.update may arrive for async payments; every event is checked against the Omise Charge API.
  // All notifications are independently verified with GET /charges/{id} before any activation.
  const event=req.body;
- if(!["charge.complete","charge.update"].includes(event?.key)||!/^chrg_[a-zA-Z0-9_]+$/.test(event?.data?.id||"")){res.status(200).send("ignored");return}
+ if(!["charge.complete","charge.update"].includes(event?.key)||!/^chrg(_test)?_[A-Za-z0-9]+$/.test(event?.data?.id||"")){res.status(200).send("ignored");return}
  const id=event.data.metadata?.requestId,user=event.data.metadata?.uid;
  if(!validOp(id)||!user){res.status(400).send("invalid metadata");return}
  try{await reconcileCharge(user,id,event.data.id);res.status(200).send("verified")}
