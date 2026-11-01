@@ -95,7 +95,7 @@ function createService(enabled){
    PACKTOOK_PROMPTPAY_TEST_ENABLED:enabled?"true":"false"}});
  return result;
 }
-const request=data=>({auth:{uid:userId,token:{email_verified:true,packtookProductionBeta:true}},data});
+const request=data=>({auth:{uid:userId,token:{email_verified:true,packtookProductionBeta:true,packtookPaymentTester:true}},data});
 async function rejects(op,code){
  let e;try{await op}catch(err){e=err}
  assert(e?.code===code,"Expected "+code+" but received "+(e?.code||"success"));
@@ -104,7 +104,8 @@ const disabled=createService(false);
 assert((await disabled.promptpayConfig(request({}))).enabled===false,"QR test flag must default disabled");
 await rejects(disabled.promptpayRequestPlanChange(request({plan:"Starter"})),"failed-precondition");
 const api=createService(true);
-await rejects(api.promptpayRequestPlanChange({auth:{uid:userId,token:{email_verified:true}},data:{plan:"Starter"}}),"permission-denied");
+await rejects(api.promptpayRequestPlanChange({auth:{uid:userId,token:{email_verified:true,packtookProductionBeta:true}},data:{plan:"Starter"}}),"permission-denied");
+assert((await api.promptpayConfig({auth:{uid:userId,token:{email_verified:true,packtookProductionBeta:true}},data:{}})).enabled===false,"Unapproved Beta users must not see purchase actions");
 assert((await api.promptpayConfig(request({}))).cardEnabled===false,"Credit card must never be enabled");
 const pending=await api.promptpayRequestPlanChange(request({plan:"Starter"}));
 assert(pending.amountTHB===199&&pending.status==="pending_payment_setup","Unpaid request must not upgrade membership");
@@ -143,4 +144,4 @@ const status=await api.promptpayChargeStatus(request({requestId:pending.requestI
 assert(status.status==="paid"&&documents.get("accounts/"+userId).creditWalletRemaining===70,"Polling must be idempotent");
 assert(chargeCreateCount===1&&apiGetCount>=4,"Provider status must be checked independently");
 await rejects(api.promptpayRequestPlanChange(request({plan:"Free"})),"failed-precondition");
-console.log("PASS: V6.3 PromptPay QR Test-only, unsigned webhook rejection, independent provider verification, 70 credits and replay idempotency");
+console.log("PASS: V6.3 QR Tester permission, Test-only signed webhook, independent charge verification, 70 credits and replay idempotency");
