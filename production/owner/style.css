@@ -27,3 +27,23 @@
 @media(min-width:1141px){.metric-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .charts-grid{grid-template-columns:minmax(0,1fr)}
 .test-banner{background:#eaf4ff;border-color:#c9e2fa;color:#174c79}.test-banner p{color:#456f92}.test-banner-icon{background:#d0e7fd}
+
+/* V6.2.1 Production Owner financial ledger: Read-only indicators */
+.revenue-metrics{margin:16px 0 18px}
+.revenue-metrics .metric strong{overflow-wrap:anywhere;font-size:clamp(20px,2.1vw,31px)}
+.revenue-note{padding:13px 16px;border:1px solid #cddfec;background:#f0f7ff;border-radius:12px;color:#224a74;font-size:14px;font-weight:700}
+.revenue-monthly{display:grid;gap:6px;margin-top:12px}
+.revenue-row{display:grid;grid-template-columns:75px minmax(0,1fr);gap:14px;align-items:center;padding:7px 0;border-bottom:1px solid #eef1f6}
+.revenue-month{font-size:13px;color:#456888;font-variant-numeric:tabular-nums;font-weight:800}
+.revenue-bars{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.revenue-chip{border:1px solid #e0e7ef;border-radius:9px;padding:5px 8px;font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:700;font-size:12px}
+.revenue-chip-live{background:#e7f7ee;color:#1e8050}
+.revenue-chip-test{background:#e2f4fd;color:#126792}
+.revenue-chip-unknown{background:#fff3dc;color:#99631f}
+.revenue-plan-panel{margin-top:16px}
+.revenue-plan-panel .table-scroll{margin-top:14px}
+.expiry-free{color:#3a739b;font-weight:750;white-space:nowrap}
+.expiry-active{color:#167849;font-weight:750}
+.expiry-expired{color:#aa3e41;font-weight:800}
+.expiry-missing{color:#ad6f14;font-weight:750}
+@media(max-width:660px){.revenue-row{grid-template-columns:64px minmax(0,1fr);gap:6px}.revenue-chip{font-size:11px}}
