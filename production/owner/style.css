@@ -20,3 +20,5 @@
 
 /* Production Owner Beta */
 .owner-eagle{display:flex;align-items:center;gap:11px;margin:7px 0 19px;color:#647d9c;font-size:13px;font-weight:800}.owner-eagle img{width:49px;height:49px;object-fit:contain}
+
+.owner-reset{margin-top:10px;font-size:13px}
