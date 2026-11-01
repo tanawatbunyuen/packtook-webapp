@@ -240,6 +240,101 @@ exports.ownerAnalyticsRevenue=onCall(options,async req=>{
 });
 
 
+// V6.4 — read-only operational payment health from Firestore.
+// This is not Omise API or bank reconciliation; timestamps only mark items to check.
+const PAYMENT_HEALTH_ACCOUNTS=400, PAYMENT_HEALTH_PER_ACCOUNT=25, PAYMENT_HEALTH_WORKERS=6;
+const pricesTHB={Free:0,Starter:199,Basic:299,Growth:599,Business:1290,Pro:1990};
+function paymentHealthIssue(b,now){
+ const status=b.status||"unknown",created=millis(b.createdChargeAt)||millis(b.claimedAt)||millis(b.createdAt)||now;
+ const ageMinutes=Math.max(0,Math.floor((now-created)/60000));
+ const qrDeadline=typeof b.qrExpiresAt==="string"?Date.parse(b.qrExpiresAt):NaN;
+ let issue=null;
+ if(status==="payment_review")issue="review_required";
+ else if(status==="creating_charge"&&ageMinutes>=5)issue="stuck_charge_creation";
+ else if(status==="payment_pending"&&
+  (Number.isFinite(qrDeadline)?qrDeadline<now:ageMinutes>=45))issue="qr_past_expiry_check_provider";
+ else if(status==="paid"&&b.postSettlementAlert)issue="paid_provider_discrepancy";
+ else if(status==="paid"&&b.paymentEvidenceVersion===1&&
+  (b.providerVerifiedChargeId!==b.omiseChargeId||b.providerVerifiedStatus!=="successful"||
+   b.providerVerifiedPaid!==true||b.providerVerifiedAmountSatang!==b.amountTHB*100||
+   b.providerVerifiedSource!=="promptpay"||b.providerVerifiedCurrency!=="thb"||
+   b.providerVerifiedLivemode!==false||b.amountTHB!==pricesTHB[b.plan]))issue="paid_evidence_mismatch";
+ return {issue,status,ageMinutes};
+}
+exports.ownerPaymentHealth=onCall(options,async req=>{
+ await requireOwner(req);
+ const now=Date.now(),totals={
+  requestsScanned:0,paid:0,paidEvidenceVerified:0,legacyPaidEvidenceMissing:0,
+  paymentPending:0,creatingCharge:0,unstartedRequests:0,
+  failed:0,expired:0,reviewRequired:0,stuckChargeCreation:0,
+  qrPastExpiryCheckProvider:0,paidProviderDiscrepancy:0,paidEvidenceMismatch:0
+ };
+ const issues=[],countsByIssue={};
+ let scanned=0,truncated=false,limitedBillingAccounts=0,cursor=null;
+ while(scanned<PAYMENT_HEALTH_ACCOUNTS){
+  let q=db.collection("accounts").orderBy(admin.firestore.FieldPath.documentId())
+   .limit(Math.min(BATCH,PAYMENT_HEALTH_ACCOUNTS-scanned));
+  if(cursor)q=q.startAfter(cursor);
+  const acc=await q.get();
+  if(acc.empty)break;
+  for(let i=0;i<acc.docs.length;i+=PAYMENT_HEALTH_WORKERS){
+   const group=acc.docs.slice(i,i+PAYMENT_HEALTH_WORKERS);
+   const pages=await Promise.all(group.map(async doc=>{
+    try{
+     const batch=await doc.ref.collection("billingRequests")
+      .orderBy("createdAt","desc").limit(PAYMENT_HEALTH_PER_ACCOUNT+1).get();
+     return {accountId:doc.id,docs:batch.docs};
+    }catch(e){
+     console.error("Owner payment health Firestore read failed",{code:e.code||"unknown"});
+     throw new HttpsError("unavailable","Cannot read Production billing records");
+    }
+   }));
+   for(const page of pages){
+    if(page.docs.length>PAYMENT_HEALTH_PER_ACCOUNT){truncated=true;limitedBillingAccounts++}
+    for(const doc of page.docs.slice(0,PAYMENT_HEALTH_PER_ACCOUNT)){
+     const item=doc.data(),check=paymentHealthIssue(item,now);
+     totals.requestsScanned++;
+     if(check.status==="paid"){
+      totals.paid++;
+      if(item.paymentEvidenceVersion===1&&!check.issue)totals.paidEvidenceVerified++;
+      if(!item.paymentEvidenceVersion)totals.legacyPaidEvidenceMissing++;
+     }else if(check.status==="payment_pending")totals.paymentPending++;
+     else if(check.status==="creating_charge")totals.creatingCharge++;
+     else if(check.status==="pending_payment_setup")totals.unstartedRequests++;
+     else if(check.status==="failed")totals.failed++;
+     else if(check.status==="expired")totals.expired++;
+     else if(check.status==="payment_review")totals.reviewRequired++;
+     if(check.issue){
+      countsByIssue[check.issue]=(countsByIssue[check.issue]||0)+1;
+      if(issues.length<40)issues.push({accountId:page.accountId,requestId:doc.id,
+       plan:typeof item.plan==="string"?item.plan:"—",
+       amountTHB:Number.isSafeInteger(item.amountTHB)?item.amountTHB:null,
+       status:check.status,issue:check.issue,ageMinutes:check.ageMinutes});
+     }
+    }
+   }
+  }
+  scanned+=acc.size;cursor=acc.docs[acc.docs.length-1];
+  if(acc.size<BATCH)break;
+ }
+ if(scanned>=PAYMENT_HEALTH_ACCOUNTS){
+  const more=await db.collection("accounts").orderBy(admin.firestore.FieldPath.documentId())
+   .startAfter(cursor).limit(1).get();
+  if(!more.empty)truncated=true;
+ }
+ totals.stuckChargeCreation=countsByIssue.stuck_charge_creation||0;
+ totals.qrPastExpiryCheckProvider=countsByIssue.qr_past_expiry_check_provider||0;
+ totals.paidProviderDiscrepancy=countsByIssue.paid_provider_discrepancy||0;
+ totals.paidEvidenceMismatch=countsByIssue.paid_evidence_mismatch||0;
+ return {asOf:new Date(now).toISOString(),testModeOnly:true,
+  source:"Production Firestore billingRequests",
+  providerReconciliation:"NOT_RECONCILED",
+  scannedAccounts:scanned,maxScannedAccounts:PAYMENT_HEALTH_ACCOUNTS,
+  maxBillingPerAccount:PAYMENT_HEALTH_PER_ACCOUNT,
+  truncated,limitedBillingAccounts,totals,issues,
+  caveat:"QR older than its expiry is NOT automatically failed or paid. Check Omise Test Charge status before taking action; never edit credits from this report."};
+});
+
 // V6.2.3 — audited Owner Customer Management. Disabled unless explicitly enabled.
 // Manual complimentary credits / expiration adjustments are NOT purchase records.
 const crypto=require("node:crypto");
