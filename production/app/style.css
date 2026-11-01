@@ -576,4 +576,8 @@
 
 /* V6.1 production beta — Staging design parity and obvious environment label */
 .production-beta-banner{background:#053c5b;color:#d4fcff;padding:10px 14px;text-align:center;font:800 12px/1.5 Inter,"Noto Sans Thai",sans-serif;letter-spacing:.025em;border-bottom:1px solid #68dde0;position:relative;z-index:10}
-#plans [data-plan-request]{cursor:not-allowed}
+#plans [data-plan-request]:disabled{cursor:not-allowed}
+#plans [data-plan-request]:not(:disabled){cursor:pointer}
+#plans .qr-access-panel{margin:18px 0;padding:12px 16px;border:1px solid #bcd5f1;background:#eaf4ff;color:#174f81;border-radius:12px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:13px;font-weight:700}
+#plans .qr-access-panel .secondary{padding:7px 13px;font-size:12px;background:white}
+@media(max-width:600px){#plans .qr-access-panel .secondary{width:100%}}
