@@ -4,9 +4,9 @@ import fs from "node:fs";
 const app=fs.readFileSync(new URL("../app/app.js",import.meta.url),"utf8");
 const html=fs.readFileSync(new URL("../app/index.html",import.meta.url),"utf8");
 const css=fs.readFileSync(new URL("../app/style.css",import.meta.url),"utf8");
-const assert=(ok,message)=>{if(!ok)throw Error("V6.3.2 QR lifecycle: "+message)};
+const assert=(ok,message)=>{if(!ok)throw Error("V6.4 QR lifecycle: "+message)};
 assert(html.includes('id="paymentQrResult"')&&html.includes("aria-live=")&&html.includes("hidden></div>"),"QR panel should initially be hidden");
-assert(html.includes("app.js?v=6.3.2")&&html.includes("style.css?v=6.3.2"),"QR lifecycle assets must be cache-busted");
+assert(html.includes("app.js?v=6.4.0")&&html.includes("style.css?v=6.4.0"),"QR lifecycle assets must be cache-busted");
 assert(css.includes("#paymentQrResult[hidden]"),"Hidden QR must not leave empty white panel");
 assert(!app.includes("displayOmiseQR(result.qrImage)"),"QR displays must be bound to request ID");
 assert(app.includes("syncDisplayedPaymentQr(details)")&&app.includes('finishDisplayedPaymentQr("paid",requestId)'),"History/recheck must clear completed QR");
@@ -38,7 +38,8 @@ const runtime=new Function(
  code+"\nreturn {displayOmiseQR,clearDisplayedPaymentQr,finishDisplayedPaymentQr,syncDisplayedPaymentQr,checkDisplayedPaymentQr,qrState:()=>displayedPaymentQr};"
 )($,document,user,credit,refreshRemoteQuota,renderSubscriptionRequests,setTimeout,clearTimeout,console,URL);
 const getText=()=>host.children.map(n=>n.textContent).join(" ");
-runtime.displayOmiseQR("https://api.omise.co/mockqr.png","order-1");
+runtime.displayOmiseQR("https://api.omise.co/mockqr.png","order-1","2027-01-01T00:00:00.000Z");
+assert(host.children.some(x=>x.className==="qr-expiry-info"),"Provider QR expiry must display in Thai timezone");
 assert(!host.hidden&&host.children.some(x=>x.tag==="img"),"QR must appear for pending order");
 assert(runtime.qrState()?.requestId==="order-1","QR must store its order ID");
 assert(queues.size===1,"Pending QR must schedule exactly one refresh");
