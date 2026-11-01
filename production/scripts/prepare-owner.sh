@@ -21,6 +21,8 @@ node --input-type=module --check < owner/app.js
 node --check owner-functions/index.js
 node --check owner-functions/scripts/manage-platform-owner.js
 node scripts/test-owner.mjs
+node scripts/test-owner-charts.mjs
+node scripts/test-owner-management.mjs
 npm --prefix owner-functions install --no-audit --no-fund
-echo "PASS: V6.2 Owner prepared; no Production Hosting or Functions deployed."
+echo "PASS: V6.2.3 Owner prepared; no Production Hosting or Functions deployed."
 echo "Next: bash scripts/deploy-owner-functions.sh $PROD"
