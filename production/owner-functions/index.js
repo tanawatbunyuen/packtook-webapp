@@ -1,6 +1,6 @@
 "use strict";
 // PACKTOOK V6.2 Production Owner Analytics (read only).
-// A dedicated codebase. It cannot modify credits, plans, subscriptions or payments.
+// Dedicated Owner codebase. V6.2.3 adds separately gated, audited customer adjustments (no payments).
 const {onCall,HttpsError}=require("firebase-functions/v2/https");
 const admin=require("firebase-admin");
 admin.initializeApp();
@@ -237,4 +237,151 @@ exports.ownerAnalyticsRevenue=onCall(options,async req=>{
   maxScannedAccounts:MAX_ACCOUNTS,limitedBillingAccounts,
   totals:total,months:[...monthly.values()],plans:[...byPlan.values()],
   caveat:"ยอดจากรายการ paid ใน Firestore เท่านั้น ไม่ใช่เงินเข้าบัญชีจริงหรือยอดสุทธิหลังหักคืนเงิน; ไม่ใช้แทนรายงานจาก Omise/ธนาคาร"};
+});
+
+
+// V6.2.3 — audited Owner Customer Management. Disabled unless explicitly enabled.
+// Manual complimentary credits / expiration adjustments are NOT purchase records.
+const crypto=require("node:crypto");
+const MANAGEMENT_ENABLED=process.env.PACKTOOK_OWNER_MANAGEMENT_ENABLED==="true";
+const MAX_CREDIT_GRANT=500,MAX_WALLET_BALANCE=100000;
+const MAX_EXPIRY_DAYS=731;
+async function requireManager(req){
+ const ownerId=await requireOwner(req);
+ if(!MANAGEMENT_ENABLED)throw new HttpsError("failed-precondition","Owner management is disabled in this Production environment");
+ if(req.auth.token?.packtookOwnerManager!==true)throw new HttpsError("permission-denied","Additional Owner Manager claim required");
+ const live=await admin.auth().getUser(ownerId);
+ if(live.disabled||!live.emailVerified||live.customClaims?.packtookOwnerManager!==true||
+    live.customClaims?.packtookPlatformOwner!==true)
+  throw new HttpsError("permission-denied","Owner Manager access revoked");
+ return ownerId;
+}
+const validUserId=id=>typeof id==="string"&&/^[A-Za-z0-9_-]{1,128}$/.test(id);
+const sameExpiry=(a,expected)=>{
+ const raw=a.planExpiresAt;
+ const actual=typeof raw==="string"&&Number.isFinite(Date.parse(raw))?new Date(raw).toISOString():null;
+ return actual===expected;
+};
+function expectedAccountInput(d){
+ if(!validUserId(d?.accountId)||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(d.requestId))
+   throw new HttpsError("invalid-argument","Invalid Customer ID or operation UUID");
+ if(!["grant_credits","set_expiry"].includes(d.action))
+   throw new HttpsError("invalid-argument","Unsupported Owner operation");
+ if(typeof d.reason!=="string"||d.reason.trim().length<10||d.reason.trim().length>300)
+   throw new HttpsError("invalid-argument","Reason must be between 10 and 300 characters");
+ if(d.confirmAccountId!==d.accountId)
+   throw new HttpsError("invalid-argument","Confirm the exact customer UID");
+ if(typeof d.expectedPlan!=="string"||!Object.hasOwn(limits,d.expectedPlan)||
+    (d.expectedExpiresAt!==null&&(
+     typeof d.expectedExpiresAt!=="string"||
+     !Number.isFinite(Date.parse(d.expectedExpiresAt)))))
+   throw new HttpsError("invalid-argument","Expected account snapshot missing");
+ if(!Number.isSafeInteger(d.expectedCreditsRemaining)||d.expectedCreditsRemaining<0||
+    !Number.isSafeInteger(d.expectedReservedCredits)||d.expectedReservedCredits<0)
+   throw new HttpsError("invalid-argument","Expected credit snapshot invalid");
+ if(typeof d.confirmEmail!=="string"||d.confirmEmail.trim().length<5||d.confirmEmail.length>255)
+   throw new HttpsError("invalid-argument","Confirmation email required");
+ if(d.action==="grant_credits"&&(!Number.isSafeInteger(d.creditAmount)||d.creditAmount<1||d.creditAmount>MAX_CREDIT_GRANT))
+   throw new HttpsError("invalid-argument","Credit grant limit is 1-500");
+ if(d.action==="set_expiry"){
+  if(typeof d.newExpiresAt!=="string"||!Number.isFinite(Date.parse(d.newExpiresAt))||
+     new Date(d.newExpiresAt).toISOString()!==d.newExpiresAt)
+   throw new HttpsError("invalid-argument","Expiry must be an ISO UTC timestamp");
+  const at=Date.parse(d.newExpiresAt),now=Date.now();
+  if(at<=now||at>now+MAX_EXPIRY_DAYS*86400000)
+   throw new HttpsError("invalid-argument","Expiry must be in the future within 731 days");
+ }
+}
+function fingerprint(d){
+ const obj={action:d.action,accountId:d.accountId,creditAmount:d.creditAmount??null,
+  newExpiresAt:d.newExpiresAt??null,reason:d.reason.trim(),
+  expectedPlan:d.expectedPlan,expectedExpiresAt:d.expectedExpiresAt,
+  expectedCreditsRemaining:d.expectedCreditsRemaining,
+  expectedReservedCredits:d.expectedReservedCredits,confirmEmail:d.confirmEmail.toLowerCase().trim()};
+ return crypto.createHash("sha256").update(JSON.stringify(obj)).digest("hex");
+}
+exports.ownerManagementStatus=onCall(options,async req=>{
+ await requireOwner(req);
+ const owner=await admin.auth().getUser(req.auth.uid);
+ return {enabled:MANAGEMENT_ENABLED,canManage:MANAGEMENT_ENABLED&&
+    req.auth.token?.packtookOwnerManager===true&&owner.customClaims?.packtookOwnerManager===true,
+  maxCreditsPerAction:MAX_CREDIT_GRANT,actions:["grant_credits","set_expiry"],billingEnabled:false};
+});
+exports.ownerManageCustomer=onCall(options,async req=>{
+ const ownerId=await requireManager(req),d=req.data||{};
+ expectedAccountInput(d);
+ if(d.accountId===ownerId)throw new HttpsError("permission-denied","Cannot change your own Owner account");
+ // Email is a second confirmation, verified against canonical Production Auth.
+ const user=await admin.auth().getUser(d.accountId);
+ if(user.disabled||!user.email||user.email.toLowerCase()!==d.confirmEmail.toLowerCase().trim())
+  throw new HttpsError("failed-precondition","Target email mismatch or account disabled");
+ const acc=db.collection("accounts").doc(d.accountId);
+ const actionRef=acc.collection("ownerChanges").doc(d.requestId);
+ const auditRef=acc.collection("audit").doc("owner_"+d.requestId);
+ const inputHash=fingerprint(d);
+ const result=await db.runTransaction(async tx=>{
+  const [accountSnap,actionSnap]=await Promise.all([tx.get(acc),tx.get(actionRef)]);
+  if(actionSnap.exists){
+   const existing=actionSnap.data();
+   if(existing.fingerprint!==inputHash||existing.ownerId!==ownerId)
+    throw new HttpsError("already-exists","Operation ID used for a different request");
+   return {ok:true,idempotent:true,action:existing.action,
+    newBalance:existing.newBalance??null,newExpiresAt:existing.newExpiresAt??null};
+  }
+  if(!accountSnap.exists)throw new HttpsError("not-found","Customer account has not been initialized");
+  const a=accountSnap.data(),summary=credits(a),basics=baseAccount(a);
+  if(!Object.hasOwn(limits,a.plan)||a.plan!==d.expectedPlan||
+     !sameExpiry(a,d.expectedExpiresAt)||a.reserved!==d.expectedReservedCredits||
+     summary.balance!==d.expectedCreditsRemaining)
+   throw new HttpsError("failed-precondition","Customer account changed. Refresh before retrying");
+  if(a.openBillingRequestId)throw new HttpsError("failed-precondition","Pending billing request must be resolved first");
+  // Critical: no in-flight video. Converting legacy credits while reserved
+  // could otherwise alter credit recovery semantics for ongoing recordings.
+  if(a.reserved!==0)throw new HttpsError("failed-precondition","Complete all reservations before Owner adjustment");
+  const patch={updatedAt:admin.firestore.FieldValue.serverTimestamp()};
+  let newBalance=summary.balance,newExpiresAt=basics.expiresAt;
+  if(d.action==="grant_credits"){
+   if(summary.status!=="available"||limits[a.plan]===null)
+    throw new HttpsError("failed-precondition","Credit grants require active finite-credit plan");
+   newBalance=summary.balance+d.creditAmount;
+   if(!Number.isSafeInteger(newBalance)||newBalance>MAX_WALLET_BALANCE)
+    throw new HttpsError("failed-precondition","Wallet credit limit exceeded");
+   // Existing Free accounts may still use legacy monthly quota. Convert their
+   // current available credits to wallet once; preserve used and period fields.
+   patch.creditWalletV1=true;
+   patch.creditWalletRemaining=newBalance;
+   if(a.creditWalletV1!==true)patch.walletStartingCredits=newBalance;
+  }else{
+   if(a.plan==="Free")throw new HttpsError("failed-precondition","Free plan has no expiry");
+   newExpiresAt=d.newExpiresAt;
+   patch.planExpiresAt=newExpiresAt;
+  }
+  const audit={action:d.action,requestId:d.requestId,ownerId,
+   accountId:d.accountId,targetEmail:user.email,
+   reason:d.reason.trim(),beforePlan:a.plan,beforeBalance:summary.balance,
+   afterBalance:newBalance,beforeExpiresAt:basics.expiresAt,afterExpiresAt:newExpiresAt,
+   creditDelta:d.action==="grant_credits"?d.creditAmount:0,
+   createdAt:admin.firestore.FieldValue.serverTimestamp(),
+   fingerprint:inputHash,newBalance,newExpiresAt};
+  tx.update(acc,patch);
+  tx.create(actionRef,audit);
+  tx.create(auditRef,{...audit,action:"owner_"+d.action});
+  return {ok:true,idempotent:false,action:d.action,newBalance,newExpiresAt};
+ });
+ return result;
+});
+exports.ownerCustomerManagementHistory=onCall(options,async req=>{
+ await requireOwner(req);
+ const id=req.data?.accountId;
+ if(!validUserId(id))throw new HttpsError("invalid-argument","Invalid Customer UID");
+ const records=await db.collection("accounts").doc(id).collection("ownerChanges")
+   .orderBy("createdAt","desc").limit(20).get();
+ return {items:records.docs.map(x=>{
+  const a=x.data();
+  return {requestId:x.id,action:a.action,createdAt:millis(a.createdAt),
+    ownerId:a.ownerId,reason:a.reason,creditDelta:a.creditDelta,
+    beforeBalance:a.beforeBalance,afterBalance:a.afterBalance,
+    beforeExpiresAt:a.beforeExpiresAt,afterExpiresAt:a.afterExpiresAt};
+ })};
 });
