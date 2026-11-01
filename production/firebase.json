@@ -145,6 +145,15 @@
         ".git",
         "firebase-debug.log"
       ]
+    },
+    {
+      "source": "payment-functions",
+      "codebase": "promptpay",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log"
+      ]
     }
   ]
 }
