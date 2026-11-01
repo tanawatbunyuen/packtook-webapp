@@ -168,7 +168,7 @@ function classifyPaidBilling(p){
   return {mode:"unclassified",amount:0,invalidAmount:true};
  const id=typeof p.omiseChargeId==="string"?p.omiseChargeId:"";
  const provider=p.paymentProvider==="omise";
- if(provider&&p.omiseLivemode===false&&id.startsWith("chrg_test_"))return {mode:"test",amount};
+ if(provider&&p.omiseLivemode!==true&&id.startsWith("chrg_test_"))return {mode:"test",amount};
  if(provider&&p.omiseLivemode===true&&/^chrg_[A-Za-z0-9]+$/.test(id)&&!id.startsWith("chrg_test_"))
   return {mode:"live",amount};
  return {mode:"unclassified",amount,invalidAmount:false};
@@ -184,7 +184,7 @@ exports.ownerAnalyticsRevenue=onCall(options,async req=>{
    unclassifiedPayments:0}]));
  const total={liveSalesTHB:0,livePayments:0,testSalesTHB:0,testPayments:0,
    unclassifiedSalesTHB:0,unclassifiedPayments:0,invalidAmountRecords:0};
- let cursor=null,scanned=0,truncated=false,limitedBillingAccounts=0,firstError=null;
+ let cursor=null,scanned=0,truncated=false,limitedBillingAccounts=0;
  while(scanned<MAX_ACCOUNTS){
   let q=db.collection("accounts").orderBy(admin.firestore.FieldPath.documentId())
    .limit(Math.min(BATCH,MAX_ACCOUNTS-scanned));
