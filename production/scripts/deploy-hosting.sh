@@ -11,13 +11,21 @@ node scripts/verify.mjs "$PROD"
 [[ -f .firebaserc ]] || { echo "ERROR: Run bootstrap.sh first. Missing production/.firebaserc" >&2; exit 1; }
 node - "$PROD" <<'JS'
 const fs=require('fs'),id=process.argv[2],r=JSON.parse(fs.readFileSync('.firebaserc','utf8'));
-const t=r.targets?.[id];if(!t||!(t.marketing?.length===1&&t.app?.length===1&&t.owner?.length===1)){
- console.error('ERROR: Production Hosting mappings are missing or ambiguous. Run bootstrap.sh.');process.exit(1);
+// firebase target:apply stores targets[projectId].hosting[hostingTarget] = [siteId].
+const t=r.targets?.[id]?.hosting;
+if(!t||!['marketing','app','owner'].every(key=>Array.isArray(t[key])&&t[key].length===1)){
+ console.error('ERROR: Production Hosting mappings are missing or ambiguous.');
+ console.error('Expected .firebaserc targets['+id+'].hosting.marketing/app/owner.');
+ console.error('If bootstrap.sh has not finished, finish it before running this deploy script.');
+ process.exit(1);
 }
-for(const key of ['marketing','app','owner']){
- if(t[key].some(name=>name.includes('staging'))){console.error('ERROR: Target '+key+' points to Staging.');process.exit(1);}
+const expectedMarketing=id;
+const ids=['marketing','app','owner'].map(key=>t[key][0]);
+if(t.marketing[0]!==expectedMarketing||ids.some(site=>typeof site!=='string'||site.includes('staging'))||new Set(ids).size!==3){
+ console.error('ERROR: The production Hosting targets are not isolated or have unexpected site IDs.');
+ process.exit(1);
 }
-console.log('Checked production targets for project '+id, t);
+console.log('Checked production hosting targets for '+id, t);
 JS
 echo "Deploying PRODUCTION holding pages only (Marketing, closed Customer, closed Owner)"
 echo "This will NOT deploy Functions, Firestore, Auth or payments."
