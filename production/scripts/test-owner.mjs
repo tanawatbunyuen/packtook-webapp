@@ -28,25 +28,38 @@ const billing=new Map([
   {status:"paid",paymentProvider:"omise",omiseLivemode:true,omiseChargeId:"chrg_ABC123",
    plan:"Starter",amountTHB:199,paidAt:new Date().toISOString()},
   {status:"paid",paymentProvider:"omise",omiseLivemode:false,omiseChargeId:"chrg_test_ABC123",
-   plan:"Basic",amountTHB:299,paidAt:new Date().toISOString()},
+   plan:"Basic",amountTHB:299,paidAt:new Date().toISOString(),
+   paymentEvidenceVersion:1,providerVerifiedChargeId:"chrg_test_ABC123",
+   providerVerifiedAmountSatang:29900,providerVerifiedStatus:"successful",providerVerifiedPaid:true,
+   providerVerifiedSource:"promptpay",providerVerifiedCurrency:"thb",providerVerifiedLivemode:false},
   {status:"paid",paymentProvider:"omise",omiseChargeId:"chrg_test_LEGACY123",
    plan:"Basic",amountTHB:99,paidAt:new Date().toISOString()},
   {status:"paid",paymentProvider:"omise",omiseChargeId:"chrg_old_ABC123",
    plan:"Starter",amountTHB:199,paidAt:new Date().toISOString()},
   {status:"failed",paymentProvider:"omise",omiseLivemode:true,omiseChargeId:"chrg_fail_ABC123",
-   plan:"Starter",amountTHB:599,paidAt:new Date().toISOString()}
+   plan:"Starter",amountTHB:599,paidAt:new Date().toISOString()},
+  {status:"payment_pending",plan:"Starter",amountTHB:199,
+   createdAt:new Date(Date.now()-55*60000),qrExpiresAt:new Date(Date.now()-10*60000).toISOString()},
+  {status:"creating_charge",plan:"Starter",amountTHB:199,
+   claimedAt:new Date(Date.now()-11*60000)},
+  {status:"payment_review",plan:"Starter",amountTHB:199,
+   createdAt:new Date(Date.now()-15*60000)}
  ]],
  ["cust2",[]],["cust3",[]]
 ]);
 for(const account of accounts){
  account.ref={collection(name){
   assert(name==="billingRequests","Unexpected financial collection");
-  let n=101;
+  let n=101,paidOnly=false;
   return {where(field,op,value){
-   assert(field==="status"&&op==="=="&&value==="paid","Only paid ledger queries allowed");
-   return this;
-  },limit(value){n=value;return this},
-  async get(){return {docs:(billing.get(account.id)||[]).filter(x=>x.status==="paid").slice(0,n).map(x=>({data:()=>x}))}}};
+   assert(field==="status"&&op==="=="&&value==="paid","Unexpected ledger filter");
+   paidOnly=true;return this;
+  },orderBy(field,direction){assert(field==="createdAt"&&direction==="desc","Expected recent payment health scan");return this},
+  limit(value){n=value;return this},
+  async get(){
+   const raw=(billing.get(account.id)||[]).filter(x=>!paidOnly||x.status==="paid").slice(0,n);
+   return {docs:raw.map((x,i)=>({id:account.id+"_bill_"+i,data:()=>x}))};
+  }};
  }};
 }
 const query=(after=null,count=100)=>({
@@ -76,7 +89,7 @@ const fakeRequire=id=>{
 };
 vm.runInNewContext(backend,{exports:exportsObj,require:fakeRequire,process:{env:{PACKTOOK_PRODUCTION_PROJECT_ID:"packtook-prod-01",GCLOUD_PROJECT:"packtook-prod-01"}},console,Date,Map,Set,Object,Number,Math,Promise,Array,String,RegExp}, {filename:"owner-functions/index.js"});
 const exported=Object.keys(exportsObj).sort();
-assert(exported.join(",")==="ownerAnalyticsCustomers,ownerAnalyticsRevenue,ownerAnalyticsSummary,ownerCustomerManagementHistory,ownerManageCustomer,ownerManagementStatus","Only six reviewed Owner endpoints allowed");
+assert(exported.join(",")==="ownerAnalyticsCustomers,ownerAnalyticsRevenue,ownerAnalyticsSummary,ownerCustomerManagementHistory,ownerManageCustomer,ownerManagementStatus,ownerPaymentHealth","Only seven reviewed Owner endpoints allowed");
 const valid={auth:{uid:"owner-test",token:{email_verified:true,packtookPlatformOwner:true}},data:{}};
 async function rejected(request,expected){
  let error;try{await exportsObj.ownerAnalyticsSummary(request)}catch(e){error=e}
@@ -103,9 +116,22 @@ assert(revenue.totals.testSalesTHB===398&&revenue.totals.testPayments===2,"Test 
 assert(revenue.totals.unclassifiedSalesTHB===199&&revenue.totals.unclassifiedPayments===1,"Unclassified transaction not mislabeled live");
 assert(revenue.totals.liveSalesTHB!==199+398+199,"Live revenue must not include Test or unclassified records");
 assert(revenue.months.some(x=>x.liveSalesTHB===199&&x.testSalesTHB===398),"Monthly categories must be populated");
+const health=await exportsObj.ownerPaymentHealth(valid);
+assert(health.testModeOnly===true&&health.providerReconciliation==="NOT_RECONCILED","Payment health must be read-only Test ledger");
+assert(health.totals.requestsScanned===8,"All billing statuses must be scanned");
+assert(health.totals.paymentPending===1&&health.totals.qrPastExpiryCheckProvider===1,"QR past requested expiry needs provider recheck");
+assert(health.totals.creatingCharge===1&&health.totals.stuckChargeCreation===1,"Stuck charge creation must be flagged");
+assert(health.totals.reviewRequired===1,"Payment review cases must be visible to Owner");
+assert(health.totals.paidEvidenceVerified===1&&health.totals.legacyPaidEvidenceMissing===3,
+ "Verified evidence versus legacy paid records should be distinguished");
+assert(health.issues.every(x=>x.accountId&&x.requestId&&x.issue),"Issues must provide bounded account and request IDs");
+let healthDenied=false;
+try{await exportsObj.ownerPaymentHealth({auth:{uid:"not-owner",token:{email_verified:true,packtookProductionBeta:true}}})}
+catch(e){healthDenied=e.code==="permission-denied"}
+assert(healthDenied,"Health report must reject non-Owner users");
 let denied=false;try{await exportsObj.ownerAnalyticsCustomers({...valid,data:{afterId:"../../other"}})}catch(e){denied=e.code==="invalid-argument"}
 assert(denied,"Invalid pagination cursor should be rejected");
 ownerClaimActive=false;
 await rejected(valid,"permission-denied");
 ownerClaimActive=true;
-console.log("PASS: Owner analytics and Revenue regression tests (V6.2.3 management separately gated)");
+console.log("PASS: V6.4 Owner analytics, QR health, payment review, evidence and permission isolation");
