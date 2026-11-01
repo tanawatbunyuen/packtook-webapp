@@ -173,7 +173,7 @@ exports.promptpayRequestPlanChange=onCall(options,async req=>{
  });
 });
 exports.promptpayCancelRequest=onCall(options,async req=>{
- const uidValue=uid(req),id=data(req).requestId;
+ const uidValue=uid(req),id=data(req).requestId;paymentTester(req);
  if(!validOp(id))throw new HttpsError("invalid-argument","Invalid request ID");
  const acc=own(uidValue),ticket=acc.collection("billingRequests").doc(id);
  return db.runTransaction(async tx=>{
@@ -188,7 +188,7 @@ exports.promptpayCancelRequest=onCall(options,async req=>{
 
 const paymentSecrets={region,timeoutSeconds:45,maxInstances:5,secrets:[omiseKey]};
 async function omiseAPI(path,method="GET",params=null){
- paymentTester(req);
+ requireTest();
  const key=omiseKey.value();
  if(!key||!key.startsWith("skey_test_"))throw new HttpsError("failed-precondition","Production PromptPay Test requires skey_test_");
  const headers={Authorization:"Basic "+Buffer.from(key+":").toString("base64")};
