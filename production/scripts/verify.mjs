@@ -51,4 +51,9 @@ assert(/OWNER BETA|Production Beta/i.test(ownerHTML)&&ownerHTML.includes('mascot
 const ownerClient=fs.readFileSync(path.join(root,"owner","app.js"),"utf8");
 assert(ownerClient.includes('firebaseConfig.projectId!=="packtook-prod-01"'),"Owner Firebase config project guard missing");
 assert(!/firebase-staging|packtook-staging/.test(ownerClient),"Owner front-end points to Staging");
-console.log("PACKTOOK V6.2 static isolation checks: PASS for",id);
+assert(ownerBackend.includes("exports.ownerAnalyticsRevenue=onCall"),"Owner revenue read-only callable missing");
+assert(ownerBackend.includes("expiryState")&&ownerBackend.includes("no_expiry"),"Customer expiry states missing");
+assert(ownerHTML.includes('id="revenue"')&&ownerHTML.includes('id="revenueMonthly"'),"Owner sales report UI missing");
+assert(ownerClient.includes("function fetchRevenue()")&&ownerClient.includes("function expiryLabel(a)"),"Owner revenue and expiry renderers missing");
+assert(!/exports\.(?:createOmisePayment|requestPlanChange|ownerAdjustCredits)\s*=/.test(ownerBackend),"Revenue report must remain read-only");
+console.log("PACKTOOK V6.2.1 static isolation checks: PASS for",id);
