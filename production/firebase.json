@@ -136,6 +136,15 @@
         ".git",
         "firebase-debug.log"
       ]
+    },
+    {
+      "source": "owner-functions",
+      "codebase": "owner",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log"
+      ]
     }
   ]
 }
