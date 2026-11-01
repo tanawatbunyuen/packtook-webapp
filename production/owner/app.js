@@ -10,7 +10,7 @@ const firebase=initializeApp(firebaseConfig),auth=getAuth(firebase),functions=ge
 const api=name=>httpsCallable(functions,name,{timeout:190000});
 const $=id=>document.getElementById(id);
 const fmt=new Intl.NumberFormat("th-TH"),thb=new Intl.NumberFormat("th-TH",{style:"currency",currency:"THB",maximumFractionDigits:0});
-let ownerUser=null,summary=null,cursor=null,customerBusy=false,refreshBusy=false,revenueBusy=false,authorized=false;
+let ownerUser=null,summary=null,cursor=null,customerBusy=false,refreshBusy=false,revenueBusy=false,paymentHealthBusy=false,authorized=false;
 let canManageCustomers=false,selectedManagedAccount=null,pendingManagementId=null;
 const customerDirectory=new Map();
 
@@ -231,6 +231,65 @@ async function fetchRevenue(){
  }
 }
 
+const paymentIssueNames={
+ review_required:"ต้องตรวจสอบการเปิดสิทธิ์",
+ stuck_charge_creation:"สร้าง Charge ค้าง — ต้องตรวจ Omise ก่อนสร้างใหม่",
+ qr_past_expiry_check_provider:"QR เลยเวลาที่กำหนด — ยังไม่ยืนยัน Expired",
+ paid_provider_discrepancy:"Paid แต่ Omise มีสถานะไม่ตรงกัน",
+ paid_evidence_mismatch:"หลักฐาน Paid ใน Firestore ไม่สอดคล้อง"
+};
+function renderPaymentHealth(data){
+ const t=data.totals||{},qty=k=>fmt.format(Number.isSafeInteger(t[k])?t[k]:0);
+ $("phPending").textContent=qty("paymentPending");
+ $("phPastExpiry").textContent=qty("qrPastExpiryCheckProvider");
+ $("phReview").textContent=fmt.format((t.reviewRequired||0)+(t.stuckChargeCreation||0)+
+   (t.paidProviderDiscrepancy||0)+(t.paidEvidenceMismatch||0));
+ $("phEvidence").textContent=qty("paidEvidenceVerified");
+ $("phCaveat").textContent=(data.caveat||"ยังไม่กระทบยอดกับ Omise")+
+  " • Paid ที่ยังไม่มีหลักฐานมาตรฐาน V6.4: "+qty("legacyPaidEvidenceMissing")+
+  " • Failed: "+qty("failed")+" / Expired: "+qty("expired");
+ const limit=$("paymentHealthLimit");limit.hidden=!data.truncated;
+ limit.textContent=data.truncated?
+  "ข้อมูลอาจไม่ครบ: สแกนสูงสุด "+fmt.format(data.maxScannedAccounts||400)+
+  " บัญชี และ "+fmt.format(data.maxBillingPerAccount||25)+
+  " รายการล่าสุดต่อบัญชี • ห้ามใช้เป็นยอดการเงินขั้นสุดท้าย":"";
+ $("paymentHealthStatus").textContent="อ่านสถานะธุรกรรมจาก Firestore Production สำเร็จ • "+
+  "สแกน "+fmt.format(data.scannedAccounts||0)+" บัญชี / "+qty("requestsScanned")+" รายการ • ไม่ใช่ Omise Live Reconciliation";
+ const issues=data.issues||[],body=$("paymentHealthRows");body.replaceChildren();
+ $("phAlertsCount").textContent=fmt.format(issues.length)+" รายการที่แสดง (สูงสุด 40)";
+ for(const entry of issues){
+  const tr=document.createElement("tr");
+  tr.append(
+   element("td",entry.accountId||"—","uid"),
+   element("td",entry.requestId||"—","uid"),
+   element("td",entry.plan||"—"),
+   element("td",Number.isSafeInteger(entry.amountTHB)?thb.format(entry.amountTHB):"—"),
+   element("td",paymentIssueNames[entry.issue]||"ตรวจสอบรายการ"),
+   element("td",Number.isSafeInteger(entry.ageMinutes)?fmt.format(entry.ageMinutes)+" นาที":"—")
+  );
+  body.append(tr);
+ }
+ if(!issues.length){const tr=element("tr"),td=element("td","ยังไม่พบรายการที่เข้าเงื่อนไขแจ้งเตือนในขอบเขตที่สแกน","muted");td.colSpan=6;tr.append(td);body.append(tr)}
+}
+async function fetchPaymentHealth(){
+ if(!authorized||paymentHealthBusy)return;
+ paymentHealthBusy=true;
+ const userId=ownerUser?.uid,button=$("reloadPaymentHealth");
+ button.disabled=true;button.textContent="กำลังตรวจสอบ…";
+ $("paymentHealthStatus").textContent="กำลังตรวจสถานะเอกสาร QR ใน Production…";
+ try{
+  const response=await api("ownerPaymentHealth")({});
+  if(!authorized||ownerUser?.uid!==userId)return;
+  renderPaymentHealth(response.data);
+ }catch(error){
+  console.error("Owner Payment Health unavailable",error?.code||"unknown");
+  $("paymentHealthStatus").textContent="ไม่สามารถโหลดสถานะธุรกรรมได้: "+errorMessage(error);
+  $("paymentHealthLimit").hidden=true;
+  const body=$("paymentHealthRows");body.replaceChildren();
+  const tr=element("tr"),td=element("td","โหลดข้อมูลไม่ได้ — ยังไม่สามารถสรุปจำนวนรายการค้าง");td.colSpan=6;tr.append(td);body.append(tr);
+ }finally{paymentHealthBusy=false;button.disabled=false;button.textContent="↻ รีเฟรชการตรวจสอบ"}
+}
+
 async function fetchSummary(){
  if(!authorized||refreshBusy)return;
  refreshBusy=true;const button=$("refreshButton");
@@ -422,6 +481,7 @@ async function ensureAccess(user){
   displayDashboard(user);
   void fetchSummary();
   void fetchRevenue();
+  void fetchPaymentHealth();
   void (async()=>{await fetchManagementStatus();await fetchCustomers(true)})();
  }catch(e){displayLogin("ตรวจสอบสิทธิ์ไม่สำเร็จ: "+errorMessage(e))}
 }
@@ -441,7 +501,8 @@ $("resetPassword").addEventListener("click",async()=>{
  catch(e){showError("ส่งลิงก์ไม่สำเร็จ: "+errorMessage(e))}
 });
 $("logoutButton").addEventListener("click",async()=>{await signOut(auth);displayLogin()});
-$("refreshButton").addEventListener("click",()=>{void fetchSummary();void fetchRevenue()});
+$("refreshButton").addEventListener("click",()=>{void fetchSummary();void fetchRevenue();void fetchPaymentHealth()});
+$("reloadPaymentHealth").addEventListener("click",()=>{void fetchPaymentHealth()});
 $("reloadRevenue").addEventListener("click",()=>{void fetchRevenue()});
 $("reloadCustomers").addEventListener("click",()=>{void fetchCustomers(true)});
 $("moreCustomers").addEventListener("click",()=>{void fetchCustomers()});
