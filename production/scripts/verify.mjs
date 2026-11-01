@@ -1,11 +1,11 @@
-// PACKTOOK V6.0 static checks. No production secrets; no staging SDK references.
+// PACKTOOK V6.2 static checks. Isolated Beta Customer and Owner service.
 "use strict";
 import fs from "node:fs";
 import path from "node:path";
 import {fileURLToPath} from "node:url";
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
 const id=process.argv[2];
-const assert=(c,m)=>{if(!c)throw Error("V6.0 verify: "+m)};
+const assert=(c,m)=>{if(!c)throw Error("V6.2 verify: "+m)};
 assert(/^[a-z][a-z0-9-]{5,29}$/.test(id||""),"Missing or invalid Production project ID");
 assert(id!=="packtook-staging"&&id.includes("prod"),"Production ID must contain prod and differ from packtook-staging");
 const cfg=JSON.parse(fs.readFileSync(path.join(root,"firebase.json"),"utf8"));
@@ -26,8 +26,10 @@ assert(/enabled:\s*false/.test(runtime)&&/registrationEnabled:\s*false/.test(run
 const publicHTML=fs.readFileSync(path.join(root,"public","index.html"),"utf8");
 assert(/REGISTRATION & PAYMENT NOT OPEN/.test(publicHTML),"Marketing must say payment is unavailable");
 assert(/noindex/i.test(publicHTML),"Prelaunch should not be indexed");
-assert(Array.isArray(cfg.functions)&&cfg.functions.length===1,"V6.1 requires exactly one isolated Functions codebase");
-assert(cfg.functions[0].source==="functions"&&cfg.functions[0].codebase==="beta","Unexpected Production Functions mapping");
+assert(id==="packtook-prod-01","V6.2 is provisioned only for packtook-prod-01");
+assert(Array.isArray(cfg.functions)&&cfg.functions.length===2,"V6.2 requires two isolated codebases");
+const funcTargets=Object.fromEntries(cfg.functions.map(x=>[x.codebase,x.source]));
+assert(funcTargets.beta==="functions"&&funcTargets.owner==="owner-functions","Unexpected Owner/Customer Functions isolation");
 const backend=fs.readFileSync(path.join(root,"functions","index.js"),"utf8");
 assert(backend.includes("packtookProductionBeta")&&backend.includes("PACKTOOK_PRODUCTION_PROJECT_ID"),"Missing Production Beta server-side authorization gates");
 assert(!/exports\.(?:createOmisePayment|omisePaymentWebhook|omisePaymentStatus|requestPlanChange|ownerAnalyticsSummary)\s*=/.test(backend),"Production Beta exposes payment or owner API");
@@ -40,4 +42,13 @@ const camera=cfg.hosting.find(h=>h.target==="app").headers.some(h=>h.headers.som
 assert(camera,"Customer camera must be permitted for same origin");
 const rules=fs.readFileSync(path.join(root,"firestore.rules"),"utf8");
 assert(/allow read, write: if false/.test(rules),"Production Firestore must be fail-closed");
-console.log("PACKTOOK V6.0 static isolation checks: PASS for",id);
+const ownerBackend=fs.readFileSync(path.join(root,"owner-functions","index.js"),"utf8");
+assert(ownerBackend.includes("packtookPlatformOwner")&&ownerBackend.includes("PACKTOOK_PRODUCTION_PROJECT_ID"),"Owner backend authorization missing");
+assert(!/exports\.(?:requestPlanChange|ownerAdjustCredits|createOmisePayment|updateAccount|setPlan)\s*=/.test(ownerBackend),"Owner Beta must be read-only");
+assert(!/packtook-staging|OMISE_SECRET_KEY|skey_live_/i.test(ownerBackend),"Staging or payment secret in Owner backend");
+const ownerHTML=fs.readFileSync(path.join(root,"owner","index.html"),"utf8");
+assert(/OWNER BETA|Production Beta/i.test(ownerHTML)&&ownerHTML.includes('mascot-eagle.svg'),"Owner Staging design parity missing");
+const ownerClient=fs.readFileSync(path.join(root,"owner","app.js"),"utf8");
+assert(ownerClient.includes('firebaseConfig.projectId!=="packtook-prod-01"'),"Owner Firebase config project guard missing");
+assert(!/firebase-staging|packtook-staging/.test(ownerClient),"Owner front-end points to Staging");
+console.log("PACKTOOK V6.2 static isolation checks: PASS for",id);
