@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# PACKTOOK V6.2 — prepare Owner UI + dedicated read-only Cloud Functions. No deployment.
+# PACKTOOK V6.2.3 — prepare Owner UI + gated Owner Functions. No deployment.
 set -Eeuo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)";cd "$ROOT"
 PROD="$1"
@@ -20,6 +20,7 @@ printf 'PACKTOOK_PRODUCTION_PROJECT_ID=%s\n' "$PROD" > "owner-functions/.env.$PR
 node --input-type=module --check < owner/app.js
 node --check owner-functions/index.js
 node --check owner-functions/scripts/manage-platform-owner.js
+node --check owner-functions/scripts/manage-owner-manager.js
 node scripts/test-owner.mjs
 node scripts/test-owner-charts.mjs
 node scripts/test-owner-management.mjs
