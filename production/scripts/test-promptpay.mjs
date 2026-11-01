@@ -15,7 +15,7 @@ assert(source.includes('webhook_endpoints[]')&&source.includes('ref_id:"pt63-"')
 assert(source.includes('timingSafeEqual')&&source.includes('req.rawBody'),"Webhook signatures must be checked over the original body");
 assert(source.includes('charge.source?.type!=="promptpay"'),"Reconciled charge must be verified as PromptPay");
 assert(!/exports\.(?:.*Card|.*CreditCard|.*Visa|.*Mastercard)/.test(source),"Card payment API found");
-assert(html.includes("OMISE PROMPTPAY QR TEST MODE")&&html.includes("app.js?v=6.3.1"),"Customer Test-only banner/cache version absent");
+assert(html.includes("OMISE PROMPTPAY QR TEST MODE")&&html.includes("app.js?v=6.3.2"),"Customer Test-only banner/cache version absent");
 assert(bridge.includes('api("promptpayCreateCharge")')&&!bridge.includes('api("createOmisePayment")'),"Customer bridge must use QR-only endpoint");
 const documents=new Map();
 const deleted=Symbol("delete"),timestamp=()=>new Date();
