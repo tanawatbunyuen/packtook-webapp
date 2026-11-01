@@ -1,6 +1,7 @@
 // PACKTOOK V6.2 owner unit/smoke test. No network, no Firebase project changes.
 import fs from "node:fs";
 import vm from "node:vm";
+import crypto from "node:crypto";
 import {createRequire} from "node:module";
 const require=createRequire(import.meta.url);
 const backend=fs.readFileSync(new URL("../owner-functions/index.js",import.meta.url),"utf8");
@@ -69,12 +70,13 @@ const admin={
 class HttpsError extends Error{constructor(code,message){super(message);this.code=code}}
 const fakeRequire=id=>{
  if(id==="firebase-admin")return admin;
+ if(id==="node:crypto")return crypto;
  if(id==="firebase-functions/v2/https")return {onCall:(_,fn)=>fn,HttpsError};
  throw Error("Unexpected dependency "+id);
 };
 vm.runInNewContext(backend,{exports:exportsObj,require:fakeRequire,process:{env:{PACKTOOK_PRODUCTION_PROJECT_ID:"packtook-prod-01",GCLOUD_PROJECT:"packtook-prod-01"}},console,Date,Map,Set,Object,Number,Math,Promise,Array,String,RegExp}, {filename:"owner-functions/index.js"});
 const exported=Object.keys(exportsObj).sort();
-assert(exported.join(",")==="ownerAnalyticsCustomers,ownerAnalyticsRevenue,ownerAnalyticsSummary","Only three read-only Owner endpoints allowed");
+assert(exported.join(",")==="ownerAnalyticsCustomers,ownerAnalyticsRevenue,ownerAnalyticsSummary,ownerCustomerManagementHistory,ownerManageCustomer,ownerManagementStatus","Only six reviewed Owner endpoints allowed");
 const valid={auth:{uid:"owner-test",token:{email_verified:true,packtookPlatformOwner:true}},data:{}};
 async function rejected(request,expected){
  let error;try{await exportsObj.ownerAnalyticsSummary(request)}catch(e){error=e}
@@ -106,4 +108,4 @@ assert(denied,"Invalid pagination cursor should be rejected");
 ownerClaimActive=false;
 await rejected(valid,"permission-denied");
 ownerClaimActive=true;
-console.log("PASS: V6.2.1 Owner revenue classification, expiry, auth and read-only checks");
+console.log("PASS: Owner analytics and Revenue regression tests (V6.2.3 management separately gated)");
