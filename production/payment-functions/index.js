@@ -289,7 +289,7 @@ exports.promptpayCreateCharge=onCall(paymentSecrets,async req=>{
  return {status:status.status,chargeId:charge.id,authorizeUri:charge.authorize_uri||null,qrImage:charge.source?.scannable_code?.image?.download_uri||null};
 });
 exports.promptpayRecoverCharge=onCall(paymentSecrets,async req=>{
- const user=uid(req);requireTest(),requestId=data(req).requestId;
+ const user=uid(req),requestId=data(req).requestId;requireTest();
  if(!validOp(requestId))throw new HttpsError("invalid-argument","Invalid request ID");
  const ref=own(user).collection("billingRequests").doc(requestId),snap=await ref.get();
  if(!snap.exists||snap.data().requestedBy!==user)throw new HttpsError("not-found","Billing request not found");
@@ -321,7 +321,7 @@ exports.promptpayRecoverCharge=onCall(paymentSecrets,async req=>{
  return {...verified,found:true,chargeId:charge.id,qrImage:charge.source?.scannable_code?.image?.download_uri||null};
 });
 exports.promptpayChargeStatus=onCall(paymentSecrets,async req=>{
- const user=uid(req);requireTest(),id=data(req).requestId;
+ const user=uid(req),id=data(req).requestId;requireTest();
  if(!validOp(id))throw new HttpsError("invalid-argument","Invalid request");
  const snap=await own(user).collection("billingRequests").doc(id).get();
  if(!snap.exists||snap.data().requestedBy!==user)throw new HttpsError("not-found","Billing request not found");
