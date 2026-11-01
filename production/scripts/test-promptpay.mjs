@@ -80,7 +80,7 @@ async function mockedFetch(url,options={}){
   assert(form.get("webhook_endpoints[]")?.includes("packtook-prod-01"),"Production webhook route missing");
   assert(form.get("amount")==="19900","Starter price mismatch");
   charge={id:"chrg_test_mockqr123",status:"pending",paid:false,livemode:false,
-   amount:19900,currency:"thb",metadata:{uid:userId,requestId:ticketId},
+   amount:19900,currency:"thb",expires_at:form.get("expires_at"),metadata:{uid:userId,requestId:ticketId},
    source:{type:"promptpay",scannable_code:{image:{download_uri:"https://api.omise.co/mock-qr.svg"}}}};
   return {ok:true,status:200,json:async()=>charge};
  }
@@ -116,6 +116,11 @@ assert(documents.get("accounts/"+userId).plan==="Free","Plan changed before paym
 await rejects(api.promptpayCreateCharge(request({requestId:pending.requestId,method:"card"})),"invalid-argument");
 const created=await api.promptpayCreateCharge(request({requestId:pending.requestId,method:"promptpay"}));
 assert(created.qrImage?.startsWith("https://api.omise.co/"),"Missing provider QR image");
+assert(created.qrExpiresAt&&Number.isFinite(Date.parse(created.qrExpiresAt)),"QR must return provider-confirmed expiration date");
+const pendingDoc=documents.get("accounts/"+userId+"/billingRequests/"+pending.requestId);
+assert(pendingDoc.qrExpiresAt===created.qrExpiresAt,"Provider expiry must persist with billing request");
+const retryCharge=await api.promptpayCreateCharge(request({requestId:pending.requestId,method:"promptpay"}));
+assert(retryCharge.status==="pending"&&retryCharge.qrImage===created.qrImage,"Repeat checkout must reuse existing pending provider QR");
 assert(chargeCreateCount===1,"Charge must be created once");
 const state1=await api.promptpayChargeStatus(request({requestId:pending.requestId}));
 assert(state1.status==="pending"&&documents.get("accounts/"+userId).plan==="Free","Pending QR must never activate plan");
@@ -141,10 +146,25 @@ assert(good.code===200&&documents.get("accounts/"+userId).plan==="Starter","Test
 const balance=documents.get("accounts/"+userId).creditWalletRemaining;
 assert(balance===70,"Starter 50 + remaining Free 20 credits should become a 70-credit wallet");
 assert(documents.get("accounts/"+userId).planExpiresAt,"Paid expiry was not set");
+const paidDoc=documents.get("accounts/"+userId+"/billingRequests/"+pending.requestId);
+assert(paidDoc.paymentEvidenceVersion===1&&paidDoc.providerVerifiedStatus==="successful"&&
+ paidDoc.providerVerifiedPaid===true&&paidDoc.providerVerifiedChargeId==="chrg_test_mockqr123"&&
+ paidDoc.providerVerifiedAmountSatang===19900&&paidDoc.providerVerifiedCurrency==="thb"&&
+ paidDoc.providerVerifiedSource==="promptpay"&&paidDoc.providerVerifiedLivemode===false,
+ "Paid ledger must store trusted Omise TEST verification evidence");
+assert(paidDoc.qrExpiresAt===created.qrExpiresAt,"Paid settlement must preserve original QR expiry");
 const repeated=await webhook(signature);
 assert(repeated.code===200&&documents.get("accounts/"+userId).creditWalletRemaining===70,"Webhook replay must not grant credits twice");
 const status=await api.promptpayChargeStatus(request({requestId:pending.requestId}));
 assert(status.status==="paid"&&documents.get("accounts/"+userId).creditWalletRemaining===70,"Polling must be idempotent");
 assert(chargeCreateCount===1&&apiGetCount>=4,"Provider status must be checked independently");
+chargeStatus="failed";paid=false;
+const anomaly=await api.promptpayChargeStatus(request({requestId:pending.requestId}));
+assert(anomaly.status==="payment_review"&&anomaly.alreadyApplied===true,
+ "Paid charge with changed provider status must require manual review rather than ungrant credits");
+assert(documents.get("accounts/"+userId).creditWalletRemaining===70,
+ "Provider discrepancy must not automatically deduct previously granted credits");
+assert(documents.get("accounts/"+userId+"/billingRequests/"+pending.requestId).postSettlementAlert==="provider_status_changed",
+ "Provider discrepancy must be reported in paid ledger");
 await rejects(api.promptpayRequestPlanChange(request({plan:"Free"})),"failed-precondition");
-console.log("PASS: V6.3 QR Tester permission, Test-only signed webhook, independent charge verification, 70 credits and replay idempotency");
+console.log("PASS: V6.4 QR Test idempotency, provider expiry/evidence, signed webhook, credit safety and post-settlement anomaly");
