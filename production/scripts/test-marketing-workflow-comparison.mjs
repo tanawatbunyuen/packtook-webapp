@@ -24,7 +24,7 @@ assert(scene.trim().endsWith("</svg>"));
 assert(scene.includes("An ecommerce worker packs a parcel"));
 assert(scene.includes("Barcode handheld scanner")&&scene.includes("Recording camera suspended above parcel"));
 assert(scene.includes("Computer monitor")&&scene.includes("PACKTOOK / PACKING"));
-assert(!/<script\b|https?:\/\/|data:|foreignObject/i.test(scene),"SVG must be self-contained and script-free");
+assert(!/<script\b|https?:\/\/|data:|foreignObject/i.test(scene.replace('xmlns="http://www.w3.org/2000/svg"','')),"SVG must be self-contained and script-free");
 console.log("PASS: Hero shows real-world packing workflow concept, scanner, overhead camera and PACKTOOK UI");
 
 assert(html.includes('href="/assets/packing-comparison.css?v=6.5.3"')||
