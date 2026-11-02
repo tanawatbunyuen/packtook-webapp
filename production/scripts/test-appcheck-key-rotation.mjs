@@ -15,6 +15,11 @@ assert(!rotated.content.includes('appCheckSiteKey:"'+old+'"'));
 assert(rotated.content.includes('policyVersion:"2026-11-v1"'));
 assert.equal(rotated.content.replace(next,old),config);
 console.log("PASS: new web score key rotates only public Site Key and preserves other config");
+const numberForm={...metadata,name:"projects/123456789012/keys/"+next};
+assert(checkNewKey({currentConfig:config,newKey:next,metadata:numberForm,projectNumber:"123456789012"}).content.includes(next));
+assert.throws(()=>checkNewKey({currentConfig:config,newKey:next,metadata:numberForm,projectNumber:"987654321098"}),/SAFETY BLOCK/);
+console.log("PASS: Production numeric project resource accepted only when independently matched");
+
 const blocked=(label,key=next,meta=metadata)=>{
  assert.throws(()=>checkNewKey({currentConfig:config,newKey:key,metadata:meta}),/SAFETY BLOCK/);
  console.log("PASS: rejected "+label);
