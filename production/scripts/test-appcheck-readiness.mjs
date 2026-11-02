@@ -29,7 +29,7 @@ assert.equal(fake.siteKeyPresent,false);
 assert.equal(fake.publicGoLiveAuthorized,false);
 console.log("PASS: fake placeholder key cannot authorize signup");
 
-const future=inspectAppCheck({...input,config:input.config.replace('appCheckSiteKey:""','appCheckSiteKey:"aPublicScoreBasedSiteKeyExample1234"')});
+const future=inspectAppCheck({...input,config:input.config.replace('appCheckSiteKey:""','appCheckSiteKey:"6LdvRTAyAAAAACAX5S8Qq4LfqY2pf"')});
 assert.equal(future.siteKeyPresent,true);
 assert.equal(future.findings.find(x=>x.id==="A07").result,"manual");
 assert.equal(future.publicGoLiveAuthorized,false,"Source Site Key alone cannot authorize Public launch");
