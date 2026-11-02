@@ -1,6 +1,7 @@
 .firebaserc
 .firebase/
 firebase-debug.log
+firestore-debug.log
 .env*
 *.pem
 serviceAccount*.json
