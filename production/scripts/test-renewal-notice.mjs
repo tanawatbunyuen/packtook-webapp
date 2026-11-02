@@ -7,7 +7,7 @@ const css=fs.readFileSync(new URL("../app/style.css",import.meta.url),"utf8");
 const assert=(yes,msg)=>{if(!yes)throw Error("V6.4.2 notice test: "+msg)};
 assert(html.includes('id="subscriptionExpiryAlert"')&&html.includes('id="renewFromAlert"')&&html.includes('id="expiryAlertText"'),
  "Global notification banner and renewal CTA must exist in Customer App");
-assert(html.includes('app.js?v=6.5.0')&&html.includes('style.css?v=6.5.0'),
+assert(html.includes('app.js?v=6.6.0')&&html.includes('style.css?v=6.5.0'),
  "Client app/stylesheet assets need V6.4.2 cache bust");
 assert(css.includes('.subscription-expiry-alert[hidden]'),"Hidden notice must not occupy screen space");
 assert(js.includes("showTab('plans');$('availablePlans')?.scrollIntoView"),"Notification CTA must navigate to Packages");
