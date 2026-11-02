@@ -6,7 +6,6 @@
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import fs from "node:fs";
-import vm from "node:vm";
 import {createRequire} from "node:module";
 import {fileURLToPath} from "node:url";
 
@@ -64,7 +63,13 @@ function handlers(flags){
   if(module==="node:crypto")return crypto;
   throw Error("Unexpected module in Backend: "+module);
  },console:{log(){},warn(){},error(){}}};
- vm.runInNewContext(source,sandbox,{filename:"functions/index.js",timeout:3000});
+ // Compile approved production handler source in the main JavaScript realm.
+ // vm.runInNewContext() made tx.create/tx.set records in a different realm;
+ // Firestore rejects those objects as having custom prototypes.
+ // This does NOT connect Production: require/process/Admin are replaced with
+ // whitelisted stubs and Admin SDK itself is initialized for DEMO emulators.
+ const compile=new Function("exports","process","require","console",source);
+ compile(sandbox.exports,sandbox.process,sandbox.require,sandbox.console);
  return {fn:sandbox.exports,optionsByName};
 }
 const off=handlers({signup:false,access:false,policy:false}).fn;
@@ -81,10 +86,12 @@ const request=(payload={},app={appId:"emulated-attestation-NOT-verified"})=>({
 });
 const rejected=async(fn,code)=>assert.rejects(fn,e=>e?.code===code);
 let created=false;
+let currentStage="startup";
 try{
  assert.equal((await off.publicSignupStatus()).enabled,false);
  assert.equal((await on.fn.publicSignupStatus()).enabled,true);
  assert.equal(on.optionsByName.get("completeFreeSignup")?.enforceAppCheck,true);
+ currentStage="create Auth demo user";
  await auth.createUser({uid,email,emailVerified:false,disabled:false});created=true;
  await rejected(()=>off.completeFreeSignup(request(data)),"failed-precondition");
  assert.equal((await ref.get()).exists,false);
@@ -98,6 +105,7 @@ try{
  assert.equal((await ref.get()).exists,false);
  console.log("PASS: App Check presence, verified email and consent preconditions are enforced");
 
+ currentStage="verify demo user and grant Free via Firestore transaction";
  await auth.updateUser(uid,{emailVerified:true});
  const first=await on.fn.completeFreeSignup(request(data));
  assert.equal(first.created,true);
@@ -112,17 +120,20 @@ try{
  assert.equal((await on.fn.usageStatus(request())).remaining,20);
  console.log("PASS: actual Auth emulator claim + Firestore transaction provisions exactly 20 Free videos");
 
+ currentStage="register and enforce one device";
  const deviceResult=await on.fn.registerDevice(request({deviceId:device,name:"QA workbench"}));
  assert.equal(deviceResult.registered,true);
  assert.equal(deviceResult.limit,1);
  await rejected(()=>on.fn.registerDevice(request({deviceId:secondDevice,name:"2nd device"})),"resource-exhausted");
  console.log("PASS: actual Firestore device registration allows 1 and blocks second device");
 
+ currentStage="reserve recording credit";
  const reserve=await on.fn.reserveCredit(request({deviceId:device,operationId:op,barcode}));
  assert.equal(reserve.status,"reserved");
  assert.equal(reserve.remaining,19);
  const beforeStop=await on.fn.usageStatus(request());
  assert.equal(beforeStop.remaining,19);assert.equal(beforeStop.reserved,1);
+ currentStage="finalize credit";
  const finalize=await on.fn.finalizeCredit(request({
   operationId:op,success:true,bytes:14000,filename:"qa-emulator.webm"
  }));
@@ -136,6 +147,7 @@ try{
  assert.equal((await on.fn.usageStatus(request())).remaining,19);
  console.log("PASS: real Firestore reserve → finalize → 19 credits; duplicate finalize never charges twice");
 
+ currentStage="idempotent repeated signup";
  const repeat=await on.fn.completeFreeSignup(request(data));
  assert.equal(repeat.created,false);
  assert.equal((await on.fn.usageStatus(request())).remaining,19);
@@ -147,6 +159,10 @@ try{
  await rejected(()=>on.fn.completeFreeSignup(request(data)),"permission-denied");
  console.log("PASS: disabled Auth account cannot reactivate Free");
  console.log("RESULT: V6.7 REAL Auth/Firestore EMULATOR INTEGRATION PASS (not App Check attestation, browser or live Firebase)");
+}catch(error){
+ console.error("V6.7 EMULATOR INTEGRATION FAILED at stage: "+currentStage);
+ console.error(error?.stack||error);
+ throw error;
 }finally{
  // The demo namespace cannot reach live resources; cleanup is still useful.
  try{await db.recursiveDelete(ref)}catch(e){console.warn("Emulator Firestore cleanup:",e.message)}
