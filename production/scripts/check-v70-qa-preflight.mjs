@@ -28,7 +28,7 @@ export function checkQaEnvironment({generic="",specific,environment={},mode,now=
  if(mode!=="--qa-off"&&mode!=="--approved-qa")
   throw Error("SAFETY BLOCK: select --qa-off or --approved-qa");
  if(typeof specific!=="string")throw Error("SAFETY BLOCK: exact project Functions dotenv file required");
- const publicReport=evaluateFiles({".env":generic,".env."+PROJECT:specific},environment);
+ const publicReport=evaluateFiles({".env":generic,[".env."+PROJECT]:specific},environment);
  const gen=getRelevant(generic),qa=getRelevant(specific);
  if(Object.keys(gen).length)throw Error("SAFETY BLOCK: V7 QA flags must NOT be set in generic Functions .env");
  for(const key of KEYS){
