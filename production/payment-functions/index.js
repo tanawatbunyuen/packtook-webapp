@@ -485,13 +485,21 @@ exports.promptpayExpireUnusedCredits=onSchedule({
   throw Error("Expiry policy is allowed only on Production");
  const now=Date.now(),cutoff=new Date(now-CREDIT_GRACE_MS).toISOString();
  const MAX_SCAN=800,PAGE_SIZE=80;
- let visited=0,forfeited=0,skipped=0,cursor=null;
+ // Resume after the last visited account on the previous run, so accounts
+ // beyond a bounded 800-account sweep are not permanently starved.
+ const progress=db.collection("packtookSystem").doc("expiredCreditGraceSweepV641");
+ const prior=await progress.get(),lastId=prior.exists?prior.data().lastAccountId:null;
+ let visited=0,forfeited=0,skipped=0,cursor=null,endOfResults=false;
+ if(typeof lastId==="string"&&/^[A-Za-z0-9_-]{1,128}$/.test(lastId)){
+  const previous=await db.collection("accounts").doc(lastId).get();
+  if(previous.exists)cursor=previous;
+ }
  while(visited<MAX_SCAN){
   let query=db.collection("accounts").where("planExpiresAt","<=",cutoff)
    .orderBy("planExpiresAt","asc").limit(Math.min(PAGE_SIZE,MAX_SCAN-visited));
   if(cursor)query=query.startAfter(cursor);
   const snap=await query.get();
-  if(snap.empty)break;
+  if(snap.empty){endOfResults=true;break}
   for(const doc of snap.docs){
    const result=await db.runTransaction(async tx=>{
     const current=await tx.get(doc.ref);
@@ -521,11 +529,15 @@ exports.promptpayExpireUnusedCredits=onSchedule({
   }
   visited+=snap.size;
   cursor=snap.docs[snap.docs.length-1];
-  if(snap.size<PAGE_SIZE)break;
+  if(snap.size<PAGE_SIZE){endOfResults=true;break}
  }
+ if(endOfResults||!cursor)await progress.delete();
+ else await progress.set({lastAccountId:cursor.id,lastScannedAt:FieldValue.serverTimestamp()});
  console.info("PACKTOOK expired credit grace sweep",{
   visited,forfeitedAccounts:forfeited,skipped,scanLimit:MAX_SCAN,
-  possiblyTruncated:visited===MAX_SCAN,mode:"Production wallet expiry only"
+  possiblyTruncated:visited===MAX_SCAN&&!endOfResults,
+  cursorSaved:!endOfResults&&!!cursor,
+  mode:"Production wallet expiry only"
  });
 });
 
