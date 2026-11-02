@@ -89,6 +89,13 @@ function billingOpen(a){return typeof a.openBillingRequestId==="string"&&a.openB
 async function ensureAccount(id){
  const ref=await ownerRef(id);
  if(ref.id!==id)return ref;
+ const current=await ref.get();
+ if(current.exists)return ref;
+ // Legacy Beta users may still be auto-provisioned. Public users MUST finish
+ // verified, consented self-signup; ordinary callables never grant free credits.
+ const live=await admin.auth().getUser(id);
+ if(live.disabled||live.customClaims?.packtookProductionBeta!==true)
+  throw new HttpsError("failed-precondition","Free activation required before using PACKTOOK");
  try{await ref.create({plan:"Free",period:periodId(Date.now()),used:0,reserved:0,createdAt:FieldValue.serverTimestamp()})}
  catch(e){if(e.code!==6&&e.code!=="already-exists")throw e}
  return ref;
@@ -125,6 +132,8 @@ exports.completeFreeSignup=onCall({...options,enforceAppCheck:true},async req=>{
  const ref=own(id);
  const result=await db.runTransaction(async tx=>{
   const snap=await tx.get(ref);
+  if(!snap.exists&&live.customClaims?.packtookPublicCustomer===true)
+   throw new HttpsError("failed-precondition","Account requires manual recovery; Free credits cannot be granted again");
   if(snap.exists){
    const a=snap.data();
    // A retry after a successful Firestore creation must NOT grant Free again.
