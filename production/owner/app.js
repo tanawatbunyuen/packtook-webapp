@@ -446,7 +446,9 @@ async function fetchCustomers(reset=false){
    const status=element("td");status.append(customerStatus(a.status));row.append(status);
    let creditLabel="ตรวจสอบข้อมูล";
    if(a.creditsStatus==="unlimited")creditLabel="∞ ไม่จำกัด";
-   else if(a.creditsStatus==="expired")creditLabel="0 (หมดอายุ)";
+   else if(a.creditsStatus==="retained"&&Number.isSafeInteger(a.creditsRemaining))
+    creditLabel=fmt.format(a.creditsRemaining)+" เครดิตพักรอต่ออายุ (ถึง "+dateLabel(a.creditCarryoverUntil)+")";
+   else if(a.creditsStatus==="expired")creditLabel="0 (พ้นกำหนดยกยอด)";
    else if(a.creditsStatus==="available"&&Number.isSafeInteger(a.creditsRemaining))
     creditLabel=fmt.format(a.creditsRemaining);
    row.append(element("td",creditLabel,"credit-balance"));
