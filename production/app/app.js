@@ -110,6 +110,31 @@ async function setupDevice(){
 function showDeviceControl(){
  let pane=$('deviceControl');if(!pane){pane=document.createElement('p');pane.id='deviceControl';pane.setAttribute('role','status');pane.style.margin='8px';pane.textContent='กำลังตรวจสอบสิทธิ์เครื่อง';$('users').append(pane)}
 }
+// V6.4.2 — 7-day on-screen renewal notice derived from verified Firebase plan expiry.
+// Notification is shown when signed in; it does not send email, SMS or push.
+const EXPIRY_NOTICE_MS=7*86400000;
+function expiryReminder(q,now=Date.now()){
+ if(!q||q.plan==="Free"||q.subscriptionStatus!=="active")return null;
+ const expiry=Date.parse(q.planExpiresAt||q.expiresAt||"");
+ if(!Number.isFinite(expiry))return null;
+ const ms=expiry-now;
+ if(ms<=0||ms>EXPIRY_NOTICE_MS)return null;
+ return {expiry,daysRemaining:Math.ceil(ms/86400000),plan:q.plan};
+}
+function updateRenewalNotice(){
+ const alert=$("subscriptionExpiryAlert"),copy=$("expiryAlertText");
+ if(!alert||!copy)return;
+ const remaining=expiryReminder(remoteQuota);
+ alert.hidden=!remaining;
+ if(!remaining){copy.textContent="";return}
+ const date=new Date(remaining.expiry).toLocaleString("th-TH",{
+  timeZone:"Asia/Bangkok",day:"numeric",month:"short",year:"numeric",
+  hour:"2-digit",minute:"2-digit"
+ });
+ copy.textContent="แพ็กเกจ "+remaining.plan+" จะหมดอายุใน "+
+  remaining.daysRemaining+" วัน ("+date+") • ต่ออายุแพ็กเกจเดิมได้ทันที "+
+  "เครดิตที่เหลือจะสะสมและเพิ่มอายุแพ็กเกจอีก 30 วันเมื่อชำระสำเร็จ";
+}
 function updateUsersSummary(){
  if(!$('userPlanName'))return;
  const q=remoteQuota;
@@ -119,9 +144,15 @@ function updateUsersSummary(){
  const stateText={expired:'แพ็กเกจหมดอายุ — ไม่สามารถจองเครดิตใหม่',active:'แพ็กเกจยังมีผลใช้งาน',invalid:'ข้อมูลวันหมดอายุไม่ถูกต้อง',free:'Free Plan — ไม่มีวันหมดอายุ',unconfigured:'ยังไม่มีข้อมูลวันหมดอายุที่ยืนยันจากระบบ'}; $('userPlanExpiryNote').textContent=stateText[q?.subscriptionStatus]||'ยังไม่ได้ตรวจสอบสถานะสมาชิก';
  $('userQuotaRemaining').textContent=q?(q.limit===null?'ไม่จำกัด':Number(q.remaining||0).toLocaleString('th-TH')):'—';
  $('userQuotaDetail').textContent=q?(q.walletEnabled?'เครดิตคงเหลือสะสมจากแพ็กเกจที่ซื้อ • ใช้แล้วในเดือนนี้ '+(q.used||0)+' • จองอยู่ '+(q.reserved||0):'ใช้แล้ว '+(q.used||0)+' • จองอยู่ '+(q.reserved||0)+' / เดือน '+q.period):'ไม่พบข้อมูลเครดิต';
- const renewal=$('userRenewalNotice');if(renewal){const eligible=q?.subscriptionStatus==='active'&&q?.canBuyMore;renewal.hidden=!eligible;renewal.textContent=eligible?(q.purchaseReason==='exhausted_topup'?'🎥 โควตาวิดีโอหมดแล้ว สามารถซื้อแพ็กเกจเดิมหรือสูงกว่าเพื่อเติมเครดิตผ่าน Packages':'🔔 แพ็กเกจเหลืออายุไม่เกิน 7 วัน สามารถต่ออายุแพ็กเกจเดิมผ่าน Packages'):'';}
+ const renewal=$('userRenewalNotice');
+ if(renewal){
+  const reminder=expiryReminder(q);
+  renewal.hidden=!reminder;
+  renewal.textContent=reminder?'🔔 แพ็กเกจ '+reminder.plan+' จะหมดอายุใน '+
+   reminder.daysRemaining+' วัน • ต่ออายุแพ็กเกจเดิมได้แล้วที่หน้า Packages':'';
+ }
 }
-async function refreshRemoteQuota(){if(!remoteUser)return;remoteQuota=await credit().usage();updateQuota();updateUsersSummary()}
+async function refreshRemoteQuota(){if(!remoteUser)return;remoteQuota=await credit().usage();updateQuota();updateUsersSummary();updateRenewalNotice()}
 
 function read(){try{return JSON.parse(localStorage.getItem(KEY))||{plan:'Free',logs:[]}}catch{return {plan:'Free',logs:[]}}}
 let store=read(), stream=null,recorder=null,videoWriter=null,folder=null,activeBarcode='',startMs=0,ticker=null,ending=false, reservation=false, recordingFailure='', currentWritable=null, lastVideoUrl=null, healthTimer=null, stopPromise=null, lastFrameTime=0, lastFrameSignature='', recoveryBusy=false;
@@ -556,7 +587,14 @@ function subscriptionNotice(details){
  if(details.status!=='active'||details.plan==='Free')return null;
  if(details.reserved>0)return subscriptionNode('div','sub-notice sub-notice-attention','มีวิดีโอจองเครดิตค้างอยู่ โปรดตรวจสอบส่วนรายการจองค้างก่อนอัปเกรดแพ็กเกจ');
  if(details.purchaseWindow?.kind==='exhausted_topup')return subscriptionNode('div','sub-notice sub-notice-attention','เครดิตหมดแล้ว สามารถซื้อแพ็กเกจเดิมหรืออัปเกรดเป็นระดับสูงกว่าได้');
- if(details.purchaseWindow?.kind==='renewal')return subscriptionNode('div','sub-notice','แพ็กเกจใกล้หมดอายุ สามารถต่ออายุหรืออัปเกรดได้ โดยเครดิตเดิมไม่สูญหาย');
+ const expNotice=expiryReminder({
+  plan:details.plan,subscriptionStatus:details.status,expiresAt:details.expiresAt
+ });
+ if(expNotice)return subscriptionNode('div','sub-notice sub-notice-attention',
+  '🔔 แพ็กเกจ '+details.plan+' จะหมดอายุใน '+expNotice.daysRemaining+
+  ' วัน • ต่ออายุแพ็กเกจเดิมหรืออัปเกรดได้ โดยเครดิตเดิมไม่สูญหาย');
+ if(details.purchaseWindow?.kind==='renewal')return subscriptionNode('div','sub-notice',
+  'คุณสามารถต่ออายุแพ็กเกจเดิมได้ทุกเมื่อ โดยเครดิตเดิมจะสะสมเพิ่มและต่ออายุอีก 30 วัน');
  return null;
 }
 function subscriptionSection(title,subtitle){
@@ -740,10 +778,8 @@ function planBuyStatus(plan){
  if(target>current)return {allowed:true,label:"ทดลองอัปเกรดด้วย QR"};
  if(status==="expired")return {allowed:true,label:"ทดลองต่ออายุด้วย QR"};
  if(remoteQuota.remaining===0)return {allowed:true,label:"ทดลองเติมเครดิตด้วย QR"};
- const expiry=Date.parse(remoteQuota.planExpiresAt||"");
- if(Number.isFinite(expiry)&&expiry>Date.now()&&expiry-Date.now()<=7*86400000)
-  return {allowed:true,label:"ทดลองต่ออายุด้วย QR"};
- return {allowed:false,label:"แพ็กเกจปัจจุบัน"};
+ // 7 days is an alert threshold, not an eligibility condition.
+ return {allowed:true,label:"ทดลองต่ออายุแพ็กเกจเดิม"};
 }
 
 function renderPlans(){
@@ -764,7 +800,9 @@ function renderPlans(){
   const buy=planBuyStatus(p);
   if(!buy.allowed){toast('ไม่สามารถซื้อได้ในขณะนี้: '+buy.label);renderPlans();return}
   const upgrading=remoteQuota?.plan!=='Free'&&plans.findIndex(x=>x[0]===p)>plans.findIndex(x=>x[0]===remoteQuota.plan);
-  const kind=upgrading?'upgrade':remoteQuota.subscriptionStatus==='expired'?'expired_renewal':remoteQuota.purchaseReason;
+  const kind=upgrading?'upgrade':remoteQuota.plan!=='Free'?
+  (remoteQuota.subscriptionStatus==='expired'?'expired_renewal':
+   remoteQuota.remaining===0?'exhausted_topup':'renewal'):'new';
   const expiry=Date.parse(remoteQuota?.planExpiresAt||"");
   const withinGrace=Number.isFinite(expiry)&&Date.now()<=expiry+10*86400000;
   const retainedNote=remoteQuota?.subscriptionStatus==="expired"?
@@ -1099,8 +1137,9 @@ document.querySelectorAll('[data-tab]').forEach(e=>e.onclick=()=>showTab(e.datas
 $('barcode').addEventListener('keydown',e=>{if(e.key!=='Enter')return;e.preventDefault();const code=$('barcode').value.trim();$('barcode').value='';if(!code){toast('กรุณาสแกนหรือพิมพ์ Barcode ก่อนกด Enter');return}if(ending||reservation){toast('ระบบกำลังดำเนินการ กรุณารอสักครู่');return}if(activeBarcode){if(code===activeBarcode)stopRecording();else toast('กำลังอัด '+activeBarcode+' ต้องสแกนรหัสเดิมเพื่อหยุด');return}reservation=true;startRecording(code).catch(e=>toast('เกิดข้อผิดพลาด: '+e.message)).finally(()=>{reservation=false;$('barcode').focus()})});
 function connectFirebaseUI(){if(!credit()?.ready)return;credit().onUser(u=>{remoteUser=u;if(u){
  void refreshQrTestAccess();
-void credit().accountRole().then(info=>{accountRoleInfo=info;const role=$('userRoleInfo');if(role)role.textContent=info.role==='admin'?'Admin — อนุมัติการบันทึกซ้ำได้':'Operator — ต้องขออนุมัติจาก Admin';}).catch(e=>toast('Role: '+e.message));showRecovery();showDeviceControl();const details=$('userAccountDetails');if(details)details.textContent='ยืนยันอีเมลแล้ว • Firebase Authentication';const em=$('userAccountEmail');if(em)em.textContent=u.email||'—';void setupDevice().catch(e=>toast('Device Management: '+e.message)).finally(()=>void renderDeviceManager());$('loginPage').hidden=true;$('appPage').hidden=false;void refreshRemoteQuota().then(()=>{showTab('packing');void verifyAfterPaymentReturn()}).catch(e=>{showTab('packing');toast('เชื่อมโควตาไม่สำเร็จ: '+e.message);void verifyAfterPaymentReturn()})}else{clearDisplayedPaymentQr();promptPayAccessSeq++;promptPayTestEnabled=false;promptPayAccessState='loading';updateQrAccessNotice();$('appPage').hidden=true;$('loginPage').hidden=false}});const msg=$('firebaseConnectStatus');if(msg)msg.textContent='เชื่อมต่อ Firebase แล้ว — เข้าสู่ระบบเพื่อเปิด Packing / Dashboard / Packages / Help'}
+void credit().accountRole().then(info=>{accountRoleInfo=info;const role=$('userRoleInfo');if(role)role.textContent=info.role==='admin'?'Admin — อนุมัติการบันทึกซ้ำได้':'Operator — ต้องขออนุมัติจาก Admin';}).catch(e=>toast('Role: '+e.message));showRecovery();showDeviceControl();const details=$('userAccountDetails');if(details)details.textContent='ยืนยันอีเมลแล้ว • Firebase Authentication';const em=$('userAccountEmail');if(em)em.textContent=u.email||'—';void setupDevice().catch(e=>toast('Device Management: '+e.message)).finally(()=>void renderDeviceManager());$('loginPage').hidden=true;$('appPage').hidden=false;void refreshRemoteQuota().then(()=>{showTab('packing');void verifyAfterPaymentReturn()}).catch(e=>{showTab('packing');toast('เชื่อมโควตาไม่สำเร็จ: '+e.message);void verifyAfterPaymentReturn()})}else{clearDisplayedPaymentQr();remoteQuota=null;updateRenewalNotice();promptPayAccessSeq++;promptPayTestEnabled=false;promptPayAccessState='loading';updateQrAccessNotice();$('appPage').hidden=true;$('loginPage').hidden=false}});const msg=$('firebaseConnectStatus');if(msg)msg.textContent='เชื่อมต่อ Firebase แล้ว — เข้าสู่ระบบเพื่อเปิด Packing / Dashboard / Packages / Help'}
 if(credit()?.ready)connectFirebaseUI();else window.addEventListener('packtook-firebase-ready',connectFirebaseUI,{once:true});
+$('renewFromAlert')?.addEventListener('click',()=>{showTab('plans');$('availablePlans')?.scrollIntoView({behavior:'smooth',block:'start'})});
 $('refreshQrAccess')?.addEventListener('click',()=>{void refreshQrTestAccess()});
 $('subscriptionHistoryClose')?.addEventListener('click',()=>subscriptionHistoryDialog()?.close());
 $('subscriptionHistoryMore')?.addEventListener('click',()=>{ $('subscriptionHistoryMore').textContent='โหลดประวัติเพิ่ม';void subscriptionLoadHistory() });
@@ -1114,7 +1153,10 @@ $('restoreFolder').addEventListener('click',()=>restoreFolder(true));
 $('closeVideo').addEventListener('click',closePlayback);
 window.addEventListener('pagehide',()=>{stopQrPoll();closePlayback();clearHealth();if(activeBarcode||ending||pending())console.warn('PACKTOOK: page closed while video/credit operation is pending. Reconcile using operation ID before recording more.')});
 window.addEventListener('beforeunload',e=>{if(activeBarcode||ending){e.preventDefault();e.returnValue='';}});
-window.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&stream&&!streamGood()){updateHealth('⚠ กรุณาตรวจสอบกล้อง','danger-health')}});
+window.addEventListener('visibilitychange',()=>{
+ if(document.visibilityState==='visible'&&remoteUser)updateRenewalNotice();
+ if(document.visibilityState==='visible'&&stream&&!streamGood())updateHealth('⚠ กรุณาตรวจสอบกล้อง','danger-health');
+});
 restoreFolder(false).catch(()=>{});
 // Background metadata migration does not block camera startup or barcode scanning.
 void ensureVideoHistory().catch(e=>console.warn('Video history migration deferred',e));
