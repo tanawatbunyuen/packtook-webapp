@@ -20,16 +20,16 @@ assert.equal(baseline.siteKeyValue,"REDACTED/NOT PRINTED");
 assert(baseline.findings.find(x=>x.id==="A03").result==="pass");
 assert(baseline.findings.find(x=>x.id==="A04").result==="pass");
 assert(baseline.findings.find(x=>x.id==="A06").result==="pass");
-assert.equal(baseline.findings.find(x=>x.id==="A07").result,"blocked");
+assert.equal(baseline.findings.find(x=>x.id==="A07").result,baseline.siteKeyPresent?"manual":"blocked");
 assert.equal(baseline.findings.find(x=>x.id==="A08").result,"blocked");
 console.log("PASS: real V6.9 source enforces App Check and public signup remains legally blocked");
 
-const fake=inspectAppCheck({...input,config:input.config.replace('appCheckSiteKey:""','appCheckSiteKey:"YOUR_TEST_KEY_placeholder"')});
+const fake=inspectAppCheck({...input,config:input.config.replace(/appCheckSiteKey:"[^"]*"/,'appCheckSiteKey:"YOUR_TEST_KEY_placeholder"')});
 assert.equal(fake.siteKeyPresent,false);
 assert.equal(fake.publicGoLiveAuthorized,false);
 console.log("PASS: fake placeholder key cannot authorize signup");
 
-const future=inspectAppCheck({...input,config:input.config.replace('appCheckSiteKey:""','appCheckSiteKey:"6LdvRTAyAAAAACAX5S8Qq4LfqY2pf"')});
+const future=inspectAppCheck({...input,config:input.config.replace(/appCheckSiteKey:"[^"]*"/,'appCheckSiteKey:"6LdvRTAyAAAAACAX5S8Qq4LfqY2pf"')});
 assert.equal(future.siteKeyPresent,true);
 assert.equal(future.findings.find(x=>x.id==="A07").result,"manual");
 assert.equal(future.publicGoLiveAuthorized,false,"Source Site Key alone cannot authorize Public launch");

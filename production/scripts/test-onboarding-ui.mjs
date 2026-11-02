@@ -1,6 +1,7 @@
 // PACKTOOK V6.5 — no browser/network required; static gating regression.
 // Run after test-public-registration.mjs; this never touches Production Firebase.
 import fs from "node:fs";
+import {validPublicSiteKey} from "./set-appcheck-site-key.mjs";
 const read=(name)=>fs.readFileSync(new URL("../"+name,import.meta.url),"utf8");
 const html=read("app/index.html"),js=read("app/app.js");
 const bridge=read("app/firebase-packing-bridge.js");
@@ -36,7 +37,11 @@ assert(bridge.includes("ReCaptchaEnterpriseProvider")&&
  bridge.includes("initializeAppCheck")&&
  bridge.includes("appCheckSiteKey.trim().length>15"),
  "Public registration requires configured App Check key");
-assert(cfg.includes('appCheckSiteKey:""'),"Public App Check must be disabled until configured");
+const siteKey=cfg.match(/appCheckSiteKey:"([^"]*)"/)?.[1];
+assert(siteKey!==undefined&&(siteKey===""||validPublicSiteKey(siteKey)),
+ "App Check configuration must be an empty prelaunch key or a complete public reCAPTCHA Enterprise Site Key");
+assert(bridge.includes("result.enabled===true&&appCheckReady"),
+ "Adding a public Site Key must never bypass independent server-side signup gate");
 assert(backend.includes('process.env.PACKTOOK_PUBLIC_SIGNUP_ENABLED==="true"')&&
  backend.includes('process.env.PACKTOOK_PUBLIC_ACCESS_ENABLED==="true"')&&
  backend.includes('process.env.PACKTOOK_PUBLIC_POLICIES_APPROVED==="true"'),

@@ -14,6 +14,8 @@ node scripts/test-package-policy.mjs
 node scripts/test-renewal-notice.mjs
 node scripts/test-qr-lifecycle.mjs
 node scripts/test-public-registration.mjs
+node scripts/test-appcheck-sitekey-configuration.mjs
+node scripts/test-appcheck-readiness.mjs
 node scripts/test-onboarding-ui.mjs
 node scripts/test-public-signup-navigation.mjs
 node scripts/test-public-launch-preflight.mjs

@@ -13,7 +13,9 @@ for(const id of ["F01","F02","F03","F04","F05","F06","F07"]){
  assert.equal(item(result,id)?.state,"pass","Critical server/client fail-closed control missing "+id);
 }
 assert.equal(result.checks.filter(c=>c.id.startsWith("M")).length,9);
-assert.equal(item(result,"B01")?.state,"blocked","Unconfigured App Check must block live public release");
+assert.equal(item(result,"B01")?.state,
+ source.signupConfig.includes('appCheckSiteKey:""')?"blocked":"pass",
+ "App Check source status should match blank or configured PUBLIC Site Key without authorizing launch");
 assert.equal(item(result,"B02")?.state,"blocked","Unapproved draft Terms/Privacy must block public release");
 assert.equal(item(result,"B03")?.state,"blocked","Prelaunch marketing must not be falsely labeled public");
 assert.equal(item(result,"B04")?.state,"blocked","Production Beta banner must be reviewed before public release");
@@ -50,14 +52,14 @@ console.log("PASS: tampered App Check, form, deep link, Marketing CTA and Firest
 
 const simulatedValidKey=inspectSource({
  ...source,
- signupConfig:source.signupConfig.replace('appCheckSiteKey:""',
+ signupConfig:source.signupConfig.replace(/appCheckSiteKey:"[^"]*"/,
  'appCheckSiteKey:"6LeRealExamplePublicSiteKeyOnlyForTest"')
 });
 assert.equal(item(simulatedValidKey,"B01")?.state,"blocked",
  "Example/placeholder key must not be treated as valid");
 const simKey=inspectSource({
  ...source,
- signupConfig:source.signupConfig.replace('appCheckSiteKey:""',
+ signupConfig:source.signupConfig.replace(/appCheckSiteKey:"[^"]*"/,
  'appCheckSiteKey:"6LdYzfEwAAAAADemoApprovedLocalFixture"')
 });
 assert.equal(item(simKey,"B01")?.state,"pass",
