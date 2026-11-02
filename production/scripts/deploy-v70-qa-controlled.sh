@@ -46,7 +46,10 @@ JS
 
 # Existing Beta callable handlers need a reviewed update to recognize an
 # attested, narrowly scoped QA claim. Existing Beta claim still works.
-ONLY="functions:beta:qaFreeStatus,functions:beta:completeQaFreeSignup,functions:beta:usageStatus,functions:beta:reserveCredit,functions:beta:finalizeCredit,functions:beta:recordingStatus,functions:beta:registerDevice,functions:beta:deviceStatus,functions:beta:removeDevice,functions:beta:pendingVideoReservations,functions:beta:recoverStaleVideoReservation,functions:beta:authorizeDuplicate,functions:beta:accountRole,functions:beta:subscriptionOverview"
+# Deploy in batches of at most 8, following Firebase's recommended <=10
+# functions per deployment to limit build quota and operational blast radius.
+ONLY_CORE="functions:beta:qaFreeStatus,functions:beta:completeQaFreeSignup,functions:beta:usageStatus,functions:beta:reserveCredit,functions:beta:finalizeCredit,functions:beta:registerDevice,functions:beta:deviceStatus,functions:beta:recordingStatus"
+ONLY_SUPPORT="functions:beta:removeDevice,functions:beta:pendingVideoReservations,functions:beta:recoverStaleVideoReservation,functions:beta:authorizeDuplicate,functions:beta:accountRole,functions:beta:subscriptionOverview"
 echo "Scoped Production Cloud Functions rollout, mode=$MODE"
 echo "This WILL update existing Beta Cloud Functions. It will NOT deploy all Functions."
 echo "Review the target list above in the script before proceeding."
@@ -59,7 +62,14 @@ read -r -p "Type $EXPECT to approve this exact Production rollout: " INPUT
 [[ "$INPUT" == "$EXPECT" ]] || { echo "Cancelled before deploying";exit 1; }
 # Check the exact environment immediately before the mutating Firebase CLI.
 node scripts/check-v70-qa-preflight.mjs "$PROJECT" "$MODE"
+# If either batch fails, stop immediately and investigate; QA remains scoped to
+# the still-active lease/UID and ALL Public flags must remain OFF.
+echo "Batch 1/2: QA activation + essential credit/device functions (8 callables)"
 firebase deploy --config firebase.json --project "$PROJECT" \
- --only "$ONLY" --non-interactive
-echo "Function rollout completed; confirm live Public flags remain OFF with read-only probe."
+ --only "$ONLY_CORE" --non-interactive
+node scripts/check-v70-qa-preflight.mjs "$PROJECT" "$MODE"
+echo "Batch 2/2: supporting account/recording functions (6 callables)"
+firebase deploy --config firebase.json --project "$PROJECT" \
+ --only "$ONLY_SUPPORT" --non-interactive
+echo "Both scoped Function batches completed; confirm live Public flags OFF with read-only probe."
 echo "Customer QA HTML/JS requires a SEPARATE hosting:app-only deploy after review."
