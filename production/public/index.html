@@ -72,28 +72,23 @@
         <p class="hero-disclaimer">* แพ็กเกจ Free จะสมัครได้เมื่อเปิดระบบสาธารณะ ขณะนี้เข้าสู่ระบบได้เฉพาะบัญชีที่ได้รับสิทธิ์ทดสอบ</p>
       </div>
 
-      <div class="hero-visual" aria-label="ภาพจำลองหน้าระบบ PACKTOOK กำลังบันทึกออเดอร์">
-        <div class="visual-glow" aria-hidden="true"></div>
-        <div class="floating-sticker floating-sticker-top"><span aria-hidden="true">▣</span> บันทึกตาม Barcode</div>
-        <div class="app-window" data-mock="customer-dashboard">
-          <div class="app-topbar"><span class="app-dots" aria-hidden="true"><i></i><i></i><i></i></span><span>PACKTOOK / PACKING</span><span class="app-top-status"><span class="status-dot"></span> CAMERA READY</span></div>
-          <div class="app-body">
-            <div class="app-sidebar" aria-hidden="true"><div class="app-sidebar-mark"><img src="/assets/logo.svg" alt="" width="25" height="25"></div><div class="side-icon selected">◉</div><div class="side-icon">▤</div><div class="side-icon">◇</div><div class="side-icon">⚙</div></div>
-            <div class="app-workspace">
-              <div class="workspace-heading"><div><small>PACKTOOK / PACKING</small><strong>บันทึกวิดีโอการแพ็กสินค้า</strong></div><div class="rec-tag"><span></span> REC</div></div>
-              <div class="camera-display">
-                <div class="cam-cross cam-tl" aria-hidden="true"></div><div class="cam-cross cam-tr" aria-hidden="true"></div>
-                <div class="cam-cross cam-bl" aria-hidden="true"></div><div class="cam-cross cam-br" aria-hidden="true"></div>
-                <div class="parcel-illustration" aria-hidden="true"><div class="parcel-lid"></div><div class="parcel-side"></div><div class="parcel-main"><span>PT</span></div></div>
-                <div class="camera-caption"><span class="video-led" aria-hidden="true"></span> CAM 01 <span>720P</span></div>
-              </div>
-              <div class="scan-row"><div class="scan-symbol" aria-hidden="true">⌗</div><div><small>ORDER BARCODE</small><strong>ORD-2026-00128</strong></div><span class="scan-tag">กำลังบันทึก</span></div>
-              <div class="workspace-stats"><div><small>แพ็กเกจ</small><strong>FREE</strong></div><div><small>เครดิตคงเหลือ</small><strong>20</strong></div><div><small>โฟลเดอร์วิดีโอ</small><strong>LOCAL ✓</strong></div></div>
-            </div>
-          </div>
+      <div class="hero-visual hero-workflow" aria-label="ภาพประกอบขั้นตอนแพ็กสินค้าจริงโดยใช้ระบบ PACKTOOK">
+        <div class="packing-stage">
+          <img class="packing-scene" src="/assets/packing-workstation.svg" width="1000" height="680"
+            alt="พนักงานกำลังแพ็กสินค้าลงกล่องบนโต๊ะทำงาน มีเครื่องสแกนบาร์โค้ด กล้องบันทึกวิดีโอเหนือโต๊ะ และจอ PACKTOOK แสดงสถานะ REC"
+            fetchpriority="high" decoding="async">
+          <div class="packing-flow-callout packing-flow-scan" aria-hidden="true"><span class="flow-dot">⌗</span><span><strong>SCAN BARCODE</strong><small>เริ่มบันทึกออเดอร์</small></span></div>
+          <div class="packing-flow-callout packing-flow-record" aria-hidden="true"><span class="flow-rec-dot"></span><span><strong>PACKTOOK · REC</strong><small>กล้องกำลังบันทึก</small></span></div>
+          <div class="packing-flow-callout packing-flow-save" aria-hidden="true"><span class="flow-done-dot">✓</span><span><strong>SCAN AGAIN → SAVE</strong><small>บันทึกวิดีโอไว้ในเครื่อง</small></span></div>
         </div>
-        <div class="floating-sticker floating-sticker-bottom"><span class="mini-check" aria-hidden="true">✓</span><span><strong>จัดเก็บไว้ในเครื่อง</strong><small>LOCAL VIDEO STORAGE</small></span></div>
-        <p class="visual-note">ภาพจำลองเพื่ออธิบายการทำงาน ไม่ใช่ภาพสถานะการบันทึกจริง</p>
+        <div class="packing-flow-legend" aria-label="ลำดับการทำงาน สแกนบาร์โค้ด แพ็กสินค้าพร้อมบันทึกวิดีโอ สแกนซ้ำเพื่อบันทึกไฟล์">
+          <span><b>01</b> สแกน Barcode</span>
+          <span class="flow-arrow" aria-hidden="true">→</span>
+          <span><b>02</b> แพ็ก + REC</span>
+          <span class="flow-arrow" aria-hidden="true">→</span>
+          <span><b>03</b> สแกนซ้ำ + SAVE</span>
+        </div>
+        <p class="visual-note">ภาพประกอบจำลองการใช้งาน ไม่ใช่ภาพหรือวิดีโอของลูกค้าจริง</p>
       </div>
     </section>
 
@@ -137,19 +132,146 @@
       </div>
     </section>
 
-    <section id="pricing" class="section pricing-section">
+    <section id="pricing" class="section pricing-section comparison-section">
       <div class="container">
-        <div class="section-heading centered"><div class="eyebrow">SIMPLE PRICING</div><h2>เริ่มฟรี แล้วค่อยเติบโต<br><span>ไปกับจำนวนออเดอร์</span></h2><p>Free 20 วิดีโอต่อเดือนสำหรับเริ่มต้น และมีแพ็กเกจรองรับปริมาณการใช้งานที่มากขึ้น</p></div>
-        <div class="price-notice"><span aria-hidden="true">ⓘ</span><p>แสดงราคาและสิทธิ์จาก <strong>ระบบทดสอบ ณ V6.5</strong> เพื่อประกอบการวางแผนเท่านั้น ยังไม่ใช่ข้อเสนอขายจริง ราคาและเงื่อนไขอาจเปลี่ยนก่อนเปิดบริการ และยังไม่รับชำระเงินจริง</p></div>
-        <div class="pricing-grid">
-          <article class="price-card highlight"><span class="plan-label">START FOR FREE</span><h3>Free</h3><p class="price-description">ทดลองกระบวนการแพ็กแบบมีหลักฐาน</p><div class="price"><b>฿0</b><small>ใช้ฟรี</small></div><div class="plan-divider"></div><div class="plan-unit"><strong>20</strong><span>วิดีโอต่อเดือน</span></div><ul><li>ลงทะเบียน 1 อุปกรณ์</li><li>บันทึกวิดีโอในเครื่อง</li><li>ค้นหาวิดีโอย้อนหลัง</li><li>คู่มือและ Troubleshooting</li></ul><span class="plan-state">เตรียมเปิดรับสมัคร</span></article>
-          <article class="price-card"><span class="plan-label">FOR SMALL SHOPS</span><h3>Starter</h3><p class="price-description">ร้านที่มีออเดอร์ประจำเพิ่มขึ้น</p><div class="price"><b>฿199</b><small>ต่อการซื้อแพ็กเกจ</small></div><div class="plan-divider"></div><div class="plan-unit"><strong>50</strong><span>เครดิตวิดีโอ</span></div><ul><li>ลงทะเบียน 1 อุปกรณ์</li><li>ใช้ระบบบันทึกด้วย Barcode</li><li>จัดการประวัติวิดีโอ</li><li>ตามเงื่อนไขอายุแพ็กเกจ</li></ul><span class="plan-state">ยังไม่เปิดรับชำระ</span></article>
-          <article class="price-card"><span class="plan-label">FOR GROWING SHOPS</span><h3>Basic</h3><p class="price-description">สำหรับร้านที่แพ็กสินค้าต่อเนื่อง</p><div class="price"><b>฿299</b><small>ต่อการซื้อแพ็กเกจ</small></div><div class="plan-divider"></div><div class="plan-unit"><strong>300</strong><span>เครดิตวิดีโอ</span></div><ul><li>ลงทะเบียน 1 อุปกรณ์</li><li>ใช้ระบบบันทึกด้วย Barcode</li><li>จัดการประวัติวิดีโอ</li><li>ตามเงื่อนไขอายุแพ็กเกจ</li></ul><span class="plan-state">ยังไม่เปิดรับชำระ</span></article>
-          <article class="price-card"><span class="plan-label">FOR TEAMS</span><h3>Growth</h3><p class="price-description">ร้านที่ต้องการรองรับหลายจุดแพ็ก</p><div class="price"><b>฿599</b><small>ต่อการซื้อแพ็กเกจ</small></div><div class="plan-divider"></div><div class="plan-unit"><strong>1,500</strong><span>เครดิตวิดีโอ</span></div><ul><li>ลงทะเบียนได้ 3 อุปกรณ์</li><li>ควบคุมเครดิตจากบัญชี</li><li>จัดการประวัติวิดีโอ</li><li>ตามเงื่อนไขอายุแพ็กเกจ</li></ul><span class="plan-state">ยังไม่เปิดรับชำระ</span></article>
-          <article class="price-card"><span class="plan-label">FOR OPERATIONS</span><h3>Business</h3><p class="price-description">รองรับงานแพ็กปริมาณมาก</p><div class="price"><b>฿1,290</b><small>ต่อการซื้อแพ็กเกจ</small></div><div class="plan-divider"></div><div class="plan-unit"><strong>5,000</strong><span>เครดิตวิดีโอ</span></div><ul><li>ลงทะเบียนได้ 5 อุปกรณ์</li><li>ควบคุมเครดิตจากบัญชี</li><li>จัดการประวัติวิดีโอ</li><li>ตามเงื่อนไขอายุแพ็กเกจ</li></ul><span class="plan-state">ยังไม่เปิดรับชำระ</span></article>
-          <article class="price-card"><span class="plan-label">MAXIMUM FLEXIBILITY</span><h3>Pro</h3><p class="price-description">สำหรับทีมที่ต้องการบันทึกต่อเนื่อง</p><div class="price"><b>฿1,990</b><small>ต่อการซื้อแพ็กเกจ</small></div><div class="plan-divider"></div><div class="plan-unit"><strong>∞</strong><span>วิดีโอในช่วงสิทธิ์</span></div><ul><li>ลงทะเบียนได้ 10 อุปกรณ์</li><li>ใช้ระบบบันทึกด้วย Barcode</li><li>จัดการประวัติวิดีโอ</li><li>ตามเงื่อนไขอายุแพ็กเกจ</li></ul><span class="plan-state">ยังไม่เปิดรับชำระ</span></article>
+        <div class="section-heading centered">
+          <div class="eyebrow">COMPARE PACKTOOK PLANS</div>
+          <h2>เปรียบเทียบแพ็กเกจ<br><span>เลือกให้เหมาะกับจำนวนออเดอร์ของคุณ</span></h2>
+          <p>เห็นราคา เครดิต จำนวนอุปกรณ์ และสิทธิ์ที่ได้รับครบทั้ง 6 แพ็กเกจในตารางเดียว</p>
         </div>
-        <p class="pricing-footnote">แพ็กเกจชำระเงินในระบบทดสอบมีช่วงสิทธิ์ใช้งาน 30 วัน เครดิตที่ไม่ได้ใช้มีเงื่อนไขยกยอดเมื่อซื้อแพ็กเกจต่อและการเก็บเครดิตหลังหมดอายุ 10 วัน ทั้งหมดรอการยืนยันเป็นเงื่อนไขบริการจริง</p>
+        <div class="price-notice" role="note"><span aria-hidden="true">ⓘ</span>
+          <p>ราคาและจำนวนเครดิตเป็นข้อมูล <strong>ระบบทดสอบ V6.5</strong> ไม่ใช่ข้อเสนอขายจริง เงื่อนไขอาจเปลี่ยนก่อนเปิดบริการ ขณะนี้ยังไม่เปิดสมัครสาธารณะหรือชำระเงินจริง</p>
+        </div>
+        <div class="comparison-highlights" aria-label="จุดเด่นของแพ็กเกจ">
+          <div><span aria-hidden="true">♧</span><strong>เริ่มฟรี</strong><small>20 วิดีโอต่อเดือนเมื่อเปิดบริการ</small></div>
+          <div><span aria-hidden="true">▣</span><strong>เพิ่มตามจำนวนออเดอร์</strong><small>เลือกจำนวนเครดิตให้เหมาะกับร้าน</small></div>
+          <div><span aria-hidden="true">◈</span><strong>รองรับหลายอุปกรณ์</strong><small>สูงสุด 10 อุปกรณ์ตามแพ็กเกจ</small></div>
+        </div>
+        <p class="comparison-scroll-hint"><span aria-hidden="true">↔</span> ปัดตารางไปทางซ้ายหรือขวาเพื่อดูทุกแพ็กเกจ</p>
+        <div class="comparison-scroll" role="region" aria-label="ตารางเปรียบเทียบแพ็กเกจ PACKTOOK ทั้งหกระดับ" tabindex="0">
+          <table class="comparison-table">
+            <caption class="sr-only">เปรียบเทียบ Free, Starter, Basic, Growth, Business และ Pro — ราคาในระบบทดสอบเท่านั้น</caption>
+            <thead>
+              <tr>
+                <th scope="col" class="comparison-row-label">เปรียบเทียบ</th>
+              <th scope="col" class="comparison-plan" data-plan="Free" data-test-price="0" data-credits="20" data-devices="1">
+                <span class="comparison-plan-title">Free</span>
+                <span class="comparison-plan-price">฿0</span>
+                <span class="comparison-plan-unit">ฟรี</span>
+              </th>
+              <th scope="col" class="comparison-plan" data-plan="Starter" data-test-price="199" data-credits="50" data-devices="1">
+                <span class="comparison-plan-title">Starter</span>
+                <span class="comparison-plan-price">฿199</span>
+                <span class="comparison-plan-unit">ต่อแพ็กเกจ (TEST)</span>
+              </th>
+              <th scope="col" class="comparison-plan is-highlighted" data-plan="Basic" data-test-price="299" data-credits="300" data-devices="1">
+                <span class="comparison-plan-title">Basic</span>
+                <span class="comparison-plan-price">฿299</span>
+                <span class="comparison-plan-unit">ต่อแพ็กเกจ (TEST)</span>
+              </th>
+              <th scope="col" class="comparison-plan" data-plan="Growth" data-test-price="599" data-credits="1500" data-devices="3">
+                <span class="comparison-plan-title">Growth</span>
+                <span class="comparison-plan-price">฿599</span>
+                <span class="comparison-plan-unit">ต่อแพ็กเกจ (TEST)</span>
+              </th>
+              <th scope="col" class="comparison-plan" data-plan="Business" data-test-price="1290" data-credits="5000" data-devices="5">
+                <span class="comparison-plan-title">Business</span>
+                <span class="comparison-plan-price">฿1,290</span>
+                <span class="comparison-plan-unit">ต่อแพ็กเกจ (TEST)</span>
+              </th>
+              <th scope="col" class="comparison-plan" data-plan="Pro" data-test-price="1990" data-credits="unlimited" data-devices="10">
+                <span class="comparison-plan-title">Pro</span>
+                <span class="comparison-plan-price">฿1,990</span>
+                <span class="comparison-plan-unit">ต่อแพ็กเกจ (TEST)</span>
+              </th>
+              </tr>
+            </thead>
+            <tbody>
+            <tr class="comparison-key-row">
+              <th scope="row">สิทธิ์วิดีโอ</th>
+              <td><strong class="comparison-data-value">20 วิดีโอ/เดือน</strong></td>
+              <td><strong class="comparison-data-value">50 เครดิต</strong></td>
+              <td class="is-highlighted"><strong class="comparison-data-value">300 เครดิต</strong></td>
+              <td><strong class="comparison-data-value">1,500 เครดิต</strong></td>
+              <td><strong class="comparison-data-value">5,000 เครดิต</strong></td>
+              <td><strong class="comparison-data-value">ไม่จำกัด*</strong></td>
+            </tr>
+            <tr class="comparison-key-row">
+              <th scope="row">จำนวนอุปกรณ์</th>
+              <td><strong>1 เครื่อง</strong></td>
+              <td><strong>1 เครื่อง</strong></td>
+              <td class="is-highlighted"><strong>1 เครื่อง</strong></td>
+              <td><strong>3 เครื่อง</strong></td>
+              <td><strong>5 เครื่อง</strong></td>
+              <td><strong>10 เครื่อง</strong></td>
+            </tr>
+            <tr>
+              <th scope="row">ระยะเวลาสิทธิ์</th>
+              <td>รายเดือน (Free)</td>
+              <td>30 วัน</td>
+              <td class="is-highlighted">30 วัน</td>
+              <td>30 วัน</td>
+              <td>30 วัน</td>
+              <td>30 วัน</td>
+            </tr>
+            <tr>
+              <th scope="row">สแกน Barcode เริ่ม/หยุด</th>
+              <td><span class="comparison-yes" aria-label="รองรับ">✓</span></td>
+              <td><span class="comparison-yes" aria-label="รองรับ">✓</span></td>
+              <td class="is-highlighted"><span class="comparison-yes" aria-label="รองรับ">✓</span></td>
+              <td><span class="comparison-yes" aria-label="รองรับ">✓</span></td>
+              <td><span class="comparison-yes" aria-label="รองรับ">✓</span></td>
+              <td><span class="comparison-yes" aria-label="รองรับ">✓</span></td>
+            </tr>
+            <tr>
+              <th scope="row">บันทึกวิดีโอในเครื่อง</th>
+              <td><span class="comparison-yes" aria-label="รองรับ">✓</span></td>
+              <td><span class="comparison-yes" aria-label="รองรับ">✓</span></td>
+              <td class="is-highlighted"><span class="comparison-yes" aria-label="รองรับ">✓</span></td>
+              <td><span class="comparison-yes" aria-label="รองรับ">✓</span></td>
+              <td><span class="comparison-yes" aria-label="รองรับ">✓</span></td>
+              <td><span class="comparison-yes" aria-label="รองรับ">✓</span></td>
+            </tr>
+            <tr>
+              <th scope="row">ค้นหาใน Dashboard</th>
+              <td><span class="comparison-yes" aria-label="รองรับ">✓</span></td>
+              <td><span class="comparison-yes" aria-label="รองรับ">✓</span></td>
+              <td class="is-highlighted"><span class="comparison-yes" aria-label="รองรับ">✓</span></td>
+              <td><span class="comparison-yes" aria-label="รองรับ">✓</span></td>
+              <td><span class="comparison-yes" aria-label="รองรับ">✓</span></td>
+              <td><span class="comparison-yes" aria-label="รองรับ">✓</span></td>
+            </tr>
+            <tr>
+              <th scope="row">Help / Troubleshooting</th>
+              <td><span class="comparison-yes" aria-label="รองรับ">✓</span></td>
+              <td><span class="comparison-yes" aria-label="รองรับ">✓</span></td>
+              <td class="is-highlighted"><span class="comparison-yes" aria-label="รองรับ">✓</span></td>
+              <td><span class="comparison-yes" aria-label="รองรับ">✓</span></td>
+              <td><span class="comparison-yes" aria-label="รองรับ">✓</span></td>
+              <td><span class="comparison-yes" aria-label="รองรับ">✓</span></td>
+            </tr>
+            <tr>
+              <th scope="row">เหมาะสำหรับ</th>
+              <td>เริ่มต้นทดลอง</td>
+              <td>ร้านขนาดเล็ก</td>
+              <td class="is-highlighted">ออเดอร์ประจำ</td>
+              <td>ร้านกำลังเติบโต</td>
+              <td>ทีมแพ็กหลายจุด</td>
+              <td>ใช้งานปริมาณมาก</td>
+            </tr>
+            <tr>
+              <th scope="row">สถานะการเปิดบริการ</th>
+              <td><span class="comparison-state">เตรียมเปิดรับสมัคร</span></td>
+              <td><span class="comparison-state">ยังไม่เปิดขาย</span></td>
+              <td class="is-highlighted"><span class="comparison-state">ยังไม่เปิดขาย</span></td>
+              <td><span class="comparison-state">ยังไม่เปิดขาย</span></td>
+              <td><span class="comparison-state">ยังไม่เปิดขาย</span></td>
+              <td><span class="comparison-state">ยังไม่เปิดขาย</span></td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="pricing-footnote">* Pro ไม่จำกัดจำนวนวิดีโอภายในช่วงสิทธิ์แพ็กเกจชำระเงิน 30 วัน เครดิตที่ไม่ได้ใช้มีเงื่อนไขยกยอดเมื่อซื้อแพ็กเกจต่อ และเก็บไว้ได้สูงสุด 10 วันหลังหมดอายุเพื่อการต่ออายุ ตามนโยบายที่อยู่ระหว่างทดสอบ โปรดตรวจข้อกำหนดฉบับจริงก่อนสมัคร</p>
       </div>
     </section>
 
