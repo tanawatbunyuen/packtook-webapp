@@ -96,9 +96,11 @@ async function mockedFetch(url,options={}){
   const form=new URLSearchParams(options.body);
   assert(form.get("source[type]")==="promptpay","A non-PromptPay charge was attempted");
   assert(form.get("webhook_endpoints[]")?.includes("packtook-prod-01"),"Production webhook route missing");
-  assert(form.get("amount")==="19900","Starter price mismatch");
-  charge={id:"chrg_test_mockqr123",status:"pending",paid:false,livemode:false,
-   amount:19900,currency:"thb",expires_at:form.get("expires_at"),metadata:{uid:userId,requestId:ticketId},
+  assert(["19900","29900"].includes(form.get("amount")),"Unsupported mock plan amount");
+  charge={id:form.get("amount")==="29900"?"chrg_test_basic123":"chrg_test_mockqr123",
+   status:"pending",paid:false,livemode:false,
+   amount:Number(form.get("amount")),currency:"thb",expires_at:form.get("expires_at"),
+   metadata:{uid:userId,requestId:ticketId},
    source:{type:"promptpay",scannable_code:{image:{download_uri:"https://api.omise.co/mock-qr.svg"}}}};
   return {ok:true,status:200,json:async()=>charge};
  }
@@ -217,6 +219,53 @@ for(const terminal of ["expired","failed"]){
  assert(repeatedStatus.status===terminal&&documents.get("accounts/"+userId).plan==="Free",
   "Repeated terminal check must not grant credits");
 }
+
+// Integration: active Starter -> Basic upgrade must preserve the 120-credit wallet.
+for(const scenario of [
+ {name:"active",expires:new Date(Date.now()+15*86400000).toISOString(),old:120,expected:420},
+ {name:"grace9",expires:new Date(Date.now()-9*86400000).toISOString(),old:45,expected:345},
+ {name:"after11",expires:new Date(Date.now()-11*86400000).toISOString(),old:45,expected:300}
+]){
+ userId="upgradeCredit_"+scenario.name;
+ ticketId="request_"+scenario.name+"_123456789012345";
+ documents.set("accounts/"+userId,{
+  plan:"Starter",planExpiresAt:scenario.expires,
+  creditWalletV1:true,creditWalletRemaining:scenario.old,
+  used:0,reserved:0,billingVersion:0
+ });
+ paid=false;chargeStatus="pending";currentMode="promptpay";currentLive=false;
+ const req=await api.promptpayRequestPlanChange(request({plan:"Basic"}));
+ assert(req.purchaseKind==="upgrade","Existing Starter to Basic must be an Upgrade even when expired");
+ const createdUpgrade=await api.promptpayCreateCharge(
+  request({requestId:req.requestId,method:"promptpay"}));
+ assert(createdUpgrade.status==="pending"&&charge.amount===29900,
+  "Basic Upgrade must create a pending THB299 test Charge");
+ chargeStatus="successful";paid=true;
+ const verified=await api.promptpayChargeStatus(request({requestId:req.requestId}));
+ assert(verified.status==="paid","Basic upgrade must settle only after Omise confirms Paid");
+ const a=documents.get("accounts/"+userId),bill=documents.get("accounts/"+userId+"/billingRequests/"+req.requestId);
+ assert(a.plan==="Basic"&&a.creditWalletRemaining===scenario.expected&&
+  bill.balanceAfter===scenario.expected&&bill.transferredCredits===scenario.expected-300&&
+  bill.creditsPurchased===300,
+  "Upgrade "+scenario.name+" must be 300 + eligible prior credits, without silently resetting wallet");
+ if(scenario.name==="active")
+  assert(Date.parse(a.planExpiresAt)>Date.parse(scenario.expires)+29*86400000,
+   "Active upgrade must extend existing expiry 30 days");
+ if(scenario.name!=="active")
+  assert(Date.parse(a.planExpiresAt)>Date.now()+29*86400000,
+   "Expired upgrade must start a new 30-day validity period");
+ const repeated=await api.promptpayChargeStatus(request({requestId:req.requestId}));
+ assert(repeated.status==="paid"&&documents.get("accounts/"+userId).creditWalletRemaining===scenario.expected,
+  "Upgrade Payment status repetition must not credit twice");
+ await rejects(api.promptpayRequestPlanChange(request({plan:"Starter"})),"failed-precondition");
+}
+// After expiry, lower-tier packages are still prohibited.
+userId="expiredProNoDowngrade";ticketId="r6qrexpro12345678901234";
+documents.set("accounts/"+userId,{
+ plan:"Pro",planExpiresAt:new Date(Date.now()-20*86400000).toISOString(),
+ creditWalletV1:true,creditWalletRemaining:null,used:0,reserved:0,billingVersion:0
+});
+await rejects(api.promptpayRequestPlanChange(request({plan:"Business"})),"failed-precondition");
 
 // Scheduled credit forfeiture is verified against live-shaped Firestore mock.
 const cutoff=new Date(Date.now()-11*86400000).toISOString();
