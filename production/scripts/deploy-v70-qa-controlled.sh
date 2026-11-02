@@ -10,6 +10,12 @@ if [[ "$#" -ne 2 || "$1" != "$PROJECT" ||
  exit 2
 fi
 MODE="$2"
+# Every QA-disabled Production deploy must first pass local checks, capture
+# a read-only snapshot of deployed Beta Functions, and confirm public flags
+# still OFF. Preparation never deploys; it fails closed on wrong Git branch.
+if [[ "$MODE" == "--qa-off" ]]; then
+ bash scripts/prepare-v70-qa-disabled.sh "$PROJECT" --qa-off
+fi
 node scripts/verify.mjs "$PROJECT"
 node scripts/test-v70-qa-source-safety.mjs
 node scripts/test-v70-deploy-scope.mjs
