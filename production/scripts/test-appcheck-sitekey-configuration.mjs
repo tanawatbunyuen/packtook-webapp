@@ -25,9 +25,9 @@ for(const bad of [
 }
 console.log("PASS: partial screenshot, placeholders, wrong formats and secret-looking keys are rejected");
 
-const occupied=config.replace(/appCheckSiteKey:"[^"]*"/,'appCheckSiteKey:"6LpErsonalWebSiteKeyAAAAAAlreadyConfigured123"');
+const occupied=config.replace(/appCheckSiteKey:"[^"]*"/,'appCheckSiteKey:"6Lh3Am6wAAAAAPZJQ66k7FFvTTR9u9QfXYZab"');
 assert.throws(()=>withSiteKey(occupied,mock),/SAFETY BLOCK:/);
-assert.equal(withSiteKey(occupied,"6LpErsonalWebSiteKeyAAAAAAlreadyConfigured123"),occupied);
+assert.equal(withSiteKey(occupied,"6Lh3Am6wAAAAAPZJQ66k7FFvTTR9u9QfXYZab"),occupied);
 console.log("PASS: existing different key cannot be silently overwritten");
 
 const bridge=fs.readFileSync(new URL("../app/firebase-packing-bridge.js",import.meta.url),"utf8");
