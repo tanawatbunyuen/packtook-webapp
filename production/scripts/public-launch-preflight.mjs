@@ -20,7 +20,7 @@ export function inspectSource(source){
   /exports\.completeFreeSignup=onCall\(\{\.\.\.options,enforceAppCheck:true\}/.test(backend)&&
   /live\.emailVerified!==true/.test(backend)&&/setCustomUserClaims/.test(backend)&&
   /tx\.create\(ref,\{ownerUid:id/.test(backend);
- add("F01","pass"=== (sourceReady?"pass":"blocked")?"pass":"blocked",
+ add("F01",sourceReady?"pass":"blocked",
   "Backend signup needs App Check, verified Auth email, consent and idempotent Free provisioning",
   "Review/restore verified server-side Free activation controls");
  const independentGates=["PACKTOOK_PUBLIC_SIGNUP_ENABLED","PACKTOOK_PUBLIC_ACCESS_ENABLED","PACKTOOK_PUBLIC_POLICIES_APPROVED"]
