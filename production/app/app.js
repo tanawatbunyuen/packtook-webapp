@@ -1168,7 +1168,12 @@ $('retentionDays').addEventListener('change',()=>{const v=Number($('retentionDay
 $('runCleanup').addEventListener('click',()=>runRetention(true));
 
 // Cleanup is best-effort while this web page is open; browsers cannot run local folder deletion while closed.
-setInterval(()=>{if(!!remoteUser&&!document.hidden)void runRetention(false)},60*60*1000);
+setInterval(()=>{
+ if(!!remoteUser&&!document.hidden){
+  updateRenewalNotice();updateUsersSummary();
+  void runRetention(false);
+ }
+},60*60*1000);
 
 // Live camera display preferences do not change the recording resolution.
 const cameraWrap=$('cameraPreviewWrap');
