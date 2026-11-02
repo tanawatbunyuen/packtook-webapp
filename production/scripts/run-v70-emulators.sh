@@ -20,7 +20,14 @@ node scripts/test-v67-emulator-config.mjs
 echo "Starting V7.0 DEMO Auth+Firestore on 127.0.0.1. Project=$DEMO"
 LOG="$(mktemp /tmp/packtook-v70-emulator.XXXXXX.log)"
 echo "Demo log: $LOG"
-if firebase emulators:exec --project "$DEMO" \
+# Google Cloud Shell may inject GOOGLE_CLOUD_PROJECT=packtook-prod-01 even
+# when --project targets the DEMO. Scope explicit demo environment ONLY to
+# this emulator child; never modify the parent Cloud Shell project.
+# The actual test's independent fail-closed guard still verifies the demo
+# marker, exact loopback ports and rejects any Production project context.
+if env GCLOUD_PROJECT="$DEMO" GCP_PROJECT="$DEMO" \
+  GOOGLE_CLOUD_PROJECT="$DEMO" FIREBASE_PROJECT_ID="$DEMO" \
+  firebase emulators:exec --project "$DEMO" \
   --config firebase.emulators-v67.json --only auth,firestore \
   "PACKTOOK_QA_DEMO_PROJECT=$DEMO node scripts/test-v70-qa-auth-firestore-emulator.mjs" \
    2>&1 | tee "$LOG"; then
