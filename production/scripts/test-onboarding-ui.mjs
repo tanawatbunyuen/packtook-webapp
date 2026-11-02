@@ -13,7 +13,7 @@ for(const id of ["publicSignupEntry","openPublicSignup","publicSignupPanel","pub
  "publicSignupFinish","signupFinishBtn","signupFinishConsent","signupFinishFeedback","signupFinishLogout"])
  assert(html.includes('id="'+id+'"'),"Missing Customer registration node "+id);
 assert(html.includes('app.js?v=6.6.0')&&html.includes('style.css?v=6.5.0')&&
- html.includes('firebase-packing-bridge.js?v=6.5.0'),"V6.5 Customer assets not versioned");
+ html.includes('firebase-packing-bridge.js?v=7.0.0'),"V6.5 Customer assets not versioned");
 assert(html.includes('href="policy-terms.html"')&&html.includes('href="policy-privacy.html"'),
  "Signup must link to Terms and Privacy");
 for(const policy of ["app/policy-terms.html","app/policy-privacy.html"])
