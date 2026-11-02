@@ -588,3 +588,21 @@
 #paymentQrResult .qr-terminal-warning{color:#925b25;background:#fff5e5;border:1px solid #f3d9aa;border-radius:12px;padding:15px;font-weight:750}
 #paymentQrResult #qrPendingStatus{font-size:13px;color:#56748d;margin:11px 0}
 #paymentQrResult button{margin-top:8px}
+
+/* V6.4.2 — 7-day subscription reminder, visible on all authenticated tabs */
+.subscription-expiry-alert{
+ display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+ margin:12px 0 18px;padding:12px 16px;
+ border:1px solid #f2cb80;border-radius:14px;
+ background:#fff8e8;color:#70470f;
+ box-shadow:0 2px 10px rgba(99,71,18,.04);
+}
+.subscription-expiry-alert[hidden]{display:none}
+.subscription-expiry-alert .expiry-alert-icon{font-size:23px;line-height:1}
+.subscription-expiry-alert .expiry-alert-text{font-size:13px;font-weight:700;line-height:1.65;flex:1;min-width:220px}
+.subscription-expiry-alert button{
+ font-size:12px;font-weight:800;background:#fff;color:#80511b;
+ border:1px solid #e6bb6b;padding:8px 13px;border-radius:10px;cursor:pointer
+}
+.subscription-expiry-alert button:hover{background:#fff1cf}
+@media(max-width:560px){.subscription-expiry-alert button{width:100%}}
