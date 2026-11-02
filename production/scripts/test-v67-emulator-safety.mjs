@@ -34,7 +34,10 @@ rejected("external emulator host",{
  FIREBASE_AUTH_EMULATOR_HOST:"example.com:9099",FIRESTORE_EMULATOR_HOST:"127.0.0.1:8080"
 });
 assert(script.includes("admin.initializeApp({projectId:DEMO})"));
-assert(script.includes("vm.runInNewContext(source"));
+// Main-realm compilation avoids Firestore's cross-realm custom-prototype error.
+assert(script.includes('new Function("exports","process","require","console",source)'));
+assert(!script.includes("vm.runInNewContext(source"));
+assert(script.includes("V6.7 EMULATOR INTEGRATION FAILED at stage:"));
 assert(script.includes('admin.app().options.projectId!==DEMO'));
 assert(script.includes('onCall(options,handler)'));
 assert(script.includes('enforceAppCheck:true'));
