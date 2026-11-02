@@ -49,7 +49,7 @@ assert(backend.includes("exports.completeFreeSignup=onCall({...options,enforceAp
 assert(backend.includes('if(req.auth.token.packtookProductionBeta!==true&&!isPublicMember(req.auth))'),
  "Public/Beta authorization boundary missing");
 assert(rules.includes("allow read, write: if false"),"Firestore must still be closed to direct clients");
-assert(marketing.includes("REGISTRATION & PAYMENT NOT OPEN")&&marketing.includes('noindex, nofollow'),
+assert((marketing.includes("REGISTRATION &amp; PAYMENT NOT OPEN")||marketing.includes("REGISTRATION & PAYMENT NOT OPEN"))&&marketing.includes('noindex, nofollow'),
  "Marketing cannot open public before gates are approved");
 assert(!html.includes("skey_live_")&&!bridge.includes("skey_live_")&&
  !backend.includes("skey_live_"),"Payment live secrets must not leak into onboarding");
