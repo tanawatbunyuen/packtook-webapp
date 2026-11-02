@@ -24,7 +24,7 @@ function getRelevant(config){
  }
  return data;
 }
-export function checkQaEnvironment({generic="",specific,environment={},mode,now=Date.now()}){
+export function checkQaEnvironment({generic="",specific,environment={},mode,now=Date.now(),expectedAppId=null}){
  if(mode!=="--qa-off"&&mode!=="--approved-qa")
   throw Error("SAFETY BLOCK: select --qa-off or --approved-qa");
  if(typeof specific!=="string")throw Error("SAFETY BLOCK: exact project Functions dotenv file required");
@@ -48,6 +48,8 @@ export function checkQaEnvironment({generic="",specific,environment={},mode,now=
   throw Error("SAFETY BLOCK: invite requires a SINGLE exact Firebase Auth UID (20–128 characters)");
  if(!/^1:[0-9]+:web:[A-Za-z0-9]+$/.test(qa.PACKTOOK_V7_QA_APP_ID||""))
   throw Error("SAFETY BLOCK: QA app ID must be exact Production Firebase Web App ID");
+ if(expectedAppId!==null&&qa.PACKTOOK_V7_QA_APP_ID!==expectedAppId)
+  throw Error("SAFETY BLOCK: QA App ID must match exact local Production Customer Web App");
  const expires=Date.parse(qa.PACKTOOK_V7_QA_EXPIRES_AT||"");
  if(!Number.isFinite(expires)||expires<=now||expires>now+48*60*60*1000)
   throw Error("SAFETY BLOCK: QA expiresAt must be in the next 48 hours");
@@ -65,10 +67,20 @@ if(isMain){
   const specificPath=path.join(ROOT,"functions",".env."+PROJECT);
   if(!fs.existsSync(specificPath))throw Error("SAFETY BLOCK: project-specific Functions env file missing");
   const genericPath=path.join(ROOT,"functions",".env");
+  let expectedAppId=null;
+  if(process.argv[3]==="--approved-qa"){
+   const customerConfig=fs.readFileSync(path.join(ROOT,"app","firebase-v4-config.js"),"utf8");
+   const customerConfigMatch=customerConfig.match(/export const firebaseConfig\s*=\s*(\{[\s\S]*?\});/);
+   if(!customerConfigMatch)throw Error("SAFETY BLOCK: verified Production Firebase config missing");
+   const verified=JSON.parse(customerConfigMatch[1]);
+   if(verified.projectId!==PROJECT||!verified.appId)
+    throw Error("SAFETY BLOCK: Firebase SDK Production project mismatch");
+   expectedAppId=verified.appId;
+  }
   const report=checkQaEnvironment({
    generic:fs.existsSync(genericPath)?fs.readFileSync(genericPath,"utf8"):"",
    specific:fs.readFileSync(specificPath,"utf8"),
-   mode:process.argv[3],environment:process.env
+   mode:process.argv[3],environment:process.env,expectedAppId
   });
   const src=fs.readFileSync(path.join(ROOT,"functions","index.js"),"utf8");
   if(!src.includes('exports.qaFreeStatus=onCall({...options,enforceAppCheck:true}')||
