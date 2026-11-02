@@ -17,7 +17,9 @@
   <link rel="stylesheet" href="/assets/site.css?v=6.5.1">
   <link rel="stylesheet" href="/assets/customer-brand.css?v=6.5.2">
   <link rel="stylesheet" href="/assets/packing-comparison.css?v=6.5.3">
+  <link rel="stylesheet" href="/assets/typography.css?v=6.5.4">
   <script src="/assets/site.js?v=6.5.1" defer></script>
+  <link rel="preload" href="/assets/packtook-hero-photo.webp?v=6.5.4.1" as="image" type="image/webp">
 </head>
 <body>
   <a class="skip-link" href="#content">ข้ามไปยังเนื้อหา</a>
@@ -75,12 +77,9 @@
 
       <div class="hero-visual hero-workflow" aria-label="ภาพประกอบขั้นตอนแพ็กสินค้าจริงโดยใช้ระบบ PACKTOOK">
         <div class="packing-stage">
-          <img class="packing-scene" src="/assets/packing-workstation.svg" width="1000" height="680"
-            alt="พนักงานกำลังแพ็กสินค้าลงกล่องบนโต๊ะทำงาน มีเครื่องสแกนบาร์โค้ด กล้องบันทึกวิดีโอเหนือโต๊ะ และจอ PACKTOOK แสดงสถานะ REC"
+          <img id="heroPackingImage" class="packing-scene" src="/assets/packtook-hero-photo.webp?v=6.5.4.1" width="1150" height="716"
+            alt="ภาพ AI จำลองพนักงานกำลังแพ็กพัสดุที่สถานี Packing มีเครื่องสแกน Barcode กล้องเหนือโต๊ะและหน้าจอ PACKTOOK แสดงสถานะ REC"
             fetchpriority="high" decoding="async">
-          <div class="packing-flow-callout packing-flow-scan" aria-hidden="true"><span class="flow-dot">⌗</span><span><strong>SCAN BARCODE</strong><small>เริ่มบันทึกออเดอร์</small></span></div>
-          <div class="packing-flow-callout packing-flow-record" aria-hidden="true"><span class="flow-rec-dot"></span><span><strong>PACKTOOK · REC</strong><small>กล้องกำลังบันทึก</small></span></div>
-          <div class="packing-flow-callout packing-flow-save" aria-hidden="true"><span class="flow-done-dot">✓</span><span><strong>SCAN AGAIN → SAVE</strong><small>บันทึกวิดีโอไว้ในเครื่อง</small></span></div>
         </div>
         <div class="packing-flow-legend" aria-label="ลำดับการทำงาน สแกนบาร์โค้ด แพ็กสินค้าพร้อมบันทึกวิดีโอ สแกนซ้ำเพื่อบันทึกไฟล์">
           <span><b>01</b> สแกน Barcode</span>
@@ -89,7 +88,7 @@
           <span class="flow-arrow" aria-hidden="true">→</span>
           <span><b>03</b> สแกนซ้ำ + SAVE</span>
         </div>
-        <p class="visual-note">ภาพประกอบจำลองการใช้งาน ไม่ใช่ภาพหรือวิดีโอของลูกค้าจริง</p>
+        <p class="visual-note">ภาพจำลองจาก Generative AI เพื่อสาธิตการใช้ PACKTOOK ไม่ใช่ภาพหรือวิดีโอของลูกค้าจริง</p>
       </div>
     </section>
 

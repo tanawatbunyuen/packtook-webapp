@@ -42,8 +42,8 @@ for(const anchor of html.matchAll(/href="#([A-Za-z0-9_-]+)"/g)){
  assert(html.includes('id="'+anchor[1]+'"'),"Broken in-page link #"+anchor[1]);
 }
 assert(html.includes('/assets/logo.svg')&&html.includes('/assets/mascot-eagle.svg'));
-assert(html.includes('packing-workstation.svg')&&html.includes('ภาพประกอบจำลองการใช้งาน'));
-assert(html.includes('packing-comparison.css?v=6.5.3'));
+assert(html.includes('src="/assets/packtook-hero-photo.webp?v=6.5.4.1"')&&html.includes('ภาพจำลองจาก Generative AI'));
+assert(html.includes('packing-comparison.css?v=6.5.3')&&html.includes('typography.css?v=6.5.4')&&html.includes('rel="preload" href="/assets/packtook-hero-photo.webp?v=6.5.4.1"'));
 assert(html.includes('site.css?v=6.5.1')&&html.includes('site.js?v=6.5.1'));
 assert.equal((html.match(/<details>/g)||[]).length,7);
 console.log("PASS: sections, in-page navigation, 7 native FAQs, accessibility and assets");

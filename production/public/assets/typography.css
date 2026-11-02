@@ -1,0 +1,154 @@
+/*
+ PACKTOOK V6.5.4 — unified marketing typography scale
+ Source of visual language: Customer App / app/style.css
+ Loaded after site.css, customer-brand.css, packing-comparison.css.
+ Applies only to Marketing, not Customer/Owner.
+*/
+:root{
+ --pt-type-body:16px;
+ --pt-type-small:13px;
+ --pt-type-nav:15px;
+ --pt-type-h1:clamp(36px,3.45vw,50px);
+ --pt-type-h2:clamp(28px,2.65vw,39px);
+ --pt-type-h3:clamp(19px,1.7vw,23px);
+ --pt-type-lead:17px;
+ --pt-type-line:1.72;
+}
+body{font-size:var(--pt-type-body);line-height:var(--pt-type-line)}
+.site-header .header-inner{min-height:78px}
+.site-header .main-nav>a{font-size:var(--pt-type-nav);line-height:1.5}
+.site-header .main-nav .nav-login{font-size:14px;padding:11px 17px}
+.wordmark .packtook-type strong{font-size:25px;line-height:1.1}
+.wordmark .packtook-type small{font-size:10px;letter-spacing:1.45px;line-height:1.35}
+.launch-banner-inner{font-size:13px;line-height:1.5}
+.launch-banner-inner strong{font-size:11px}
+.eyebrow{font-size:12px;letter-spacing:.1em}
+.hero{min-height:640px;padding-block:58px 76px}
+.hero h1{font-size:var(--pt-type-h1);font-weight:900;line-height:1.35;letter-spacing:-.035em;margin:22px 0 17px}
+.hero-lead{font-size:var(--pt-type-lead);line-height:1.85;max-width:560px}
+.eagle-hero strong{font-size:14px;line-height:1.55}
+.eagle-hero small{font-size:12px;line-height:1.6}
+.hero .eyebrow{font-size:12px;line-height:1.5;letter-spacing:.06em}
+.saas-pill{font-size:12px}
+.hero-actions{margin-top:25px}
+.hero-actions .button{font-size:15px;min-height:47px;padding:12px 19px}
+.hero-perks{font-size:13px;line-height:1.65;gap:11px 16px;margin-top:26px}
+.hero-disclaimer{font-size:12px;line-height:1.75}
+.packing-flow-legend{font-size:12px;line-height:1.6}
+.packing-flow-legend b{font-size:11px}
+.hero-workflow .visual-note{font-size:11px;line-height:1.6}
+.packing-flow-callout strong{font-size:12px;line-height:1.35}
+.packing-flow-callout small{font-size:11px;line-height:1.45}
+.section-heading h2{font-size:var(--pt-type-h2);line-height:1.42;letter-spacing:-.035em}
+.section-heading p{font-size:16px;line-height:1.82}
+.feature-card h3{font-size:var(--pt-type-h3);line-height:1.5}
+.feature-card p{font-size:15px;line-height:1.8}
+.feature-example span{font-size:12px}
+.feature-support h3{font-size:21px}
+.strip-grid strong{font-size:15px}
+.strip-grid small{font-size:12px;line-height:1.5}
+.step-number{font-size:26px}
+.step-number span{font-size:11px}
+.step-card h3{font-size:17px;line-height:1.55}
+.step-card p{font-size:14px;line-height:1.75}
+.workflow-note p{font-size:14px;line-height:1.75}
+.split-panel h2{font-size:var(--pt-type-h2);line-height:1.42;letter-spacing:-.035em}
+.split-panel>div>p{font-size:16px;line-height:1.8}
+.pill-list span{font-size:13px}
+.comparison-title{font-size:15px}
+.comparison-line strong{font-size:14px}
+.comparison-line small{font-size:12px;line-height:1.55}
+.price-notice p{font-size:13px;line-height:1.78}
+.comparison-highlights strong{font-size:15px}
+.comparison-highlights small{font-size:13px;line-height:1.55}
+.comparison-scroll-hint{font-size:13px}
+.comparison-table{font-size:13px;line-height:1.55}
+.comparison-table .comparison-row-label,
+.comparison-table tbody th{font-size:13px;line-height:1.5}
+.comparison-plan-title{font-size:16px}
+.comparison-plan-price{font-size:24px}
+.comparison-plan-unit{font-size:12px}
+.comparison-table tbody tr.comparison-key-row td,
+.comparison-table tbody tr.comparison-key-row th{font-size:14px}
+.comparison-state{font-size:12px;line-height:1.5}
+.comparison-section .pricing-footnote{font-size:13px;line-height:1.8}
+.faq-list summary{font-size:16px;line-height:1.6}
+.faq-answer{font-size:15px;line-height:1.85}
+.launch-card h2{font-size:var(--pt-type-h2);line-height:1.42;letter-spacing:-.035em}
+.launch-card p{font-size:16px;line-height:1.85}
+.launch-status{font-size:12px}
+.footer-brand p{font-size:14px;line-height:1.8}
+.footer-links{font-size:14px;line-height:1.5}
+.footer-links strong{font-size:15px}
+.footer-links>span{font-size:12px;line-height:1.7}
+.footer-bottom{font-size:12px}
+@media(max-width:1120px){
+ .site-header .main-nav>a{font-size:14px}
+ .site-header .main-nav{gap:16px}
+ .wordmark .packtook-type strong{font-size:23px}
+ .hero h1{font-size:clamp(35px,3.55vw,45px)}
+}
+@media(max-width:980px){
+ .hero{min-height:0;padding-block:51px 61px}
+ .hero h1{font-size:clamp(37px,5.3vw,49px)}
+ .section-heading h2{font-size:clamp(29px,3.6vw,39px)}
+ .site-header .main-nav>a{font-size:15px;line-height:1.5}
+ .section-heading p{font-size:15px}
+}
+@media(max-width:640px){
+ :root{
+  --pt-type-body:15px;
+  --pt-type-lead:15px;
+  --pt-type-h1:clamp(31px,8.3vw,39px);
+  --pt-type-h2:clamp(27px,6.9vw,33px);
+ }
+ .site-header .header-inner{min-height:70px}
+ .wordmark .packtook-type strong{font-size:21px}
+ .wordmark .packtook-type small{font-size:8px;letter-spacing:1.05px}
+ .launch-banner-inner{font-size:11px}
+ .launch-banner-inner strong{font-size:10px}
+ .hero{padding-block:37px 51px}
+ .hero h1{font-size:var(--pt-type-h1);line-height:1.35;letter-spacing:-.02em;margin:17px 0}
+ .hero-lead{font-size:var(--pt-type-lead);line-height:1.8}
+ .hero .eyebrow{font-size:10px}
+ .eagle-hero strong{font-size:12px}
+ .eagle-hero small{font-size:11px}
+ .hero-actions{margin-top:20px}
+ .hero-actions .button{font-size:14px;min-height:45px}
+ .hero-perks{font-size:12px;margin-top:19px}
+ .hero-disclaimer{font-size:11px}
+ .packing-flow-legend{font-size:11px}
+ .hero-workflow .visual-note{font-size:10px}
+ .section-heading h2{font-size:var(--pt-type-h2);line-height:1.43}
+ .section-heading p{font-size:15px;line-height:1.75}
+ .feature-card h3{font-size:20px}
+ .feature-card p{font-size:14px}
+ .feature-support h3{font-size:19px}
+ .strip-grid strong{font-size:12px}
+ .strip-grid small{font-size:11px}
+ .step-card h3{font-size:15px}
+ .step-card p{font-size:13px}
+ .split-panel h2{font-size:var(--pt-type-h2)}
+ .split-panel>div>p{font-size:14px}
+ .comparison-highlights strong{font-size:14px}
+ .comparison-highlights small{font-size:12px}
+ .comparison-plan-price{font-size:22px}
+ .comparison-table{font-size:12px}
+ .comparison-state{font-size:11px}
+ .faq-list summary{font-size:14px}
+ .faq-answer{font-size:13px}
+ .launch-card h2{font-size:var(--pt-type-h2)}
+ .launch-card p{font-size:14px}
+ .footer-links{font-size:13px}
+}
+
+/* Photographic marketing Hero: clean crop, no duplicate UI cards over the photo. */
+.hero-workflow .packing-stage{overflow:hidden}
+.hero-workflow .packing-scene{width:100%;height:auto;aspect-ratio:1150 / 716;object-fit:cover}
+html.packtook-photo-ready .hero-workflow .packing-stage{
+ border-color:rgba(84,168,239,.72);
+ box-shadow:0 20px 54px rgba(0,17,47,.44);
+}
+@media(max-width:640px){
+ .hero-workflow .packing-scene{aspect-ratio:1150 / 716}
+}

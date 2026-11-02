@@ -58,8 +58,8 @@ assert(brandCSS.includes(".eagle-tip.eagle-hero"),
 console.log("PASS: Customer colors, blue CTA, dark sidebar, light canvas and white cards");
 
 // Show a visual analog, never fake a real recording.
-assert(siteHTML.includes('packing-workstation.svg'));
-assert(siteHTML.includes("ภาพประกอบจำลองการใช้งาน"));
+assert(siteHTML.includes('src="/assets/packtook-hero-photo.webp?v=6.5.4.1"'));
+assert(siteHTML.includes("ภาพจำลองจาก Generative AI"));
 assert(siteHTML.includes('packing-comparison.css?v=6.5.3'));
 assert(siteHTML.includes('class="comparison-table"'));
 assert(siteHTML.includes('src="/assets/mascot-eagle.svg"'));
