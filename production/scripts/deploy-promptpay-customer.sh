@@ -5,6 +5,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)";cd "$ROOT"
 PROD="$1"
 [[ "$PROD" == "packtook-prod-01" ]] || { echo "ERROR: Production only" >&2;exit 1; }
 node scripts/verify.mjs "$PROD"
+node scripts/test-customer-cache-contract.mjs
 node scripts/test-auth-uid.mjs
 node scripts/test-customer-ui.mjs
 node scripts/test-navigation-troubleshooting.mjs
