@@ -28,9 +28,18 @@ async function signupAvailability(){
  }catch(e){return {enabled:false,accessEnabled:false,
   policyVersion:signupConfig.policyVersion,appCheckConfigured:appCheckReady};}
 }
+// V7.0: guarded QA status is callable only by the signed-in, invited UID
+// with valid App Check and a short-lived server window. No public discovery.
+async function qaAvailability(){
+ try{
+  const value=(await api("qaFreeStatus")({})).data;
+  return value?.enabled===true&&value.verified===true;
+ }catch{return false}
+}
 function isEligible(token){
  return token?.claims?.packtookProductionBeta===true||
-  token?.claims?.packtookPublicCustomer===true;
+  token?.claims?.packtookPublicCustomer===true||
+  token?.claims?.packtookControlledQa===true;
 }
 onIdTokenChanged(auth,async u=>{
  try{
@@ -38,6 +47,8 @@ onIdTokenChanged(auth,async u=>{
   // Beta sessions remain available. Public sessions require the independent
   // server-side access flag even if an older token still has a public claim.
   if(token?.claims?.packtookProductionBeta===true)user=u;
+  else if(token?.claims?.packtookControlledQa===true)
+   user=await qaAvailability()?u:null;
   else if(token?.claims?.packtookPublicCustomer===true){
    const status=await signupAvailability();user=status.accessEnabled===true?u:null;
   }else user=null;
@@ -83,6 +94,9 @@ window.PACKTOOK_FIREBASE={
  async login(email,password){const result=await signInWithEmailAndPassword(auth,email,password);
  if(!result.user.emailVerified){await sendEmailVerification(result.user);await signOut(auth);throw Error("ระบบส่งลิงก์ยืนยันอีเมลแล้ว โปรดตรวจกล่องจดหมายก่อนเข้าสู่ระบบ")}
  const token=await result.user.getIdTokenResult(true);
+ if(token.claims.packtookControlledQa===true&&token.claims.packtookProductionBeta!==true){
+  if(!await qaAvailability()){await signOut(auth);throw Error("สิทธิ์ทดสอบ V7.0 หมดอายุหรือถูกปิด โปรดติดต่อผู้ดูแล")}
+ }
  if(token.claims.packtookPublicCustomer===true&&token.claims.packtookProductionBeta!==true){
   const access=await signupAvailability();
   if(access.accessEnabled!==true){await signOut(auth);throw Error("การเข้าสู่ระบบ Free ยังไม่เปิดให้บริการ")}
