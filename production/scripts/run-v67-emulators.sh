@@ -24,10 +24,23 @@ if [[ ! -d functions/node_modules/firebase-admin || ! -d functions/node_modules/
 fi
 node --check scripts/test-free-auth-firestore-emulator.mjs
 node scripts/test-v67-emulator-safety.mjs
+node scripts/test-v67-native-realm.mjs
 
 echo "Starting DEMO-ONLY Auth and Firestore emulators for $DEMO."
 echo "No Customer Hosting, Functions Deployment, Auth/Firestore Production, Omise, or live signup is touched."
 echo "Test callable transport is mocked; Admin Auth/Firestore operations are REAL on local emulators only."
-firebase emulators:exec \
+# Save full Emulator output and repeat the final failure context for easier diagnosis.
+# This is a DEMO project only; no secrets or production customers should be in the log.
+LOG_FILE="$(mktemp /tmp/packtook-v67-emulator.XXXXXX.log)"
+echo "Demo emulator log: $LOG_FILE"
+if firebase emulators:exec \
   --project "$DEMO" --config firebase.json --only auth,firestore \
-  "PACKTOOK_QA_DEMO_PROJECT=$DEMO node scripts/test-free-auth-firestore-emulator.mjs"
+  "PACKTOOK_QA_DEMO_PROJECT=$DEMO node scripts/test-free-auth-firestore-emulator.mjs" \
+  2>&1 | tee "$LOG_FILE"; then
+  echo "PASS: Firebase Auth + Firestore Demo Emulator integration command completed."
+else
+  echo "V6.7 Demo Emulator failed. Final 70 log lines follow:" >&2
+  tail -n 70 "$LOG_FILE" >&2
+  echo "Full demo log saved at: $LOG_FILE" >&2
+  exit 1
+fi
