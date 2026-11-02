@@ -26,8 +26,20 @@ assert(upgraded.purchased===300&&upgraded.transferred===120&&upgraded.total===42
  "Active upgrade must preserve 120 existing plus 300 new credits");
 assert(!purchaseDecision(active,"Free",now).allowed,
  "Downgrade to Free must always be prohibited");
-assert(!purchaseDecision(active,"Starter",now).allowed,
- "Same-plan early repurchase with remaining credits must remain blocked");
+assert(purchaseDecision(active,"Starter",now).allowed&&
+ purchaseDecision(active,"Starter",now).kind==="renewal",
+ "Paid customers must be able to renew the same plan even with credits and 15 days remaining");
+const earlyRenewal=purchasedCreditBalance(active,"Starter",now);
+assert(earlyRenewal.purchased===50&&earlyRenewal.transferred===120&&earlyRenewal.total===170,
+ "Active Starter 120 + same-tier renewal 50 must yield 170 credits");
+const almostExpiry=wallet("Starter",iso(now+7*day),80);
+assert(purchaseDecision(almostExpiry,"Starter",now).allowed&&
+ purchasedCreditBalance(almostExpiry,"Starter",now).total===130,
+ "Exactly seven days before expiry: same-tier renewal should preserve 80 plus 50");
+const farFromExpiry=wallet("Basic",iso(now+28*day),200);
+assert(purchaseDecision(farFromExpiry,"Basic",now).allowed&&
+ purchasedCreditBalance(farFromExpiry,"Basic",now).total===500,
+ "Basic self-renewal must work far from expiry with remaining credits");
 const expired9=wallet("Starter",iso(now-9*day),120);
 assert(purchaseDecision(expired9,"Starter",now).allowed===true,
  "Expired same-tier renewal within 10 days must be allowed");
@@ -70,4 +82,4 @@ assert(purchasedCreditBalance(free,"Starter",now).total===65,
 const reserved=wallet("Starter",iso(now+day),30,{reserved:1});
 assert(!purchaseDecision(reserved,"Basic",now).allowed,
  "An in-flight video reservation must block package purchase");
-console.log("PASS: V6.4.1 no downgrade at any time; 10-day exact boundary; 120+300 upgrade; post-grace forfeiture; legacy and Free rules");
+console.log("PASS: V6.4.2 same-tier renewal anytime, 7-day boundary, no downgrade, 10-day carryover, 120+300 upgrade");
