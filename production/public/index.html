@@ -3,53 +3,179 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#07172a">
-  <meta name="description" content="PACKTOOK — ระบบบันทึกวิดีโอแพ็กสินค้าด้วยบาร์โค้ดสำหรับร้านค้าออนไลน์ กำลังเตรียมเปิดให้บริการ">
+  <meta name="theme-color" content="#08172a">
+  <meta name="description" content="PACKTOOK ระบบบันทึกวิดีโอแพ็กสินค้าออนไลน์ เริ่มและหยุดบันทึกด้วยการสแกนบาร์โค้ด ค้นหาวิดีโอย้อนหลังได้ เก็บไฟล์ในเครื่อง ทดลองใช้ฟรี 20 วิดีโอต่อเดือนเมื่อเปิดบริการ">
   <meta name="robots" content="noindex, nofollow">
-  <title>PACKTOOK | บันทึกทุกกล่อง มั่นใจทุกออเดอร์</title>
-  <link rel="stylesheet" href="/assets/site.css?v=6.0.0">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="th_TH">
+  <meta property="og:title" content="PACKTOOK — บันทึกทุกกล่อง มั่นใจทุกออเดอร์">
+  <meta property="og:description" content="บันทึกวิดีโอการแพ็กสินค้าด้วยบาร์โค้ด ค้นหาง่าย เก็บไฟล์ไว้ที่ร้าน เริ่มต้น Free 20 วิดีโอต่อเดือน (เตรียมเปิดบริการ)">
+  <meta name="color-scheme" content="dark">
+  <title>PACKTOOK | ระบบบันทึกวิดีโอแพ็กสินค้า สำหรับร้านค้าออนไลน์</title>
+  <link rel="icon" href="/assets/logo.svg" type="image/svg+xml">
+  <link rel="preload" href="/assets/mascot-eagle.svg" as="image" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/site.css?v=6.5.1">
+  <script src="/assets/site.js?v=6.5.1" defer></script>
 </head>
 <body>
-  <div class="ambient ambient-one" aria-hidden="true"></div><div class="ambient ambient-two" aria-hidden="true"></div>
-  <header class="header wrap">
-    <a class="wordmark" href="/" aria-label="PACKTOOK หน้าแรก"><img src="/assets/logo.svg" alt="" class="brand-emblem-logo"> PACK<span>TOOK</span></a>
-    <nav aria-label="เมนูเว็บไซต์"><a href="#features">จุดเด่น</a><a href="#workflow">วิธีทำงาน</a><a href="#packages">แพ็กเกจ</a></nav>
-    <a href="#launch" class="nav-pill">COMING SOON <span aria-hidden="true">↗</span></a>
+  <a class="skip-link" href="#content">ข้ามไปยังเนื้อหา</a>
+  <div class="ambient ambient-one" aria-hidden="true"></div>
+  <div class="ambient ambient-two" aria-hidden="true"></div>
+
+  <div class="launch-banner" role="status">
+    <div class="container launch-banner-inner">
+      <span class="pulse" aria-hidden="true"></span>
+      <span><strong>PRE-LAUNCH</strong> PACKTOOK กำลังเตรียมเปิดให้บริการ · ยังไม่เปิดรับสมัครหรือชำระเงินจริง</span>
+      <a href="#launch">ดูสถานะ <span aria-hidden="true">↗</span></a>
+    </div>
+  </div>
+
+  <header class="site-header" id="top">
+    <div class="container header-inner">
+      <a class="wordmark" href="#top" aria-label="PACKTOOK กลับด้านบน">
+        <img src="/assets/logo.svg" alt="" width="43" height="43">
+        <span>PACK<span class="brand-accent">TOOK</span><small>PACKING VIDEO RECORDER</small></span>
+      </a>
+      <button id="menuToggle" class="menu-toggle" type="button" aria-controls="mainNav" aria-expanded="false" aria-label="เปิดเมนูหลัก">
+        <span></span><span></span><span></span>
+      </button>
+      <nav class="main-nav" id="mainNav" aria-label="เมนูหลัก">
+        <a href="#features">จุดเด่น</a>
+        <a href="#how-it-works">วิธีใช้งาน</a>
+        <a href="#pricing">แพ็กเกจ</a>
+        <a href="#faq">คำถามที่พบบ่อย</a>
+        <a class="nav-login" href="https://packtook-prod-01-app.web.app/" target="_blank" rel="noopener noreferrer" aria-label="เข้าสู่ระบบสำหรับผู้ทดสอบ PACKTOOK เปิดแท็บใหม่">เข้าสู่ระบบ Beta <span aria-hidden="true">↗</span></a>
+      </nav>
+    </div>
   </header>
-  <main>
-    <section class="hero wrap" aria-labelledby="heroTitle">
-      <div class="hero-content">
-        <p class="eyebrow"><span class="live-dot"></span> PRODUCTION FOUNDATION · V6.0</p>
-        <h1 id="heroTitle">ทุกกล่องมีหลักฐาน<br><em>ทุกออเดอร์อุ่นใจ</em></h1>
-        <div class="marketing-eagle"><img src="/assets/mascot-eagle.svg" alt="มาสคอตนกอินทรี PACKTOOK"><span>สายตาอินทรี มั่นใจทุกออเดอร์</span></div>
-        <p class="intro">บันทึกขั้นตอนแพ็กสินค้าด้วยกล้องและการสแกนบาร์โค้ด ค้นหาวิดีโอย้อนหลังได้ง่าย เพื่อให้ทีมงานตรวจสอบการแพ็กได้อย่างมั่นใจ</p>
-        <div class="hero-actions"><a class="primary-btn" href="#workflow">ดูวิธีทำงาน <span aria-hidden="true">→</span></a><a class="ghost-btn" href="#launch">สถานะเปิดบริการ</a></div>
-        <p class="subtle">ขณะนี้อยู่ระหว่างเตรียมระบบ Production ยังไม่เปิดรับสมัครหรือชำระเงิน</p>
+
+  <main id="content">
+    <section class="hero container" aria-labelledby="heroTitle">
+      <div class="hero-copy">
+        <div class="eyebrow"><span class="eyebrow-mark" aria-hidden="true">✦</span> SMART PACKING, CLEAR EVIDENCE</div>
+        <h1 id="heroTitle">แพ็กทุกออเดอร์<br><span class="gradient-text">มีวิดีโอเป็นหลักฐาน</span></h1>
+        <p class="hero-lead">สแกนบาร์โค้ดเพื่อเริ่มบันทึก แพ็กสินค้าให้เสร็จ แล้วสแกนซ้ำเพื่อหยุด ระบบจัดเก็บวิดีโอลงเครื่องและช่วยค้นหาย้อนหลังได้ง่ายขึ้น</p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="#pricing">รู้จัก Free Plan <span aria-hidden="true">↗</span></a>
+          <a class="button button-ghost" href="#how-it-works"><span class="play-icon" aria-hidden="true">▷</span> ดูวิธีทำงาน</a>
+        </div>
+        <div class="hero-perks" aria-label="จุดเด่นที่สำคัญ">
+          <span><i aria-hidden="true">✓</i> 20 วิดีโอ/เดือนใน Free</span>
+          <span><i aria-hidden="true">✓</i> ไม่ต้องอัปโหลดวิดีโอ</span>
+          <span><i aria-hidden="true">✓</i> ใช้งานผ่านเว็บเบราว์เซอร์</span>
+        </div>
+        <p class="hero-disclaimer">* แพ็กเกจ Free จะสมัครได้เมื่อเปิดระบบสาธารณะ ขณะนี้เข้าสู่ระบบได้เฉพาะบัญชีที่ได้รับสิทธิ์ทดสอบ</p>
       </div>
-      <div class="preview" aria-label="ตัวอย่างกระบวนการบันทึกการแพ็ก">
-        <div class="preview-top"><span class="dots"><i></i><i></i><i></i></span><span>PACKTOOK / RECORDING</span><span class="mock-status">● LOCAL VIDEO</span></div>
-        <div class="preview-screen"><div class="box-object"><div class="box-lid"></div><div class="box-side"></div><div class="box-center">PT</div></div><span class="focus focus-tl"></span><span class="focus focus-tr"></span><span class="focus focus-bl"></span><span class="focus focus-br"></span><p>CAMERA PREVIEW</p></div>
-        <div class="preview-foot"><div><span class="mini-label">ORDER BARCODE</span><strong>ORDER-000128</strong></div><div><span class="mini-label">WORKFLOW</span><strong>SCAN → REC → SAVE</strong></div><span class="video-icon" aria-hidden="true">◉</span></div>
+
+      <div class="hero-visual" aria-label="ภาพจำลองหน้าระบบ PACKTOOK กำลังบันทึกออเดอร์">
+        <div class="visual-glow" aria-hidden="true"></div>
+        <div class="floating-sticker floating-sticker-top"><span aria-hidden="true">▣</span> บันทึกตาม Barcode</div>
+        <div class="app-window">
+          <div class="app-topbar"><span class="app-dots" aria-hidden="true"><i></i><i></i><i></i></span><span>PACKTOOK / PACKING</span><span class="app-top-status"><span class="status-dot"></span> CAMERA READY</span></div>
+          <div class="app-body">
+            <div class="app-sidebar" aria-hidden="true"><div class="app-sidebar-mark">P</div><div class="side-icon selected">◉</div><div class="side-icon">▤</div><div class="side-icon">◇</div><div class="side-icon">⚙</div></div>
+            <div class="app-workspace">
+              <div class="workspace-heading"><div><small>PACKING WORKSPACE</small><strong>กำลังบันทึกวิดีโอ</strong></div><div class="rec-tag"><span></span> REC</div></div>
+              <div class="camera-display">
+                <div class="cam-cross cam-tl" aria-hidden="true"></div><div class="cam-cross cam-tr" aria-hidden="true"></div>
+                <div class="cam-cross cam-bl" aria-hidden="true"></div><div class="cam-cross cam-br" aria-hidden="true"></div>
+                <div class="parcel-illustration" aria-hidden="true"><div class="parcel-lid"></div><div class="parcel-side"></div><div class="parcel-main"><span>PT</span></div></div>
+                <div class="camera-caption"><span class="video-led" aria-hidden="true"></span> CAM 01 <span>720P</span></div>
+              </div>
+              <div class="scan-row"><div class="scan-symbol" aria-hidden="true">⌗</div><div><small>ORDER BARCODE</small><strong>ORD-2026-00128</strong></div><span class="scan-tag">กำลังบันทึก</span></div>
+              <div class="workspace-stats"><div><small>แพ็กเกจ</small><strong>FREE</strong></div><div><small>เครดิตคงเหลือ</small><strong>20</strong></div><div><small>โฟลเดอร์วิดีโอ</small><strong>LOCAL ✓</strong></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="floating-sticker floating-sticker-bottom"><span class="mini-check" aria-hidden="true">✓</span><span><strong>จัดเก็บไว้ในเครื่อง</strong><small>LOCAL VIDEO STORAGE</small></span></div>
+        <p class="visual-note">ภาพจำลองเพื่ออธิบายการทำงาน ไม่ใช่ภาพสถานะการบันทึกจริง</p>
       </div>
     </section>
-    <div class="trust-strip"><div class="wrap strip-inner"><span>BARCODE FIRST</span><b>×</b><span>LOCAL VIDEO</span><b>×</b><span>CREDIT CONTROL</span><b>×</b><span>ORDER HISTORY</span></div></div>
-    <section id="features" class="section wrap"><div class="section-head"><p class="eyebrow">WHY PACKTOOK</p><h2>ออกแบบมาเพื่อทีมแพ็กสินค้าจริง</h2><p>ลดขั้นตอนที่ไม่จำเป็น ให้ทีมงานโฟกัสที่ความถูกต้องของออเดอร์</p></div>
-      <div class="features">
-        <article class="feature-card"><span class="feature-symbol">⌗</span><h3>สแกนเพื่อบันทึก</h3><p>ใช้บาร์โค้ดออเดอร์เริ่มและหยุดบันทึก ช่วยให้จัดการวิดีโอแต่ละรายการได้เป็นระบบ</p></article>
-        <article class="feature-card"><span class="feature-symbol">▣</span><h3>บันทึกลงเครื่อง</h3><p>ไฟล์วิดีโออยู่ในโฟลเดอร์ที่ร้านเลือกเอง ไม่ต้องอัปโหลดไฟล์วิดีโอทุกออเดอร์ขึ้นคลาวด์</p></article>
-        <article class="feature-card"><span class="feature-symbol">◎</span><h3>ตรวจสอบย้อนหลัง</h3><p>ค้นหาวิดีโอตามข้อมูลออเดอร์และวันที่ได้บนเบราว์เซอร์ที่บันทึกประวัติไว้</p></article>
+
+    <section class="benefit-strip" aria-label="จุดเด่นระบบ PACKTOOK">
+      <div class="container strip-grid">
+        <div><span aria-hidden="true">⌗</span><strong>Barcode-first</strong><small>สแกนเพื่อควบคุมการบันทึก</small></div>
+        <div><span aria-hidden="true">▣</span><strong>Local Storage</strong><small>เก็บไฟล์ในเครื่องที่เลือก</small></div>
+        <div><span aria-hidden="true">◎</span><strong>Order History</strong><small>ค้นหาวิดีโอย้อนหลัง</small></div>
+        <div><span aria-hidden="true">✧</span><strong>Credit Control</strong><small>ตรวจสอบสิทธิ์ก่อนบันทึก</small></div>
       </div>
     </section>
-    <section id="workflow" class="section wrap"><div class="section-head"><p class="eyebrow">HOW IT WORKS</p><h2>สามขั้นตอนในงานแพ็กประจำวัน</h2></div>
-      <div class="steps"><article><span>01</span><h3>เลือกโฟลเดอร์และเปิดกล้อง</h3><p>เตรียมกล้องและพื้นที่บันทึกบนเครื่องทำงาน</p></article><article><span>02</span><h3>สแกน Barcode เพื่อเริ่ม REC</h3><p>เริ่มบันทึกเมื่อระบบอนุญาตเครดิตและอุปกรณ์</p></article><article><span>03</span><h3>สแกนซ้ำเพื่อจบและบันทึก</h3><p>ตรวจสอบการบันทึกเสร็จก่อนเริ่มออเดอร์ถัดไป</p></article></div>
-      <p class="info-note">ข้อควรทราบ: วิดีโอเก็บในเครื่องของผู้ใช้งาน และประวัติในเบราว์เซอร์อาจไม่ซิงก์ไปยังคอมพิวเตอร์เครื่องอื่น จึงควรมีระบบสำรองไฟล์ของร้านเอง</p>
+
+    <section id="features" class="section container">
+      <div class="section-heading centered"><div class="eyebrow">WHY PACKTOOK</div><h2>ไม่ใช่แค่การอัดวิดีโอ<br><span>แต่คือการทำให้การแพ็กมีหลักฐาน</span></h2><p>ช่วยให้ร้านค้าออนไลน์จัดการวิดีโอของแต่ละออเดอร์ได้เป็นระบบ โดยไม่ต้องเปิดโปรแกรมซับซ้อน</p></div>
+      <div class="feature-grid">
+        <article class="feature-card feature-large"><div class="icon-tile tile-blue" aria-hidden="true">⌗</div><h3>หนึ่ง Barcode<br>หนึ่งกระบวนการแพ็ก</h3><p>สแกนครั้งแรกเพื่อเริ่ม REC และสแกนบาร์โค้ดเดิมอีกครั้งเพื่อหยุด ลดขั้นตอนกดปุ่มระหว่างแพ็ก</p><div class="feature-example" aria-hidden="true"><span>SCAN</span><b>→</b><span class="active">REC</span><b>→</b><span>SCAN</span><b>→</b><span class="complete">SAVE ✓</span></div></article>
+        <article class="feature-card"><div class="icon-tile tile-mint" aria-hidden="true">▣</div><h3>ไฟล์อยู่ในมือร้าน</h3><p>บันทึกวิดีโอในโฟลเดอร์บนอุปกรณ์ของร้าน ไม่ต้องรออัปโหลดไฟล์วิดีโอทุกออเดอร์ขึ้นคลาวด์</p></article>
+        <article class="feature-card"><div class="icon-tile tile-purple" aria-hidden="true">▤</div><h3>ค้นหาเพื่อตรวจสอบย้อนหลัง</h3><p>ดูประวัติ เลือกวันที่ และค้นหาด้วย Barcode จากเครื่องหรือเบราว์เซอร์ที่ใช้บันทึก</p></article>
+        <article class="feature-card"><div class="icon-tile tile-amber" aria-hidden="true">◇</div><h3>ใช้งานตามขนาดธุรกิจ</h3><p>เริ่มด้วย Free 20 วิดีโอต่อเดือน และเลือกแพ็กเกจเครดิตที่เหมาะสมเมื่อเปิดให้ชำระเงินจริง</p></article>
+        <article class="feature-card feature-support"><img src="/assets/mascot-eagle.svg" alt="" loading="lazy" width="80" height="80"><div><h3>มีคู่มือช่วยทุกขั้นตอน</h3><p>ภายในแอปมีหน้า Help และ Troubleshooting ที่ค้นหาวิธีแก้ปัญหาพื้นฐานได้ด้วยตัวเอง</p></div></article>
+      </div>
     </section>
-    <section id="packages" class="section wrap"><div class="section-head"><p class="eyebrow">SIMPLE PACKAGES</p><h2>แพ็กเกจตามขนาดร้านค้า</h2><p>รายละเอียดสิทธิ์และราคาอย่างเป็นทางการจะแจ้งก่อนเปิดให้บริการ</p></div>
-      <div class="plans"><article class="plan"><small>TRY</small><h3>Free</h3><p>สำหรับทดลองขั้นตอนการแพ็กด้วยวิดีโอ</p><div class="plan-foot">เตรียมเปิดบริการ</div></article><article class="plan featured"><small>GROW</small><h3>Starter</h3><p>สำหรับร้านค้าออนไลน์ที่เริ่มมีออเดอร์ประจำ</p><div class="plan-foot">เตรียมเปิดบริการ</div></article><article class="plan"><small>SCALE</small><h3>Pro</h3><p>สำหรับทีมแพ็กที่ต้องการขยายการใช้งาน</p><div class="plan-foot">เตรียมเปิดบริการ</div></article></div>
+
+    <section id="how-it-works" class="section how-section">
+      <div class="container">
+        <div class="section-heading"><div class="eyebrow">HOW IT WORKS</div><h2>เริ่มบันทึกง่าย<br><span>ใน 4 ขั้นตอน</span></h2><p>ออกแบบให้เข้ากับขั้นตอนการทำงานของพนักงานแพ็กสินค้า</p></div>
+        <div class="step-grid">
+          <article class="step-card"><div class="step-number">01<span> / READY</span></div><div class="step-illustration step-camera" aria-hidden="true">▣</div><h3>เลือกโฟลเดอร์และเปิดกล้อง</h3><p>กำหนดพื้นที่จัดเก็บบนคอมพิวเตอร์และเปิดภาพ Preview เพื่อเตรียมบันทึก</p></article>
+          <article class="step-card"><div class="step-number">02<span> / START</span></div><div class="step-illustration" aria-hidden="true">⌗</div><h3>สแกนบาร์โค้ดออเดอร์</h3><p>ระบบตรวจสอบสิทธิ์ใช้งานและเริ่มบันทึกวิดีโอตาม Barcode ที่สแกน</p></article>
+          <article class="step-card"><div class="step-number">03<span> / STOP</span></div><div class="step-illustration" aria-hidden="true"><span class="step-rec">● REC</span></div><h3>แพ็กเสร็จ แล้วสแกนซ้ำ</h3><p>สแกนบาร์โค้ดเดิมอีกครั้งเพื่อหยุดบันทึก และรอให้ไฟล์ถูกบันทึกสำเร็จ</p></article>
+          <article class="step-card"><div class="step-number">04<span> / REVIEW</span></div><div class="step-illustration" aria-hidden="true">▷</div><h3>ค้นหาและเปิดวิดีโอย้อนหลัง</h3><p>เข้าหน้า Dashboard เพื่อเลือกวันที่หรือ Barcode แล้วตรวจสอบคลิปที่บันทึกไว้</p></article>
+        </div>
+        <div class="workflow-note"><span aria-hidden="true">ⓘ</span><p><strong>ข้อควรทราบ:</strong> วิดีโอบันทึกไว้ในเครื่องที่ใช้งาน ประวัติและไฟล์อาจไม่ย้ายตามบัญชีเมื่อเปลี่ยนอุปกรณ์ ร้านควรจัดการสิทธิ์โฟลเดอร์และสำรองข้อมูลด้วยตนเอง</p></div>
+      </div>
     </section>
-    <section id="launch" class="launch wrap"><span class="eyebrow">LAUNCH STATUS</span><h2>กำลังเตรียมเปิด PACKTOOK อย่างเป็นทางการ</h2><p>เรากำลังตรวจสอบระบบบันทึกวิดีโอ ความปลอดภัย การเรียกคืนเครดิต และการชำระเงินก่อนเปิดใช้งานจริง</p><span class="launch-state">● REGISTRATION & PAYMENT NOT OPEN</span></section>
+
+    <section id="who-its-for" class="section container">
+      <div class="split-panel">
+        <div><div class="eyebrow">BUILT FOR ONLINE SELLERS</div><h2>ร้านเล็กก็เริ่มได้<br>ทีมแพ็กก็ใช้งานง่าย</h2><p>เหมาะกับร้านค้าที่ต้องการดูขั้นตอนการแพ็กย้อนหลัง ไม่ว่าจะขายผ่าน Shopee, Lazada, TikTok Shop หรือช่องทางอื่นที่มีบาร์โค้ดออเดอร์</p><div class="pill-list"><span>ร้านค้าออนไลน์</span><span>ทีมแพ็กสินค้า</span><span>ร้านอะไหล่และอุปกรณ์</span><span>งานคลังสินค้า</span></div></div>
+        <div class="split-panel-side"><div class="comparison-title">PACKTOOK ทำอะไรให้ทีมแพ็ก?</div><div class="comparison-line"><span class="comparison-icon">✓</span><p><strong>ออเดอร์มีตัวอ้างอิง</strong><small>Barcode เชื่อมกับประวัติวิดีโอ</small></p></div><div class="comparison-line"><span class="comparison-icon">✓</span><p><strong>ไม่ต้องย้ายไฟล์ขึ้นคลาวด์ทุกครั้ง</strong><small>เลือกบันทึกลงโฟลเดอร์ในเครื่อง</small></p></div><div class="comparison-line"><span class="comparison-icon">✓</span><p><strong>ย้อนดูเมื่อจำเป็น</strong><small>เปิดประวัติผ่าน Dashboard ของอุปกรณ์</small></p></div><div class="comparison-line"><span class="comparison-icon">✓</span><p><strong>ใช้ผ่านเว็บแอป</strong><small>ไม่ต้องติดตั้งโปรแกรมอัดวิดีโอแยกต่างหาก</small></p></div></div>
+      </div>
+    </section>
+
+    <section id="pricing" class="section pricing-section">
+      <div class="container">
+        <div class="section-heading centered"><div class="eyebrow">SIMPLE PRICING</div><h2>เริ่มฟรี แล้วค่อยเติบโต<br><span>ไปกับจำนวนออเดอร์</span></h2><p>Free 20 วิดีโอต่อเดือนสำหรับเริ่มต้น และมีแพ็กเกจรองรับปริมาณการใช้งานที่มากขึ้น</p></div>
+        <div class="price-notice"><span aria-hidden="true">ⓘ</span><p>แสดงราคาและสิทธิ์จาก <strong>ระบบทดสอบ ณ V6.5</strong> เพื่อประกอบการวางแผนเท่านั้น ยังไม่ใช่ข้อเสนอขายจริง ราคาและเงื่อนไขอาจเปลี่ยนก่อนเปิดบริการ และยังไม่รับชำระเงินจริง</p></div>
+        <div class="pricing-grid">
+          <article class="price-card highlight"><span class="plan-label">START FOR FREE</span><h3>Free</h3><p class="price-description">ทดลองกระบวนการแพ็กแบบมีหลักฐาน</p><div class="price"><b>฿0</b><small>ใช้ฟรี</small></div><div class="plan-divider"></div><div class="plan-unit"><strong>20</strong><span>วิดีโอต่อเดือน</span></div><ul><li>ลงทะเบียน 1 อุปกรณ์</li><li>บันทึกวิดีโอในเครื่อง</li><li>ค้นหาวิดีโอย้อนหลัง</li><li>คู่มือและ Troubleshooting</li></ul><span class="plan-state">เตรียมเปิดรับสมัคร</span></article>
+          <article class="price-card"><span class="plan-label">FOR SMALL SHOPS</span><h3>Starter</h3><p class="price-description">ร้านที่มีออเดอร์ประจำเพิ่มขึ้น</p><div class="price"><b>฿199</b><small>ต่อการซื้อแพ็กเกจ</small></div><div class="plan-divider"></div><div class="plan-unit"><strong>50</strong><span>เครดิตวิดีโอ</span></div><ul><li>ลงทะเบียน 1 อุปกรณ์</li><li>ใช้ระบบบันทึกด้วย Barcode</li><li>จัดการประวัติวิดีโอ</li><li>ตามเงื่อนไขอายุแพ็กเกจ</li></ul><span class="plan-state">ยังไม่เปิดรับชำระ</span></article>
+          <article class="price-card"><span class="plan-label">FOR GROWING SHOPS</span><h3>Basic</h3><p class="price-description">สำหรับร้านที่แพ็กสินค้าต่อเนื่อง</p><div class="price"><b>฿299</b><small>ต่อการซื้อแพ็กเกจ</small></div><div class="plan-divider"></div><div class="plan-unit"><strong>300</strong><span>เครดิตวิดีโอ</span></div><ul><li>ลงทะเบียน 1 อุปกรณ์</li><li>ใช้ระบบบันทึกด้วย Barcode</li><li>จัดการประวัติวิดีโอ</li><li>ตามเงื่อนไขอายุแพ็กเกจ</li></ul><span class="plan-state">ยังไม่เปิดรับชำระ</span></article>
+          <article class="price-card"><span class="plan-label">FOR TEAMS</span><h3>Growth</h3><p class="price-description">ร้านที่ต้องการรองรับหลายจุดแพ็ก</p><div class="price"><b>฿599</b><small>ต่อการซื้อแพ็กเกจ</small></div><div class="plan-divider"></div><div class="plan-unit"><strong>1,500</strong><span>เครดิตวิดีโอ</span></div><ul><li>ลงทะเบียนได้ 3 อุปกรณ์</li><li>ควบคุมเครดิตจากบัญชี</li><li>จัดการประวัติวิดีโอ</li><li>ตามเงื่อนไขอายุแพ็กเกจ</li></ul><span class="plan-state">ยังไม่เปิดรับชำระ</span></article>
+          <article class="price-card"><span class="plan-label">FOR OPERATIONS</span><h3>Business</h3><p class="price-description">รองรับงานแพ็กปริมาณมาก</p><div class="price"><b>฿1,290</b><small>ต่อการซื้อแพ็กเกจ</small></div><div class="plan-divider"></div><div class="plan-unit"><strong>5,000</strong><span>เครดิตวิดีโอ</span></div><ul><li>ลงทะเบียนได้ 5 อุปกรณ์</li><li>ควบคุมเครดิตจากบัญชี</li><li>จัดการประวัติวิดีโอ</li><li>ตามเงื่อนไขอายุแพ็กเกจ</li></ul><span class="plan-state">ยังไม่เปิดรับชำระ</span></article>
+          <article class="price-card"><span class="plan-label">MAXIMUM FLEXIBILITY</span><h3>Pro</h3><p class="price-description">สำหรับทีมที่ต้องการบันทึกต่อเนื่อง</p><div class="price"><b>฿1,990</b><small>ต่อการซื้อแพ็กเกจ</small></div><div class="plan-divider"></div><div class="plan-unit"><strong>∞</strong><span>วิดีโอในช่วงสิทธิ์</span></div><ul><li>ลงทะเบียนได้ 10 อุปกรณ์</li><li>ใช้ระบบบันทึกด้วย Barcode</li><li>จัดการประวัติวิดีโอ</li><li>ตามเงื่อนไขอายุแพ็กเกจ</li></ul><span class="plan-state">ยังไม่เปิดรับชำระ</span></article>
+        </div>
+        <p class="pricing-footnote">แพ็กเกจชำระเงินในระบบทดสอบมีช่วงสิทธิ์ใช้งาน 30 วัน เครดิตที่ไม่ได้ใช้มีเงื่อนไขยกยอดเมื่อซื้อแพ็กเกจต่อและการเก็บเครดิตหลังหมดอายุ 10 วัน ทั้งหมดรอการยืนยันเป็นเงื่อนไขบริการจริง</p>
+      </div>
+    </section>
+
+    <section id="faq" class="section container">
+      <div class="section-heading centered"><div class="eyebrow">FREQUENTLY ASKED QUESTIONS</div><h2>คำถามที่ลูกค้า<br><span>อยากรู้ก่อนเริ่มใช้งาน</span></h2></div>
+      <div class="faq-list">
+        <details><summary>PACKTOOK คืออะไร และเหมาะกับใคร?<span aria-hidden="true">＋</span></summary><div class="faq-answer">PACKTOOK เป็นเว็บแอปสำหรับบันทึกวิดีโอขั้นตอนแพ็กสินค้าโดยใช้ Barcode เป็นตัวอ้างอิง เหมาะกับร้านค้าออนไลน์และทีมแพ็กที่ต้องการเปิดดูวิดีโอย้อนหลังตามออเดอร์</div></details>
+        <details><summary>Free ใช้ได้กี่วิดีโอ?<span aria-hidden="true">＋</span></summary><div class="faq-answer">แพ็กเกจ Free ตามระบบทดสอบมีสิทธิ์ 20 วิดีโอต่อเดือน และลงทะเบียนอุปกรณ์ได้ 1 เครื่อง โดยต้องรอการเปิดสมัครสมาชิกสาธารณะก่อน</div></details>
+        <details><summary>วิดีโอเก็บไว้ที่ไหน?<span aria-hidden="true">＋</span></summary><div class="faq-answer">ไฟล์วิดีโอถูกบันทึกลงโฟลเดอร์ในเครื่องที่ผู้ใช้เลือกเอง ไม่ได้อัปโหลดไฟล์วิดีโอขึ้นคลาวด์ PACKTOOK โดยอัตโนมัติ ควรสำรองไฟล์ตามนโยบายของร้าน</div></details>
+        <details><summary>เปลี่ยนคอมพิวเตอร์แล้ววิดีโอเดิมจะตามไปไหม?<span aria-hidden="true">＋</span></summary><div class="faq-answer">ไม่โดยอัตโนมัติ เพราะไฟล์วิดีโอและประวัติบางส่วนขึ้นอยู่กับเครื่องและเบราว์เซอร์ที่บันทึก ควรสำรองไฟล์จากเครื่องเดิมก่อนเปลี่ยนอุปกรณ์</div></details>
+        <details><summary>สแกน Barcode แล้วระบบทำงานอย่างไร?<span aria-hidden="true">＋</span></summary><div class="faq-answer">หลังเลือกโฟลเดอร์และเปิดกล้อง สแกน Barcode เพื่อเริ่ม REC เมื่อแพ็กเสร็จให้สแกน Barcode เดิมอีกครั้งเพื่อหยุด และรอให้ไฟล์บันทึกสำเร็จก่อนออเดอร์ถัดไป</div></details>
+        <details><summary>มีวิธีแก้ปัญหากล้องหรือบันทึกไม่ได้ไหม?<span aria-hidden="true">＋</span></summary><div class="faq-answer">ภายใน PACKTOOK มีแท็บ Help และ Troubleshooting ให้ค้นหาวิธีตรวจสอบกล้อง Barcode โฟลเดอร์ ไฟล์วิดีโอ เครดิต และอุปกรณ์ได้ด้วยตนเอง</div></details>
+        <details><summary>ตอนนี้สมัครและชำระเงินจริงได้หรือยัง?<span aria-hidden="true">＋</span></summary><div class="faq-answer">ยังไม่ได้ ขณะนี้ PACKTOOK อยู่ในช่วง Production Beta สำหรับผู้ได้รับสิทธิ์ทดสอบ ระบบ QR ที่ใช้ในช่วงทดสอบเป็น Omise TEST Mode และไม่มีการรับเงินจริง</div></details>
+      </div>
+    </section>
+
+    <section id="launch" class="launch-section container">
+      <div class="launch-card">
+        <div class="launch-copy"><div class="eyebrow">COMING SOON · PACKTOOK</div><h2>ให้ทุกออเดอร์<br>มีวิดีโอเป็นหลักฐาน</h2><p>เรากำลังตรวจสอบการสมัครสมาชิก Free ความปลอดภัย และระบบชำระเงินก่อนเปิดให้ร้านค้าทั่วไปใช้งาน</p><div class="launch-actions"><a class="button button-primary" href="#pricing">ดูแพ็กเกจ <span aria-hidden="true">↗</span></a><a class="button button-outline" href="https://packtook-prod-01-app.web.app/" target="_blank" rel="noopener noreferrer">เข้าสู่ระบบสำหรับผู้ทดสอบ <span aria-hidden="true">↗</span></a></div><div class="launch-status"><span class="pulse"></span> REGISTRATION &amp; PAYMENT NOT OPEN</div></div>
+        <img class="launch-mascot" src="/assets/mascot-eagle.svg" loading="lazy" width="260" height="260" alt="มาสคอตนกอินทรี PACKTOOK">
+      </div>
+    </section>
   </main>
-  <footer class="footer"><div class="wrap footer-inner"><div><strong>PACK<span>TOOK</span></strong><p>บันทึกการแพ็กให้เป็นระบบ</p></div><div class="footer-right"><span>© <span id="year">2026</span> PACKTOOK</span><span>Pre-launch · No live payments</span></div></div></footer>
-  <script src="/assets/site.js" defer></script>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div class="footer-brand"><a class="wordmark" href="#top"><img src="/assets/logo.svg" alt="" width="39" height="39"><span>PACK<span class="brand-accent">TOOK</span><small>PACKING VIDEO RECORDER</small></span></a><p>บันทึกทุกกล่อง มั่นใจทุกออเดอร์<br>เว็บแอปบันทึกวิดีโอแพ็กสินค้าสำหรับร้านค้าออนไลน์</p></div>
+      <div class="footer-links"><strong>สำรวจ PACKTOOK</strong><a href="#features">จุดเด่นของระบบ</a><a href="#how-it-works">วิธีใช้งาน</a><a href="#pricing">แพ็กเกจ</a><a href="#faq">คำถามที่พบบ่อย</a></div>
+      <div class="footer-links"><strong>การใช้งาน</strong><a href="https://packtook-prod-01-app.web.app/" target="_blank" rel="noopener noreferrer">เข้าสู่ระบบ Beta</a><span>เอกสารเงื่อนไขและความเป็นส่วนตัวอยู่ระหว่างตรวจสอบก่อนเปิดรับสมัคร</span></div>
+    </div>
+    <div class="container footer-bottom"><span>© <span id="year">2026</span> PACKTOOK. All rights reserved.</span><span>Pre-launch • No public registration • No live payment</span></div>
+  </footer>
 </body>
 </html>
