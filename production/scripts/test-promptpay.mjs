@@ -45,11 +45,28 @@ function merge(path,patch){
  documents.set(path,next);
 }
 function collection(path){
- return {doc(id){return ref(path+"/"+(id||ticketId))},
-  orderBy(){return this},limit(n){this._limit=n;return this},
-  startAfter(){return this},
-  async get(){let docs=[...documents.keys()].filter(k=>k.startsWith(path+"/")&&k.split("/").length===path.split("/").length+1).map(snapshot);
-   docs.sort((a,b)=>b.id.localeCompare(a.id));return {docs:docs.slice(0,this._limit||100),size:docs.length,empty:docs.length===0}}};
+ const q={_limit:100,_filter:null,_sort:null,_after:null,
+  doc(id){return ref(path+"/"+(id||ticketId))},
+  where(field,op,value){this._filter={field,op,value};return this},
+  orderBy(field,direction="asc"){this._sort={field,direction};return this},
+  limit(n){this._limit=n;return this},
+  startAfter(doc){this._after=doc;return this},
+  async get(){
+   let rows=[...documents.keys()].filter(k=>k.startsWith(path+"/")&&k.split("/").length===path.split("/").length+1).map(snapshot);
+   if(this._filter)rows=rows.filter(d=>this._filter.op==="<="&&
+     typeof d.data()?.[this._filter.field]==="string"&&d.data()[this._filter.field]<=this._filter.value);
+   if(this._sort)rows.sort((a,b)=>{
+    const x=a.data()?.[this._sort.field]||"",y=b.data()?.[this._sort.field]||"";
+    const cmp=x.localeCompare(y)||a.id.localeCompare(b.id);
+    return this._sort.direction==="desc"?-cmp:cmp;
+   });
+   else rows.sort((a,b)=>b.id.localeCompare(a.id));
+   if(this._after){const pos=rows.findIndex(d=>d.id===this._after.id);rows=pos<0?[]:rows.slice(pos+1)}
+   rows=rows.slice(0,this._limit);
+   return {docs:rows,size:rows.length,empty:rows.length===0};
+  }
+ };
+ return q;
 }
 const db={collection,async runTransaction(fn){
  const pending=[];
@@ -67,6 +84,7 @@ const secretValue=new Map([["PACKTOOK_OMISE_TEST_SECRET_KEY","skey_test_mock_onl
 const mockedRequire=name=>{
  if(name==="firebase-admin")return admin;
  if(name==="firebase-functions/v2/https")return {onCall:(_opt,fn)=>fn,onRequest:(_opt,fn)=>fn,HttpsError};
+ if(name==="firebase-functions/v2/scheduler")return {onSchedule:(_opts,fn)=>fn};
  if(name==="firebase-functions/params")return {defineSecret:name=>({value:()=>secretValue.get(name)})};
  if(name==="node:crypto")return crypto;
  throw Error("Unexpected import "+name);
@@ -200,4 +218,33 @@ for(const terminal of ["expired","failed"]){
   "Repeated terminal check must not grant credits");
 }
 
-console.log("PASS: V6.4 Omise QR Test Paid/Failed/Expired, Webhook signature, evidence, idempotency, credit safety and alert");
+// Scheduled credit forfeiture is verified against live-shaped Firestore mock.
+const cutoff=new Date(Date.now()-11*86400000).toISOString();
+const withinGrace=new Date(Date.now()-5*86400000).toISOString();
+documents.set("accounts/expiredWalletForfeit",{
+ plan:"Starter",planExpiresAt:cutoff,creditWalletV1:true,
+ creditWalletRemaining:23,used:0,reserved:0
+});
+documents.set("accounts/expiredWalletRetain",{
+ plan:"Starter",planExpiresAt:withinGrace,creditWalletV1:true,
+ creditWalletRemaining:47,used:0,reserved:0
+});
+documents.set("accounts/expiredWalletReserved",{
+ plan:"Starter",planExpiresAt:cutoff,creditWalletV1:true,
+ creditWalletRemaining:55,used:0,reserved:1
+});
+await api.promptpayExpireUnusedCredits();
+assert(documents.get("accounts/expiredWalletForfeit").creditWalletRemaining===0&&
+ documents.get("accounts/expiredWalletForfeit").expiredCreditsForfeited===23,
+ "Daily expiry job must reset unused paid wallet after ten days");
+assert(documents.get("accounts/expiredWalletRetain").creditWalletRemaining===47,
+ "Wallet within 10-day grace must remain intact");
+assert(documents.get("accounts/expiredWalletReserved").creditWalletRemaining===55,
+ "Expiry sweep must never clear wallet while a reservation is outstanding");
+const forfeitureLogs=[...documents.keys()].filter(k=>k.startsWith("accounts/expiredWalletForfeit/audit/"));
+assert(forfeitureLogs.length===1&&documents.get(forfeitureLogs[0]).action==="expired_wallet_10_day_forfeiture",
+ "Credit forfeiture must have an audit record");
+await api.promptpayExpireUnusedCredits();
+assert([...documents.keys()].filter(k=>k.startsWith("accounts/expiredWalletForfeit/audit/")).length===1,
+ "Repeated daily expiry job must not reset or audit twice");
+console.log("PASS: V6.4.1 Omise QR Paid/Failed/Expired, signed webhook, verified evidence, 10-day wallet forfeiture and idempotency");
