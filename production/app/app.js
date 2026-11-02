@@ -1167,6 +1167,14 @@ async function refreshPublicSignupEntry(){
  $('publicSignupEntry').hidden=!canRegister;
  $('betaSignupOnly').hidden=canRegister;
  if(canRegister)$('trialBtn').hidden=true;
+ // A Marketing link ending in #signup opens the registration pane ONLY after
+ // server-side status, policy version and client App Check have all passed.
+ // Prelaunch/Beta users are unaffected: no public form when the gate is closed.
+ if(canRegister&&window.location.hash==="#signup"&&!remoteUser?.uid&&
+    $('loginPage').hidden!==true){
+  showPublicSignupPane("register");
+  $('signupEmail').focus();
+ }
 }
 $('openPublicSignup').addEventListener('click',()=>{
  $('signupFeedback').textContent="";showPublicSignupPane("register");
