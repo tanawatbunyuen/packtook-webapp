@@ -7,6 +7,7 @@ PROD="$1"
 node scripts/verify.mjs "$PROD"
 node scripts/test-promptpay.mjs
 node scripts/test-package-policy.mjs
+node scripts/test-renewal-notice.mjs
 node --check payment-functions/index.js
 [[ -d payment-functions/node_modules ]] || { echo "ERROR: Run prepare-promptpay.sh first." >&2;exit 1; }
 node - "$PROD" <<'JS'
