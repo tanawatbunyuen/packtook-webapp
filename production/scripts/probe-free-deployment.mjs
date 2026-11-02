@@ -38,6 +38,8 @@ export function decide(report,{expectV66=false}={}){
  if(report.status.publicSignupEnabled===true||report.status.publicAccessEnabled===true)
   reasons.push("UNEXPECTED_PUBLIC_FLAG_ENABLED");
  if(!report.status.reachable)reasons.push("PUBLIC_STATUS_CALLABLE_NOT_DEPLOYED_OR_UNVERIFIED");
+ if(report.status.reachable&&(report.status.freeVideosPerMonth!==20||report.status.freeDevices!==1||report.status.policyVersion!=="2026-11-v1"))
+  reasons.push("STATUS_FREE_QUOTA_OR_POLICY_MISMATCH");
  if(expectV66&&!report.customer.v66Script)reasons.push("CUSTOMER_V66_NOT_DEPLOYED");
  if(expectV66&&(!report.customer.hasSignupForm||!report.customer.hasVerifyStep))
   reasons.push("CUSTOMER_SIGNUP_HTML_NOT_DEPLOYED");
