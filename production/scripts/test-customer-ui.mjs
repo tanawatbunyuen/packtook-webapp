@@ -12,7 +12,7 @@ assert(!app.includes("PACKTOOK_PERF?.render()"),"Dashboard still renders diagnos
 for(const id of ["historyRows","dateFilter","barcodeFilter","allVideos","monthVideos","historyVideo","planGrid","cameraBtn","folderBtn"]){
  assert(html.includes('id="'+id+'"'),"Required Customer feature missing: "+id);
 }
-assert(html.includes('app.js?v=6.5.0')&&html.includes('style.css?v=6.5.0'),"Customer V6.4.3 JS/CSS version mismatch");
+assert(html.includes('app.js?v=6.6.0')&&html.includes('style.css?v=6.5.0'),"Customer V6.4.3 JS/CSS version mismatch");
 assert(html.includes('id="refreshQrAccess"')&&html.includes('id="qrAccessStatus"'),"QR diagnostic status controls missing");
 assert(app.includes("async function refreshQrTestAccess()")&&app.includes('tester_permission_missing')&&app.includes('feature_disabled'),"QR access reasons or refresh logic missing");
 assert(app.includes("function renderHistory("),"Video history renderer missing");

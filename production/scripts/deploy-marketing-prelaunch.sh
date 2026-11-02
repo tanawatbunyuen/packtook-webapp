@@ -15,6 +15,7 @@ node scripts/test-marketing-brand-parity.mjs
 node scripts/test-marketing-workflow-comparison.mjs
 node scripts/test-marketing-typography.mjs
 node scripts/test-howto-real-photos.mjs
+node scripts/test-public-launch-preflight.mjs
 node --check public/assets/site.js
 
 # Guarantee this release remains a prelaunch website without live checkout.

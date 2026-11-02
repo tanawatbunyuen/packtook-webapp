@@ -11,8 +11,14 @@ for(const tab of ["packing","dashboard","plans","users","help","troubleshooting"
  assert(html.includes('data-tab="'+tab+'"'),"Missing navigation tab "+tab);
 assert(html.includes('aria-controls="appSidebar"')&&html.includes('aria-expanded="true"'),
  "Sidebar toggle must be accessible to assistive technologies");
-assert(html.includes('app.js?v=6.5.0')&&html.includes('style.css?v=6.5.0'),
- "New UI must invalidate stale cached assets");
+// Check the real linked versions rather than pinning this V6.4.3 test to V6.5.0.
+// V6.6 updates app.js independently while still using the V6.5 Customer stylesheet.
+const jsVersion=html.match(/<script src="app[.]js[?]v=([0-9]+)[.]([0-9]+)[.]([0-9]+)"><\/script>/);
+const cssVersion=html.match(/<link rel="stylesheet" href="style[.]css[?]v=([0-9]+)[.]([0-9]+)[.]([0-9]+)">/);
+const supportedAsset=(match)=>match&&
+ (Number(match[1])>6||(Number(match[1])===6&&Number(match[2])>=5));
+assert(supportedAsset(jsVersion)&&supportedAsset(cssVersion),
+ "New UI must invalidate stale cached assets (Customer JS and CSS versions must be >= 6.5.0)");
 assert(css.includes("#appPage.sidebar-collapsed .sidebar")&&
  css.includes("#appPage.sidebar-collapsed .main")&&
  css.includes("#appPage.sidebar-collapsed .sidebar{display:none}"),

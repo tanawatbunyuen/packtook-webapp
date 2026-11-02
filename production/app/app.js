@@ -750,7 +750,7 @@ function qrAccessMessage(){
   loading:"กำลังตรวจสิทธิ์ PromptPay QR Test…",
   ready:"PromptPay QR Test พร้อมใช้งานสำหรับบัญชีทดสอบนี้",
   feature_disabled:"Backend ยังปิด PACKTOOK_PROMPTPAY_TEST_ENABLED — ต้องเปิด Flag และ Deploy Functions",
-  tester_permission_missing:"บัญชีนี้ยังไม่มีสิทธิ์ QR Tester — ต้อง Grant packtookPaymentTester แล้ว Login ใหม่",
+  tester_permission_missing:"ระบบชำระเงินยังไม่เปิดสำหรับบัญชีนี้ (ช่วงทดสอบเท่านั้น)",
   unavailable:"เชื่อมต่อ Payment Functions ไม่สำเร็จ — ตรวจ Console และ Functions Logs"
  };
  return map[promptPayAccessState]||map.unavailable;
@@ -796,7 +796,7 @@ function planBuyStatus(plan){
  if(target<current)return {allowed:false,label:"ห้าม Downgrade แพ็กเกจ"};
  if(!promptPayTestEnabled)return {allowed:false,label:
   promptPayAccessState==="loading"?"กำลังตรวจสิทธิ์ QR":
-  promptPayAccessState==="tester_permission_missing"?"บัญชียังไม่มีสิทธิ์ QR Tester":
+  promptPayAccessState==="tester_permission_missing"?"ยังไม่เปิดรับชำระเงินสำหรับบัญชีนี้":
   promptPayAccessState==="feature_disabled"?"Backend ยังปิด QR Test":
   "ตรวจสอบสถานะ QR Test ไม่สำเร็จ"};
  if(remoteQuota.openBillingRequestId)return {allowed:false,label:"มีรายการ QR ค้างอยู่"};
@@ -1167,6 +1167,27 @@ async function refreshPublicSignupEntry(){
  $('publicSignupEntry').hidden=!canRegister;
  $('betaSignupOnly').hidden=canRegister;
  if(canRegister)$('trialBtn').hidden=true;
+ // Customer-facing copy switches to Free only after the server confirms
+ // signup + policy authorization AND client App Check is configured.
+ const banner=$('customerStageBanner'),badge=$('customerStageBadge'),
+  note=$('customerStageNote');
+ if(canRegister){
+  if(banner)banner.textContent="PACKTOOK · FREE 20 วิดีโอต่อเดือน · ระบบชำระเงินยังไม่เปิดให้บริการ";
+  if(badge)badge.textContent="FREE REGISTRATION";
+  if(note)note.textContent="🔒 ยืนยันอีเมลก่อนเริ่มใช้งาน · ไฟล์วิดีโอจัดเก็บในเครื่องของคุณ";
+ }else{
+  if(banner)banner.textContent="PACKTOOK V6.4.3 · PRODUCTION BETA · OMISE PROMPTPAY QR TEST MODE เท่านั้น · ไม่มีการรับเงินจริงหรือบัตรเครดิต";
+  if(badge)badge.textContent="PRODUCTION BETA";
+  if(note)note.textContent="🔒 Firebase Production Beta — จำกัดสิทธิ์บัญชีทดสอบ";
+ }
+ // A Marketing link ending in #signup opens the registration pane ONLY after
+ // server-side status, policy version and client App Check have all passed.
+ // Prelaunch/Beta users are unaffected: no public form when the gate is closed.
+ if(canRegister&&window.location.hash==="#signup"&&!remoteUser?.uid&&
+    $('loginPage').hidden!==true){
+  showPublicSignupPane("register");
+  $('signupEmail').focus();
+ }
 }
 $('openPublicSignup').addEventListener('click',()=>{
  $('signupFeedback').textContent="";showPublicSignupPane("register");

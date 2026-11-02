@@ -11,7 +11,7 @@ for(const id of ["publicSignupEntry","openPublicSignup","publicSignupPanel","pub
  "signupEmail","signupPassword","signupPasswordConfirm","signupConsent","signupFeedback",
  "publicSignupFinish","signupFinishBtn","signupFinishConsent","signupFinishFeedback","signupFinishLogout"])
  assert(html.includes('id="'+id+'"'),"Missing Customer registration node "+id);
-assert(html.includes('app.js?v=6.5.0')&&html.includes('style.css?v=6.5.0')&&
+assert(html.includes('app.js?v=6.6.0')&&html.includes('style.css?v=6.5.0')&&
  html.includes('firebase-packing-bridge.js?v=6.5.0'),"V6.5 Customer assets not versioned");
 assert(html.includes('href="policy-terms.html"')&&html.includes('href="policy-privacy.html"'),
  "Signup must link to Terms and Privacy");
@@ -49,7 +49,7 @@ assert(backend.includes("exports.completeFreeSignup=onCall({...options,enforceAp
 assert(backend.includes('if(req.auth.token.packtookProductionBeta!==true&&!isPublicMember(req.auth))'),
  "Public/Beta authorization boundary missing");
 assert(rules.includes("allow read, write: if false"),"Firestore must still be closed to direct clients");
-assert(marketing.includes("REGISTRATION & PAYMENT NOT OPEN")&&marketing.includes('noindex, nofollow'),
+assert((marketing.includes("REGISTRATION &amp; PAYMENT NOT OPEN")||marketing.includes("REGISTRATION & PAYMENT NOT OPEN"))&&marketing.includes('noindex, nofollow'),
  "Marketing cannot open public before gates are approved");
 assert(!html.includes("skey_live_")&&!bridge.includes("skey_live_")&&
  !backend.includes("skey_live_"),"Payment live secrets must not leak into onboarding");
