@@ -2,17 +2,15 @@
 // Offline and read-only; no Firebase, network or user data.
 import fs from "node:fs";
 import assert from "node:assert/strict";
-import vm from "node:vm";
 const load=p=>fs.readFileSync(new URL("../"+p,import.meta.url),"utf8");
 const html=load("public/index.html");
 const css=load("public/assets/typography.css");
-const photoJS=load("public/assets/hero-photo.js");
 const customerCSS=load("app/style.css");
 const baseCSS=load("public/assets/site.css");
 const comparisonCSS=load("public/assets/packing-comparison.css");
 
 assert(html.includes("typography.css?v=6.5.4"),"Typography version missing");
-assert(html.includes("hero-photo.js?v=6.5.4"),"Photo loader version missing");
+assert(html.includes("packtook-hero-photo.webp?v=6.5.4.1"),"Direct AI photo source missing");
 assert(html.indexOf("site.css?v=6.5.1")<html.indexOf("customer-brand.css?v=6.5.2"));
 assert(html.indexOf("customer-brand.css?v=6.5.2")<html.indexOf("packing-comparison.css?v=6.5.3"));
 assert(html.indexOf("packing-comparison.css?v=6.5.3")<html.indexOf("typography.css?v=6.5.4"));
@@ -35,36 +33,16 @@ assert(customerCSS.includes("font-family:Inter"),"Customer font reference not fo
 assert(baseCSS.includes(".hero h1")&&comparisonCSS.includes(".comparison-table"));
 console.log("PASS: coherent type scale, readable body/nav, responsive headings and CSS cascade");
 
-// Simulate local photo load + failure fallback without network.
-const photoElement={
- attributes:new Map([["data-photo-src","/assets/packtook-hero-photo.webp"]]),
- src:"/assets/packing-workstation.svg",
- getAttribute(k){return this.attributes.get(k)}
-};
-let marked=false;
-const document={
- getElementById:id=>id==="heroPackingImage"?photoElement:null,
- documentElement:{classList:{add(c){if(c==="packtook-photo-ready")marked=true}}}
-};
-let mockImage=null;
-class Image{
- constructor(){mockImage=this}
- set src(v){this._src=v}
- get src(){return this._src}
-}
-new vm.Script(photoJS);
-vm.runInNewContext(photoJS,{document,Image},{timeout:300});
-assert.equal(mockImage.src,"/assets/packtook-hero-photo.webp");
-assert.equal(photoElement.src,"/assets/packing-workstation.svg");
-mockImage.onerror();
-assert.equal(photoElement.src,"/assets/packing-workstation.svg","No photo should retain SVG fallback");
-mockImage.onload();
-assert.equal(photoElement.src,"/assets/packtook-hero-photo.webp");
-assert(marked,"Successful load should style real Hero photo");
-console.log("PASS: photo loader swaps local AI image only when available and keeps SVG fallback if missing");
+// Confirm that the real image is the primary Hero (not a JS-dependent SVG fallback).
+assert(html.includes('id="heroPackingImage"')&&
+ html.includes('src="/assets/packtook-hero-photo.webp?v=6.5.4.1"'));
+assert(html.includes('rel="preload" href="/assets/packtook-hero-photo.webp?v=6.5.4.1"'));
+assert(!html.includes('data-photo-src="/assets/packtook-hero-photo.webp"'));
+assert(!html.includes('script src="/assets/hero-photo.js'));
+console.log("PASS: actual GitHub-hosted AI Hero image renders directly with cache-busted URL");
 
 assert(html.includes("ภาพจำลองจาก Generative AI"),"AI hero must be disclosed");
 assert(html.includes('name="robots" content="noindex, nofollow"'));
 assert(html.includes("REGISTRATION &amp; PAYMENT NOT OPEN"));
 console.log("PASS: AI disclosure and no-public-registration/payment prelaunch status");
-console.log("RESULT: PACKTOOK V6.5.4 Typography + AI Hero fallback QA PASS.");
+console.log("RESULT: PACKTOOK V6.5.4 Typography + direct AI Hero QA PASS.");
