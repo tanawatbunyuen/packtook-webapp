@@ -12,6 +12,7 @@ fi
 node scripts/verify.mjs "$PROJECT"
 node scripts/test-marketing-website.mjs
 node scripts/test-marketing-brand-parity.mjs
+node scripts/test-marketing-workflow-comparison.mjs
 node --check public/assets/site.js
 
 # Guarantee this release remains a prelaunch website without live checkout.
@@ -23,6 +24,9 @@ grep -q 'customer-brand.css?v=6.5.2' public/index.html
 test -s public/assets/customer-brand.css
 test -s public/assets/logo.svg
 test -s public/assets/mascot-eagle.svg
+test -s public/assets/packing-workstation.svg
+test -s public/assets/packing-comparison.css
+grep -q 'packing-comparison.css?v=6.5.3' public/index.html
 
 node - "$PROJECT" <<'JS'
 const fs=require("node:fs"),project=process.argv[2];
