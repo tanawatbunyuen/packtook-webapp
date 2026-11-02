@@ -59,7 +59,7 @@ console.log("PASS: Customer colors, blue CTA, dark sidebar, light canvas and whi
 
 // Show a visual analog, never fake a real recording.
 assert(siteHTML.includes('packing-workstation.svg'));
-assert(siteHTML.includes("ภาพประกอบจำลองการใช้งาน"));
+assert(siteHTML.includes("ภาพจำลองจาก Generative AI"));
 assert(siteHTML.includes('packing-comparison.css?v=6.5.3'));
 assert(siteHTML.includes('class="comparison-table"'));
 assert(siteHTML.includes('src="/assets/mascot-eagle.svg"'));
