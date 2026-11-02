@@ -11,6 +11,7 @@ fi
 
 node scripts/verify.mjs "$PROJECT"
 node scripts/test-marketing-website.mjs
+node scripts/test-marketing-brand-parity.mjs
 node --check public/assets/site.js
 
 # Guarantee this release remains a prelaunch website without live checkout.
@@ -18,6 +19,10 @@ grep -q 'name="robots" content="noindex, nofollow"' public/index.html
 grep -q 'REGISTRATION &amp; PAYMENT NOT OPEN' public/index.html
 grep -q 'No live payment' public/index.html
 grep -q 'Disallow: /' public/robots.txt
+grep -q 'customer-brand.css?v=6.5.2' public/index.html
+test -s public/assets/customer-brand.css
+test -s public/assets/logo.svg
+test -s public/assets/mascot-eagle.svg
 
 node - "$PROJECT" <<'JS'
 const fs=require("node:fs"),project=process.argv[2];
