@@ -473,6 +473,62 @@ exports.promptpayWebhook=onRequest({region,maxInstances:3,timeoutSeconds:45,secr
  catch(e){res.status(500).send("reconciliation failed")}
 });
 
+// V6.4.1 — Daily, idempotent wallet forfeiture after the 10-day retention window.
+// No cron-side purchase or customer authentication. Firestore transactions
+// serialize with a simultaneous paid settlement, avoiding lost credits.
+exports.promptpayExpireUnusedCredits=onSchedule({
+ schedule:"every day 03:15",timeZone:"Asia/Bangkok",
+ region,maxInstances:1,timeoutSeconds:540
+},async()=>{
+ if(process.env.PACKTOOK_PRODUCTION_PROJECT_ID!=="packtook-prod-01"||
+   (process.env.GCLOUD_PROJECT&&process.env.GCLOUD_PROJECT!=="packtook-prod-01"))
+  throw Error("Expiry policy is allowed only on Production");
+ const now=Date.now(),cutoff=new Date(now-CREDIT_GRACE_MS).toISOString();
+ const MAX_SCAN=800,PAGE_SIZE=80;
+ let visited=0,forfeited=0,skipped=0,cursor=null;
+ while(visited<MAX_SCAN){
+  let query=db.collection("accounts").where("planExpiresAt","<=",cutoff)
+   .orderBy("planExpiresAt","asc").limit(Math.min(PAGE_SIZE,MAX_SCAN-visited));
+  if(cursor)query=query.startAfter(cursor);
+  const snap=await query.get();
+  if(snap.empty)break;
+  for(const doc of snap.docs){
+   const result=await db.runTransaction(async tx=>{
+    const current=await tx.get(doc.ref);
+    if(!current.exists)return false;
+    const a=current.data(),deadline=carryoverDeadline(a);
+    if(a.plan==="Free"||limits[a.plan]===null||!walletEnabled(a)||
+       subscriptionState(a)!=="expired"||deadline===null||deadline>=Date.now()||
+       !Number.isSafeInteger(a.creditWalletRemaining)||a.creditWalletRemaining<=0||
+       (a.reserved||0)>0)return false;
+    const lost=a.creditWalletRemaining;
+    // A paid renewal after expiry changes planExpiresAt atomically; this check
+    // prevents a stale scheduled sweep from overwriting the renewed wallet.
+    const audit=doc.ref.collection("audit").doc();
+    tx.update(doc.ref,{
+     creditWalletRemaining:0,
+     expiredCreditsForfeited:lost,
+     expiredCreditsForfeitedAt:FieldValue.serverTimestamp(),
+     expiredCreditsForfeitedFrom:a.planExpiresAt,
+     updatedAt:FieldValue.serverTimestamp()
+    });
+    tx.create(audit,{action:"expired_wallet_10_day_forfeiture",
+     expiredPlan:a.plan,planExpiresAt:a.planExpiresAt,
+     forfeitedCredits:lost,createdAt:FieldValue.serverTimestamp()});
+    return true;
+   });
+   if(result)forfeited++;else skipped++;
+  }
+  visited+=snap.size;
+  cursor=snap.docs[snap.docs.length-1];
+  if(snap.size<PAGE_SIZE)break;
+ }
+ console.info("PACKTOOK expired credit grace sweep",{
+  visited,forfeitedAccounts:forfeited,skipped,scanLimit:MAX_SCAN,
+  possiblyTruncated:visited===MAX_SCAN,mode:"Production wallet expiry only"
+ });
+});
+
 exports.promptpayAudit=onCall(paymentSecrets,async req=>{
  const user=uid(req),id=data(req).requestId;
  if(!validOp(id))throw new HttpsError("invalid-argument","Invalid billing request ID");
