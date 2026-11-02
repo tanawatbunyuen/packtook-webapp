@@ -14,6 +14,7 @@ node scripts/test-marketing-website.mjs
 node scripts/test-marketing-brand-parity.mjs
 node scripts/test-marketing-workflow-comparison.mjs
 node scripts/test-marketing-typography.mjs
+node scripts/test-howto-real-photos.mjs
 node --check public/assets/site.js
 
 # Guarantee this release remains a prelaunch website without live checkout.
@@ -30,6 +31,11 @@ test -s public/assets/packing-comparison.css
 grep -q 'packing-comparison.css?v=6.5.3' public/index.html
 grep -q 'typography.css?v=6.5.4' public/index.html
 test -s public/assets/typography.css
+grep -q 'howto-photos.css?v=6.5.5' public/index.html
+test -s public/assets/howto-photos.css
+for file in ready scan save review; do
+  test -s "public/assets/howto-${file}.webp" || { echo "Missing How It Works photo: ${file}" >&2; exit 1; }
+done
 test -s public/assets/hero-photo.js
 if [[ ! -s public/assets/packtook-hero-photo.webp ]]; then
   echo "ERROR: Committed AI Hero photo missing. Fetch latest feature/v6.5.4-hero-photo-type-scale branch before deploying." >&2
