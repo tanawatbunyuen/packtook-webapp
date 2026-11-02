@@ -86,7 +86,7 @@ assert(ownerClient.includes('api("ownerPaymentHealth")')&&ownerClient.includes("
 assert(payments.includes("paidEvidence(charge)")&&payments.includes("postSettlementAlert"),"Omise paid verification evidence / anomaly guard missing");
 assert(payments.includes("providerExpiryIso(charge.expires_at)")&&payments.includes("providerFailureCode"),"QR expiry and failure evidence missing");
 assert(customerSource.includes("qr-expiry-info")&&customerSource.includes("result.qrExpiresAt"),"Customer QR expiration display missing");
-assert(payments.includes('const CREDIT_GRACE_DAYS=10')&&payments.includes('target<current')&&payments.includes("carryoverCredits(a,now)"),"Ten-day carryover and downgrade restriction missing");
+assert(payments.includes('const CREDIT_GRACE_DAYS=10')&&payments.includes('next<current')&&payments.includes("carryoverCredits(a,now)"),"Ten-day carryover and downgrade restriction missing");
 assert(payments.includes('exports.promptpayExpireUnusedCredits=onSchedule')&&payments.includes('expired_wallet_10_day_forfeiture'),"Daily transactional expiry cleanup/Audit missing");
 assert(ownerBackend.includes('status:"retained"')&&ownerClient.includes('a.creditsStatus==="retained"'),"Owner must show retained expired credit separately from usable credit");
 assert(customerSource.includes("ห้าม Downgrade แพ็กเกจ")&&customerSource.includes("เครดิตพักรอต่ออายุ"),"Customer downgrade block or grace period UX missing");
