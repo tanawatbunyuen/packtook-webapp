@@ -14,6 +14,7 @@ command -v firebase >/dev/null 2>&1 || { echo "Firebase CLI required" >&2;exit 2
 node --check functions/index.js
 node --check scripts/test-v70-qa-auth-firestore-emulator.mjs
 node scripts/test-v70-emulator-guard.mjs
+node scripts/test-v70-demo-env-isolation.mjs
 node scripts/test-v70-qa-source-safety.mjs
 node scripts/test-v70-deploy-scope.mjs
 node scripts/test-v67-emulator-config.mjs
