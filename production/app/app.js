@@ -1167,6 +1167,19 @@ async function refreshPublicSignupEntry(){
  $('publicSignupEntry').hidden=!canRegister;
  $('betaSignupOnly').hidden=canRegister;
  if(canRegister)$('trialBtn').hidden=true;
+ // Customer-facing copy switches to Free only after the server confirms
+ // signup + policy authorization AND client App Check is configured.
+ const banner=$('customerStageBanner'),badge=$('customerStageBadge'),
+  note=$('customerStageNote');
+ if(canRegister){
+  if(banner)banner.textContent="PACKTOOK · FREE 20 วิดีโอต่อเดือน · ระบบชำระเงินยังไม่เปิดให้บริการ";
+  if(badge)badge.textContent="FREE REGISTRATION";
+  if(note)note.textContent="🔒 ยืนยันอีเมลก่อนเริ่มใช้งาน · ไฟล์วิดีโอจัดเก็บในเครื่องของคุณ";
+ }else{
+  if(banner)banner.textContent="PACKTOOK V6.4.3 · PRODUCTION BETA · OMISE PROMPTPAY QR TEST MODE เท่านั้น · ไม่มีการรับเงินจริงหรือบัตรเครดิต";
+  if(badge)badge.textContent="PRODUCTION BETA";
+  if(note)note.textContent="🔒 Firebase Production Beta — จำกัดสิทธิ์บัญชีทดสอบ";
+ }
  // A Marketing link ending in #signup opens the registration pane ONLY after
  // server-side status, policy version and client App Check have all passed.
  // Prelaunch/Beta users are unaffected: no public form when the gate is closed.
