@@ -1,0 +1,344 @@
+/*
+ PACKTOOK V6.5.2 — Shared visual language with Customer App.
+ Source reference: production/app/style.css (Customer login + dashboard).
+ This is scoped to marketing and layered over site.css without touching app/Owner.
+ Brand foundation: #071632 navy, #096bfa blue, #08b7eb cyan,
+ #f4f7fc page canvas, white panels, #102449 ink, 12–20px rounded cards.
+ */
+:root{
+ font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+ color-scheme:light;
+ --bg:#f4f7fc;--navy:#071632;--navy2:#0b2b59;
+ --text:#102449;--muted:#657e9f;--dim:#7086a4;
+ --paper:#ffffff;--line:#e1e9f5;
+ --mint:#13b5f6;--sky:#13b5f6;--azure:#096bfa;
+ --brand-navy:#071632;--brand-blue:#096bfa;--brand-cyan:#08b7eb;
+ --brand-ink:#102449;--brand-canvas:#f4f7fc;--brand-surface:#ffffff;
+ background:#f4f7fc;color:#102449;
+}
+body{
+ background:linear-gradient(180deg,#f8fbff 0,#f4f7fc 32%,#f5f8fd 100%);
+ color:var(--brand-ink);
+}
+.ambient{opacity:.06}
+.ambient-one{background:#096bfa;top:220px}
+.ambient-two{background:#08b7eb;top:1120px}
+.launch-banner{background:#053c5b;border-bottom:1px solid #68dde0}
+.launch-banner-inner{color:#d4fcff}
+.launch-banner-inner strong{color:#9fddff}
+.launch-banner-inner a{color:#d9f5ff}
+.launch-banner .pulse{background:#31e4b4;box-shadow:0 0 0 4px rgba(49,228,180,.15)}
+
+/* Branded navigation echoes the Customer's sidebar and wordmark. */
+.site-header{
+ background:rgba(7,22,50,.97);
+ border-bottom:1px solid rgba(85,165,237,.18);
+ box-shadow:0 9px 28px rgba(7,28,63,.12);
+}
+.wordmark.packtook-lockup{display:inline-flex;align-items:center;gap:12px;letter-spacing:0}
+.wordmark .packtook-mark{width:52px;height:52px;border-radius:13px;filter:drop-shadow(0 5px 10px rgba(1,93,196,.25))}
+.wordmark .packtook-type{display:flex;align-items:flex-start;flex-direction:column}
+.wordmark .packtook-type strong{
+ display:block;color:#fff;font-size:27px;font-weight:900;
+ letter-spacing:-1.1px;line-height:1.05;
+}
+.wordmark .packtook-type strong .brand-accent{color:#13b5f6}
+.wordmark .packtook-type small{
+ display:block;color:#c3d6ed;font-weight:700;
+ font-size:9px;letter-spacing:2px;margin-top:5px;line-height:1.3;
+}
+.main-nav a{color:#d5e5f7}
+.main-nav a:hover{color:#53c8ff}
+.main-nav .nav-login{
+ border:1px solid rgba(93,180,244,.48);
+ background:linear-gradient(115deg,#0865cb,#0952a9);
+ color:#fff;
+ box-shadow:0 7px 15px rgba(4,44,120,.18);
+}
+.main-nav .nav-login:hover{background:linear-gradient(115deg,#0d83e4,#1367d7);border-color:#7dcfff}
+.menu-toggle{border-color:#386a9c;background:#133968;color:#e5f4ff}
+.menu-toggle span{background:#e5f4ff}
+.eyebrow{color:#0877c9;font-weight:800}
+.eyebrow-mark{color:#43b8f9}
+
+/* Hero is the same navy/blue family as Customer login, not a separate mint brand. */
+.hero{
+ background:
+ radial-gradient(circle at 86% 26%,rgba(20,98,194,.4),transparent 42%),
+ radial-gradient(circle at 12% 11%,rgba(8,111,230,.20),transparent 43%),
+ linear-gradient(125deg,#05132d 0%,#0b2b59 74%,#124a82 100%);
+ color:#fff;
+ border-radius:0 0 30px 30px;
+ width:100%;max-width:none;
+ padding-inline:max(24px,calc((100vw - 1200px)/2));
+ isolation:isolate;
+ gap:45px;
+}
+.hero .eyebrow{color:#72cfff;font-size:11px;letter-spacing:1.1px}
+.hero .eyebrow-mark{color:#67ccff}
+.saas-pill{
+ display:inline-block;margin-left:8px;padding:6px 12px;border-radius:99px;
+ font-size:11px;font-weight:700;letter-spacing:0;
+ border:1px solid rgba(61,153,235,.55);
+ background:rgba(20,119,198,.32);color:#e3f7ff;
+}
+.eagle-tip.eagle-hero{
+ display:flex;align-items:center;gap:12px;
+ width:fit-content;max-width:min(100%,420px);
+ border:1px solid rgba(105,190,255,.37);
+ background:rgba(4,24,54,.70);
+ border-radius:15px;padding:8px 17px 8px 8px;
+ margin:22px 0 0;
+ box-shadow:0 10px 23px rgba(1,19,46,.21);
+}
+.eagle-hero img{width:67px;height:72px;flex:none;object-fit:contain}
+.eagle-hero strong{display:block;color:#fff;font-size:13px;line-height:1.5;font-weight:850}
+.eagle-hero small{display:block;color:#c9dff5;font-size:11px;line-height:1.65;margin-top:3px}
+.hero h1{
+ color:#fff;font-size:clamp(40px,4.35vw,63px);
+ letter-spacing:-1.25px;line-height:1.33;margin:23px 0 18px;
+}
+.hero h1 .gradient-text{
+ background:none;background-clip:initial;-webkit-background-clip:initial;
+ -webkit-text-fill-color:#35b8e2;color:#35b8e2;
+}
+.hero-lead{font-size:16px;color:#b9d0ec;line-height:1.95}
+.hero-perks{color:#d5e6f7}
+.hero-perks i{color:#31e4b4}
+.hero-disclaimer{color:#a5bddc}
+.button{border-radius:12px}
+.button-primary{
+ color:#fff;
+ background:linear-gradient(115deg,#00a6f2,#2250ef);
+ box-shadow:0 13px 25px rgba(24,107,228,.26);
+}
+.button-primary:hover{filter:brightness(1.08)}
+.button-ghost{
+ color:#e7f3ff;border:1px solid #47719f;
+ background:rgba(12,49,100,.55);
+}
+.button-ghost:hover{background:#1a4e8a;border-color:#55b3e8}
+.play-icon{border-color:#5ba0d3}
+.hero-visual{min-width:0}
+.visual-glow{background:radial-gradient(ellipse at center,rgba(23,110,236,.26),transparent 70%)}
+
+/* Customer app chrome: dark-blue sidebar, soft-gray canvas, WHITE cards. */
+.app-window[data-mock="customer-dashboard"]{
+ background:#f4f7fc;
+ border:1px solid #25518a;
+ box-shadow:0 34px 84px rgba(0,13,40,.53),0 0 72px rgba(12,114,238,.16);
+}
+.app-topbar{
+ background:#e9f2ff;border-bottom:1px solid #d4e3f6;
+ color:#3d628e;
+}
+.app-dots i{background:#c0d2e7}
+.app-dots i:first-child{background:#66b7ed}
+.app-top-status{color:#117f70}
+.app-body{background:#f4f7fc}
+.app-sidebar{background:linear-gradient(175deg,#091936,#0b2b59);border-right:1px solid #193c77}
+.app-sidebar-mark{width:30px;height:30px;padding:2px;background:#e5f2ff}
+.app-sidebar-mark img{width:100%;height:100%;object-fit:contain}
+.side-icon{color:#a6b9d9}
+.side-icon.selected{
+ background:linear-gradient(95deg,#136deb,#1262bb);
+ color:#fff;box-shadow:0 5px 12px rgba(0,32,91,.23);
+}
+.app-workspace{background:#f4f7fc}
+.workspace-heading small,.scan-row small,.workspace-stats small{color:#7286a1}
+.workspace-heading strong{color:#11274b;font-size:15px}
+.rec-tag{background:#ffe3e3;color:#ba233f;border-color:#ffbdc9}
+.camera-display{
+ background:radial-gradient(ellipse at center,#183153,#08152a 70%);
+ border:1px solid #29456e;
+}
+.scan-row{
+ background:#fff;border-color:#e3eafa;
+ box-shadow:0 5px 19px rgba(23,65,130,.06);
+}
+.scan-symbol{background:#e8f3ff;color:#096bfa}
+.scan-row strong{color:#102b59}
+.scan-tag{color:#2d8b7c;font-size:9px}
+.workspace-stats>div{
+ background:#fff;border:1px solid #e4ebf7;
+ border-radius:10px;box-shadow:0 5px 15px rgba(23,65,130,.05);
+}
+.workspace-stats strong{color:#112e61}
+.floating-sticker{
+ background:#f9fcff;border:1px solid #bfdbfa;
+ color:#174c84;box-shadow:0 14px 26px rgba(0,30,84,.2);
+}
+.floating-sticker-top>span{color:#096bfa}
+.floating-sticker-bottom .mini-check{background:#dff8ee;color:#08754a}
+.floating-sticker-bottom small{color:#627da0}
+.visual-note{color:#b9cbe4}
+
+/* Features and pricing use the same Customer white-panel surface system. */
+.benefit-strip{background:#fff;border-color:#e4ebf7}
+.strip-grid>div:not(:last-child){border-color:#e4ebf7}
+.strip-grid strong{color:#17345d}
+.strip-grid small{color:#6c839f}
+.strip-grid>div>span{background:#e7f3ff;color:#096bfa}
+.section-heading h2{color:#102449}
+.section-heading h2 span{color:#117cc4}
+.section-heading p{color:#657e9f}
+.feature-card{
+ background:#fff;border:1px solid #e3eafa;
+ box-shadow:0 8px 28px rgba(17,48,105,.065);
+}
+.feature-card:hover{border-color:#7cb9ef;box-shadow:0 14px 35px rgba(17,73,150,.10)}
+.feature-large{background:linear-gradient(125deg,#fff 45%,#edf6ff)}
+.feature-card h3{color:#152e55}
+.feature-card p{color:#687f9d}
+.icon-tile{border-radius:14px;border-color:#d0e5fa;box-shadow:none}
+.tile-blue,.tile-mint,.tile-purple,.tile-amber{
+ background:linear-gradient(135deg,#0c63d9,#04a7eb);
+ color:#fff;border-color:#62c7ff61;
+ box-shadow:0 9px 19px rgba(9,93,194,.17);
+}
+.feature-example b{color:#8caccb}
+.feature-example span{
+ border-color:#c9dff4;background:#f0f7ff;color:#1a558d;
+}
+.feature-example span.active{border-color:#ffc5c9;background:#fff1f1;color:#ac2e44}
+.feature-example span.complete{border-color:#a7e5bf;background:#ecfff4;color:#257b51}
+.feature-support{background:linear-gradient(120deg,#f2f8ff,#fff)}
+.feature-support img{filter:drop-shadow(0 6px 12px rgba(2,60,126,.11))}
+
+/* 4 steps follow the Customer's Help infographic style. */
+.how-section{
+ background:linear-gradient(180deg,#eaf3fe,#f6faff);
+ border-color:#dce9f7;
+}
+.step-card{
+ background:#fff;border:1px solid #dce7f5;
+ box-shadow:0 7px 22px rgba(21,72,134,.06);
+}
+.step-number{color:#096bfa}
+.step-number span{color:#8298b3}
+.step-illustration{background:linear-gradient(145deg,#e4f0ff,#f6fbff);color:#1270d5}
+.step-rec{border-color:#efb9c2;background:#fff0f1;color:#b12240}
+.step-card h3{color:#172e53}
+.step-card p{color:#697f9b}
+.workflow-note{background:#eaf4ff;border-color:#c6e0fa;color:#355b89}
+.workflow-note>span{color:#0a85df}
+.workflow-note p{color:#355b89}
+
+/* Deep-blue product panel reprises the Customer login hero. */
+.split-panel{
+ background:linear-gradient(130deg,#071632,#0c2f5a 74%,#174b83);
+ border:1px solid #316eaf;
+ box-shadow:0 12px 32px rgba(20,69,127,.09);
+}
+.split-panel .eyebrow{color:#75d2ff}
+.split-panel h2{color:#fff}
+.split-panel>div>p{color:#c3d7ee}
+.pill-list span{background:#154678;border:1px solid #377fbd;color:#e2f3ff}
+.split-panel-side{
+ background:rgba(4,22,51,.7);border:1px solid #4277ad;
+}
+.comparison-title{color:#8cd7ff}
+.comparison-line:not(:last-child){border-color:#2e5c90}
+.comparison-icon{color:#fff;background:#1572d9}
+.comparison-line strong{color:#f1f8ff}
+.comparison-line small{color:#a9c4e1}
+
+/* White subscription cards match the Customer Packages page. */
+.pricing-section{
+ background:#eef5fd;border-color:#dce9f7;
+}
+.price-notice{
+ background:#e3f2ff;border:1px solid #b9dafa;
+}
+.price-notice>span{color:#096bfa}
+.price-notice p{color:#355b87}
+.price-card{
+ background:#fff;border:1px solid #dce7f5;
+ box-shadow:0 9px 26px rgba(16,63,117,.075);
+}
+.price-card.highlight{
+ background:linear-gradient(150deg,#fff,#f2f8ff);
+ border:2px solid #1788d0;
+ box-shadow:0 12px 30px rgba(23,99,203,.12);
+}
+.plan-label{color:#096bfa}
+.price-card h3{color:#132d59}
+.price-description{color:#7388a3}
+.price b{color:#102b59}
+.price small{color:#7287a2}
+.plan-divider{background:#e2eaf6}
+.plan-unit{color:#2a5785}
+.plan-unit strong{color:#096bfa}
+.price-card li{color:#516f93}
+.price-card li::before{color:#117eda}
+.plan-state{
+ background:#e9f3ff;border-color:#c9e0ff;color:#2164b7;
+}
+.price-card.highlight .plan-state{
+ background:#0c71df;border-color:#0c71df;color:#fff;
+}
+.pricing-footnote{color:#6c85a6}
+
+/* FAQ matches white Customer Help panels. */
+.faq-list details{
+ background:#fff;border:1px solid #dce7f5;
+ box-shadow:0 4px 18px rgba(11,59,123,.045);
+}
+.faq-list details[open]{background:#f8fbff;border-color:#85c2f2}
+.faq-list summary{color:#17345d}
+.faq-list summary span{border-color:#b2daf8;background:#eaf5ff;color:#096bfa}
+.faq-answer{color:#5f7898}
+
+/* Conversion section repeats the blue Customer brand, not green/cyan. */
+.launch-card{
+ background:linear-gradient(120deg,#071632,#0b2c5e 68%,#105291);
+ border:1px solid #3178c8;
+ box-shadow:0 13px 32px rgba(17,70,129,.16);
+}
+.launch-card .eyebrow{color:#75d2ff}
+.launch-card h2{color:#fff}
+.launch-card p{color:#c4daef}
+.launch-status{color:#b8e3fa}
+.launch-status .pulse{background:#31e4b4}
+.launch-mascot{filter:drop-shadow(0 20px 22px rgba(0,0,0,.25))}
+.button-outline{border-color:#5590c6;color:#f2f9ff;background:rgba(255,255,255,.05)}
+.button-outline:hover{border-color:#74cbff;background:rgba(47,123,201,.25)}
+.site-footer{background:#071632;border-color:#1c3d6b}
+.footer-brand p{color:#acbdd5}
+.footer-links strong{color:#edf6ff}
+.footer-links a{color:#aabfdc}
+.footer-links a:hover{color:#5acbff}
+.footer-links>span{color:#9aacc4}
+.footer-bottom{color:#90a7c2;border-color:#29476c}
+
+@media(max-width:980px){
+ .main-nav{background:#0b2851;border-color:#325f92}
+ .main-nav>a{border-bottom:1px solid rgba(178,212,249,.09)}
+ .main-nav .nav-login{background:linear-gradient(115deg,#00a6f2,#2250ef)}
+ .hero{padding-inline:24px}
+ .hero h1{font-size:clamp(39px,5.5vw,57px)}
+ .strip-grid>div:nth-child(odd){border-color:#e4ebf7!important}
+ .strip-grid>div:nth-child(-n+2){border-color:#e4ebf7}
+}
+@media(max-width:640px){
+ .hero{padding-inline:16px;border-radius:0 0 22px 22px}
+ .hero h1{font-size:clamp(35px,8vw,45px)}
+ .hero .eyebrow{font-size:10px}
+ .saas-pill{padding:5px 8px;font-size:9px}
+ .eagle-tip.eagle-hero{padding:7px 11px 7px 6px;margin-top:18px}
+ .eagle-hero img{width:55px;height:58px}
+ .eagle-hero strong{font-size:12px}
+ .eagle-hero small{font-size:10px}
+ .wordmark .packtook-mark{width:38px;height:38px}
+ .wordmark .packtook-type strong{font-size:21px}
+ .wordmark .packtook-type small{font-size:7px;letter-spacing:1.1px}
+ .app-workspace{padding:13px 10px}
+ .workspace-heading strong{font-size:12px}
+ .feature-support{background:#f2f8ff}
+ .feature-card{box-shadow:0 6px 19px rgba(17,48,105,.05)}
+ .price-card{box-shadow:0 6px 19px rgba(17,48,105,.06)}
+ .split-panel{border-radius:18px}
+}
+@media(prefers-reduced-motion:reduce){
+ *,*::before,*::after{transition:none!important;animation:none!important}
+}

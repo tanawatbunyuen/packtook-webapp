@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#08172a">
+  <meta name="theme-color" content="#071632">
   <meta name="description" content="PACKTOOK ระบบบันทึกวิดีโอแพ็กสินค้าออนไลน์ เริ่มและหยุดบันทึกด้วยการสแกนบาร์โค้ด ค้นหาวิดีโอย้อนหลังได้ เก็บไฟล์ในเครื่อง ทดลองใช้ฟรี 20 วิดีโอต่อเดือนเมื่อเปิดบริการ">
   <meta name="robots" content="noindex, nofollow">
   <meta property="og:type" content="website">
@@ -15,6 +15,7 @@
   <link rel="icon" href="/assets/logo.svg" type="image/svg+xml">
   <link rel="preload" href="/assets/mascot-eagle.svg" as="image" type="image/svg+xml">
   <link rel="stylesheet" href="/assets/site.css?v=6.5.1">
+  <link rel="stylesheet" href="/assets/customer-brand.css?v=6.5.2">
   <script src="/assets/site.js?v=6.5.1" defer></script>
 </head>
 <body>
@@ -32,9 +33,9 @@
 
   <header class="site-header" id="top">
     <div class="container header-inner">
-      <a class="wordmark" href="#top" aria-label="PACKTOOK กลับด้านบน">
-        <img src="/assets/logo.svg" alt="" width="43" height="43">
-        <span>PACK<span class="brand-accent">TOOK</span><small>PACKING VIDEO RECORDER</small></span>
+      <a class="wordmark packtook-lockup packtook-lockup-light" href="#top" aria-label="PACKTOOK กลับด้านบน">
+        <img class="packtook-mark" src="/assets/logo.svg" alt="" width="52" height="52">
+        <span class="packtook-type"><strong>PACK<span class="brand-accent">TOOK</span></strong><small>PACKING VIDEO RECORDER</small></span>
       </a>
       <button id="menuToggle" class="menu-toggle" type="button" aria-controls="mainNav" aria-expanded="false" aria-label="เปิดเมนูหลัก">
         <span></span><span></span><span></span>
@@ -52,8 +53,12 @@
   <main id="content">
     <section class="hero container" aria-labelledby="heroTitle">
       <div class="hero-copy">
-        <div class="eyebrow"><span class="eyebrow-mark" aria-hidden="true">✦</span> SMART PACKING, CLEAR EVIDENCE</div>
-        <h1 id="heroTitle">แพ็กทุกออเดอร์<br><span class="gradient-text">มีวิดีโอเป็นหลักฐาน</span></h1>
+        <div class="eyebrow"><span class="eyebrow-mark" aria-hidden="true">✦</span> BROWSER-BASED PACKING SOLUTION <span class="saas-pill">✦ SaaS</span></div>
+        <aside class="eagle-tip eagle-hero" aria-label="ผู้ช่วย PACKTOOK">
+          <img src="/assets/mascot-eagle.svg" width="72" height="76" alt="มาสคอตนกอินทรี PACKTOOK">
+          <span><strong>สายตาอินทรี มั่นใจทุกออเดอร์</strong><small>ทุกการแพ็ก มีหลักฐานให้ตรวจสอบ</small></span>
+        </aside>
+        <h1 id="heroTitle">บันทึกทุกการแพ็กสินค้า<br><span class="gradient-text">อย่างมืออาชีพ</span></h1>
         <p class="hero-lead">สแกนบาร์โค้ดเพื่อเริ่มบันทึก แพ็กสินค้าให้เสร็จ แล้วสแกนซ้ำเพื่อหยุด ระบบจัดเก็บวิดีโอลงเครื่องและช่วยค้นหาย้อนหลังได้ง่ายขึ้น</p>
         <div class="hero-actions">
           <a class="button button-primary" href="#pricing">รู้จัก Free Plan <span aria-hidden="true">↗</span></a>
@@ -70,12 +75,12 @@
       <div class="hero-visual" aria-label="ภาพจำลองหน้าระบบ PACKTOOK กำลังบันทึกออเดอร์">
         <div class="visual-glow" aria-hidden="true"></div>
         <div class="floating-sticker floating-sticker-top"><span aria-hidden="true">▣</span> บันทึกตาม Barcode</div>
-        <div class="app-window">
+        <div class="app-window" data-mock="customer-dashboard">
           <div class="app-topbar"><span class="app-dots" aria-hidden="true"><i></i><i></i><i></i></span><span>PACKTOOK / PACKING</span><span class="app-top-status"><span class="status-dot"></span> CAMERA READY</span></div>
           <div class="app-body">
-            <div class="app-sidebar" aria-hidden="true"><div class="app-sidebar-mark">P</div><div class="side-icon selected">◉</div><div class="side-icon">▤</div><div class="side-icon">◇</div><div class="side-icon">⚙</div></div>
+            <div class="app-sidebar" aria-hidden="true"><div class="app-sidebar-mark"><img src="/assets/logo.svg" alt="" width="25" height="25"></div><div class="side-icon selected">◉</div><div class="side-icon">▤</div><div class="side-icon">◇</div><div class="side-icon">⚙</div></div>
             <div class="app-workspace">
-              <div class="workspace-heading"><div><small>PACKING WORKSPACE</small><strong>กำลังบันทึกวิดีโอ</strong></div><div class="rec-tag"><span></span> REC</div></div>
+              <div class="workspace-heading"><div><small>PACKTOOK / PACKING</small><strong>บันทึกวิดีโอการแพ็กสินค้า</strong></div><div class="rec-tag"><span></span> REC</div></div>
               <div class="camera-display">
                 <div class="cam-cross cam-tl" aria-hidden="true"></div><div class="cam-cross cam-tr" aria-hidden="true"></div>
                 <div class="cam-cross cam-bl" aria-hidden="true"></div><div class="cam-cross cam-br" aria-hidden="true"></div>
@@ -171,7 +176,7 @@
 
   <footer class="site-footer">
     <div class="container footer-grid">
-      <div class="footer-brand"><a class="wordmark" href="#top"><img src="/assets/logo.svg" alt="" width="39" height="39"><span>PACK<span class="brand-accent">TOOK</span><small>PACKING VIDEO RECORDER</small></span></a><p>บันทึกทุกกล่อง มั่นใจทุกออเดอร์<br>เว็บแอปบันทึกวิดีโอแพ็กสินค้าสำหรับร้านค้าออนไลน์</p></div>
+      <div class="footer-brand"><a class="wordmark packtook-lockup packtook-lockup-light" href="#top" aria-label="PACKTOOK กลับด้านบน"><img class="packtook-mark" src="/assets/logo.svg" alt="" width="46" height="46"><span class="packtook-type"><strong>PACK<span class="brand-accent">TOOK</span></strong><small>PACKING VIDEO RECORDER</small></span></a><p>บันทึกทุกกล่อง มั่นใจทุกออเดอร์<br>เว็บแอปบันทึกวิดีโอแพ็กสินค้าสำหรับร้านค้าออนไลน์</p></div>
       <div class="footer-links"><strong>สำรวจ PACKTOOK</strong><a href="#features">จุดเด่นของระบบ</a><a href="#how-it-works">วิธีใช้งาน</a><a href="#pricing">แพ็กเกจ</a><a href="#faq">คำถามที่พบบ่อย</a></div>
       <div class="footer-links"><strong>การใช้งาน</strong><a href="https://packtook-prod-01-app.web.app/" target="_blank" rel="noopener noreferrer">เข้าสู่ระบบ Beta</a><span>เอกสารเงื่อนไขและความเป็นส่วนตัวอยู่ระหว่างตรวจสอบก่อนเปิดรับสมัคร</span></div>
     </div>
