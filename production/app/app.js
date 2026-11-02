@@ -177,7 +177,31 @@ async function playHistory(log){closePlayback();try{if(!folder)await restoreFold
 
 function monthKey(date=new Date()){return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`}
 function plan(){return plans.find(p=>p[0]===store.plan)||plans[0]}
-function updateQuota(){const q=remoteQuota;const p=q?plans.find(x=>x[0]===q.plan)||plans[0]:plans[0];const u=q?.used??0,unlimited=q?.limit===null;const left=q?.remaining??0;$('planName').textContent=p[0].toUpperCase();$('usedCount').textContent=u.toLocaleString();$('remainingCount').textContent=unlimited?'∞':left.toLocaleString();$('limitLabel').textContent=unlimited?'ไม่จำกัดวิดีโอ':q?.walletEnabled?'เครดิตสะสมที่ใช้ได้':'เครดิตคงเหลือในเดือนนี้';$('quotaText').textContent=unlimited?'เครดิตไม่จำกัด':q?.walletEnabled?`เครดิตสะสมคงเหลือ ${left.toLocaleString('th-TH')} วิดีโอ จาก ${Number(q.walletStartingCredits||left).toLocaleString('th-TH')} เครดิตหลังซื้อล่าสุด`:`ใช้แล้ว ${u.toLocaleString('th-TH')} / ${(q?.limit??20).toLocaleString('th-TH')}`;$('quotaProgress').style.width=unlimited?'0%':q?.walletEnabled?`${Math.min(100,100*left/Math.max(1,q.walletStartingCredits||left||1))}%`:`${Math.min(100,u/(q?.limit||20)*100)}%`}
+function updateQuota(){
+ const q=remoteQuota,p=q?plans.find(x=>x[0]===q.plan)||plans[0]:plans[0];
+ const used=q?.used??0,unlimited=q?.limit===null,raw=q?.remaining??0;
+ const expired=q?.subscriptionStatus==="expired"&&q?.plan!=="Free";
+ const expiry=Date.parse(q?.planExpiresAt||""),graceEnd=expiry+10*86400000;
+ const eligible=expired&&Number.isFinite(graceEnd)&&Date.now()<=graceEnd;
+ const retained=eligible&&!unlimited?Math.max(0,raw):0;
+ const left=expired?0:raw;
+ $('planName').textContent=p[0].toUpperCase();
+ $('usedCount').textContent=used.toLocaleString();
+ $('remainingCount').textContent=unlimited&&!expired?'∞':left.toLocaleString();
+ $('limitLabel').textContent=expired?'หมดอายุ • ต่อแพ็กเกจก่อนใช้งาน':
+  unlimited?'ไม่จำกัดวิดีโอ':q?.walletEnabled?'เครดิตสะสมที่ใช้ได้':'เครดิตคงเหลือในเดือนนี้';
+ $('quotaText').textContent=expired?
+  (eligible?'แพ็กเกจหมดอายุ • เก็บเครดิต '+retained.toLocaleString('th-TH')+
+    ' วิดีโอสำหรับยกยอดภายใน 10 วัน (ใช้บันทึกไม่ได้จนกว่าจะต่ออายุ)':
+   'แพ็กเกจหมดอายุเกิน 10 วัน • เครดิตเดิมสิ้นสิทธิ์แล้ว'):
+  unlimited?'เครดิตไม่จำกัด':q?.walletEnabled?
+   'เครดิตสะสมคงเหลือ '+left.toLocaleString('th-TH')+' วิดีโอ จาก '+
+   Number(q.walletStartingCredits||left).toLocaleString('th-TH')+' เครดิตหลังซื้อล่าสุด':
+   'ใช้แล้ว '+used.toLocaleString('th-TH')+' / '+(q?.limit??20).toLocaleString('th-TH');
+ $('quotaProgress').style.width=expired||unlimited?'0%':q?.walletEnabled?
+  Math.min(100,100*left/Math.max(1,q.walletStartingCredits||left||1))+'%':
+  Math.min(100,used/(q?.limit||20)*100)+'%';
+}
 
 function showTab(tab){document.querySelectorAll('.tabcontent').forEach(e=>e.hidden=e.id!==tab);document.querySelectorAll('.nav').forEach(e=>e.classList.toggle('active',e.dataset.tab===tab));$('crumb').textContent=tab.toUpperCase();$('pageTitle').textContent={packing:'บันทึกวิดีโอการแพ็กสินค้า',dashboard:'ค้นหาประวัติวิดีโอ',plans:'แพ็กเกจและโควตาวิดีโอ',help:'คู่มือการใช้งาน',users:'จัดการผู้ใช้และอุปกรณ์'}[tab];if(tab==='dashboard'){renderHistory();void runRetention(false)}if(tab==='plans'){renderPlans();void refreshQrTestAccess();if(displayedPaymentQr)scheduleQrPoll();}if(tab==='users'){updateUsersSummary();void refreshRemoteQuota().catch(e=>toast(e.message));void renderDeviceManager()}}
 async function verifyAfterPaymentReturn(){
@@ -495,8 +519,13 @@ function subscriptionHero(details){
  top.append(heading,status,action);hero.append(top);
  const metrics=subscriptionNode('div','sub-summary-metrics');
  const days=details.expiresAt&&Number.isFinite(Date.parse(details.expiresAt))?Math.max(0,Math.ceil((Date.parse(details.expiresAt)-Date.now())/86400000)):null;
+ const retention=details.status==='expired'&&details.plan!=='Free';
+ const retained=Number(details.retainedCredits||0);
  const metricValues=[
-  ['เครดิตพร้อมใช้',details.remaining===null?'∞':Number(details.remaining||0).toLocaleString('th-TH'),'วิดีโอที่ยังใช้ได้'],
+  [retention?'เครดิตพักรอต่ออายุ':'เครดิตพร้อมใช้',
+   retention?retained.toLocaleString('th-TH'):
+    details.remaining===null?'∞':Number(details.remaining||0).toLocaleString('th-TH'),
+   retention?'ยังใช้บันทึกไม่ได้จนกว่าจะต่ออายุ':'วิดีโอที่ยังใช้ได้'],
   ['วันหมดอายุ',details.expiresAt?subscriptionDate(details.expiresAt):'ไม่กำหนด',days===null?'':days+' วันคงเหลือ'],
   ['ใช้แล้วเดือนนี้',Number(details.used||0).toLocaleString('th-TH'),'จองอยู่ '+Number(details.reserved||0).toLocaleString('th-TH')]
  ];
@@ -505,7 +534,15 @@ function subscriptionHero(details){
   card.append(subscriptionNode('small','',m[0]),subscriptionNode('strong','',m[1]),subscriptionNode('span','',m[2]));metrics.append(card);
  }
  hero.append(metrics);
- hero.append(subscriptionNode('p','sub-summary-foot','V6.3 PromptPay QR • Omise TEST MODE เท่านั้น • ไม่รับเงินจริงและไม่มีบัตรเครดิต'));
+ if(retention){
+  const message=details.carryoverEligible?
+   'เก็บเครดิตเดิม '+retained.toLocaleString('th-TH')+
+   ' วิดีโอไว้จนถึง '+subscriptionDate(details.carryoverUntil)+
+   ' (ครบ 10 วันหลังหมดอายุ) • ต่ออายุแพ็กเกจเดิมหรือสูงกว่าเพื่อยกยอด':
+   'หมดอายุเกิน 10 วันแล้ว • เครดิตเดิมจะไม่ได้รับการยกยอด';
+  hero.append(subscriptionNode('p','sub-notice sub-notice-attention',message));
+ }
+ hero.append(subscriptionNode('p','sub-summary-foot','V6.4.1 PromptPay QR • Omise TEST MODE เท่านั้น • ไม่รับเงินจริงและไม่มีบัตรเครดิต'));
  return hero;
 }
 function subscriptionNotice(details){
@@ -680,25 +717,29 @@ async function refreshQrTestAccess(){
 }
 function planBuyStatus(plan){
  if(plan==="Free")return {allowed:false,label:"แผนใช้ฟรี"};
+ if(!remoteQuota)return {allowed:false,label:"กำลังโหลด"};
+ const current=plans.findIndex(x=>x[0]===remoteQuota.plan),target=plans.findIndex(x=>x[0]===plan);
+ if(current<0||target<0)return {allowed:false,label:"ตรวจสอบแพ็กเกจปัจจุบัน"};
+ if(target<current)return {allowed:false,label:"ห้าม Downgrade แพ็กเกจ"};
  if(!promptPayTestEnabled)return {allowed:false,label:
   promptPayAccessState==="loading"?"กำลังตรวจสิทธิ์ QR":
   promptPayAccessState==="tester_permission_missing"?"บัญชียังไม่มีสิทธิ์ QR Tester":
   promptPayAccessState==="feature_disabled"?"Backend ยังปิด QR Test":
   "ตรวจสอบสถานะ QR Test ไม่สำเร็จ"};
- if(!remoteQuota)return {allowed:false,label:"กำลังโหลด"};
  if(remoteQuota.openBillingRequestId)return {allowed:false,label:"มีรายการ QR ค้างอยู่"};
  if((remoteQuota.reserved||0)>0)return {allowed:false,label:"มีเครดิตจองค้าง"};
- const active=remoteQuota.subscriptionStatus==="active"&&remoteQuota.plan!=="Free";
- if(!active)return {allowed:true,label:"ทดลอง PromptPay QR"};
- const current=plans.findIndex(p=>p[0]===remoteQuota.plan),target=plans.findIndex(p=>p[0]===plan);
+ if(remoteQuota.plan==="Free")return {allowed:true,label:"ทดลอง PromptPay QR"};
+ const status=remoteQuota.subscriptionStatus;
+ if(status==="invalid"||status==="unconfigured")return {allowed:false,label:"บัญชีต้องได้รับการตรวจสอบ"};
  if(target>current)return {allowed:true,label:"ทดลองอัปเกรดด้วย QR"};
- if(target<current)return {allowed:false,label:"ยังไม่รองรับการลดแพ็กเกจ"};
+ if(status==="expired")return {allowed:true,label:"ทดลองต่ออายุด้วย QR"};
  if(remoteQuota.remaining===0)return {allowed:true,label:"ทดลองเติมเครดิตด้วย QR"};
  const expiry=Date.parse(remoteQuota.planExpiresAt||"");
  if(Number.isFinite(expiry)&&expiry>Date.now()&&expiry-Date.now()<=7*86400000)
   return {allowed:true,label:"ทดลองต่ออายุด้วย QR"};
  return {allowed:false,label:"แพ็กเกจปัจจุบัน"};
 }
+
 function renderPlans(){
  const cards=plans.map(p=>{
   const current=remoteQuota?.plan===p[0],buy=planBuyStatus(p[0]);
@@ -716,9 +757,18 @@ function renderPlans(){
   try{await refreshRemoteQuota()}catch(e){toast('ตรวจสอบสิทธิ์ไม่สำเร็จ: '+e.message);return}
   const buy=planBuyStatus(p);
   if(!buy.allowed){toast('ไม่สามารถซื้อได้ในขณะนี้: '+buy.label);renderPlans();return}
-  const upgrading=remoteQuota?.subscriptionStatus==='active'&&remoteQuota.plan!=='Free'&&plans.findIndex(x=>x[0]===p)>plans.findIndex(x=>x[0]===remoteQuota.plan);
-  const kind=upgrading?'upgrade':remoteQuota.purchaseReason;
-  const note=kind==='upgrade'?'อัปเกรด '+remoteQuota.plan+' เป็น '+p+' โดยชำระราคาแพ็กเกจใหม่เต็มจำนวน เครดิตเดิมที่เหลือจะโอนมารวมกับเครดิต '+(plans.find(x=>x[0]===p)?.[2]===Infinity?'ไม่จำกัด':plans.find(x=>x[0]===p)?.[2])+' ของแพ็กเกจใหม่ และวันหมดอายุเดิมบวกเพิ่มอีก 30 วัน':kind==='exhausted_topup'?'หลังชำระสำเร็จ จะเพิ่มเครดิตแพ็กเกจใหม่ให้ยอดสะสม และเพิ่มวันหมดอายุจากวันเดิมอีก 30 วัน':kind==='renewal'?'เครดิตที่ยังเหลือจะโอนมารวมกับเครดิตใหม่ และวันหมดอายุจะเพิ่มจากวันเดิมอีก 30 วัน':'หลังชำระสำเร็จ จะเปิดแพ็กเกจ 30 วัน โดยโอนเครดิต Free ที่ยังเหลือ (ถ้ามี) มารวมกับเครดิตใหม่';
+  const upgrading=remoteQuota?.plan!=='Free'&&plans.findIndex(x=>x[0]===p)>plans.findIndex(x=>x[0]===remoteQuota.plan);
+  const kind=upgrading?'upgrade':remoteQuota.subscriptionStatus==='expired'?'expired_renewal':remoteQuota.purchaseReason;
+  const expiry=Date.parse(remoteQuota?.planExpiresAt||"");
+  const withinGrace=Number.isFinite(expiry)&&Date.now()<=expiry+10*86400000;
+  const retainedNote=remoteQuota?.subscriptionStatus==="expired"?
+   (withinGrace?" เครดิตเดิมยังยกยอดได้ภายใน 10 วัน":" เครดิตเดิมสิ้นสิทธิ์ยกยอดแล้ว"):
+   " เครดิตเดิมที่เหลือจะรวมกับเครดิตแพ็กเกจใหม่";
+  const note=kind==='upgrade'?'อัปเกรด '+remoteQuota.plan+' เป็น '+p+'.'+retainedNote:
+   kind==='expired_renewal'?'ต่ออายุ '+p+'.'+retainedNote:
+   kind==='exhausted_topup'?'เติมเครดิตแพ็กเกจเดิม โดยนำเครดิตที่เหลือมารวม':
+   kind==='renewal'?'ต่ออายุแพ็กเกจเดิม โดยนำเครดิตที่เหลือมารวม':
+   'สมัครแพ็กเกจใหม่ • เครดิต Free ที่เหลือสามารถนำมารวมกัน';
   if(!confirm('สร้างรายการ PromptPay QR บน Omise TEST MODE สำหรับ '+p+'?\\nไม่มีการเก็บเงินจริงหรือรับบัตรเครดิต\\n'+note))return;
   button.disabled=true;
   try{const result=await credit().requestPlanChange(p);toast('บันทึกคำขอ '+result.plan+' แล้ว โปรดชำระในประวัติคำขอ');await refreshRemoteQuota();renderPlans()}catch(e){toast('ส่งคำขอไม่สำเร็จ: '+e.message);renderPlans()}
