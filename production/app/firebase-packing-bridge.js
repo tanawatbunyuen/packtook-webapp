@@ -35,8 +35,13 @@ function isEligible(token){
 onIdTokenChanged(auth,async u=>{
  try{
   const token=u?.emailVerified?await u.getIdTokenResult():null;
-  user=isEligible(token)?u:null;
-  // Verified, unprovisioned users can finish the Free onboarding on the login
+  // Beta sessions remain available. Public sessions require the independent
+  // server-side access flag even if an older token still has a public claim.
+  if(token?.claims?.packtookProductionBeta===true)user=u;
+  else if(token?.claims?.packtookPublicCustomer===true){
+   const status=await signupAvailability();user=status.accessEnabled===true?u:null;
+  }else user=null;
+  // Verified, unprovisioned users can finish Free onboarding on the login
   // screen; they have no app access or credit until the server grants a claim.
  }catch(e){user=null;console.warn("Production Beta authorization not ready",e?.code||"error");}
  for(const cb of listeners)cb(user);
@@ -78,6 +83,10 @@ window.PACKTOOK_FIREBASE={
  async login(email,password){const result=await signInWithEmailAndPassword(auth,email,password);
  if(!result.user.emailVerified){await sendEmailVerification(result.user);await signOut(auth);throw Error("ระบบส่งลิงก์ยืนยันอีเมลแล้ว โปรดตรวจกล่องจดหมายก่อนเข้าสู่ระบบ")}
  const token=await result.user.getIdTokenResult(true);
+ if(token.claims.packtookPublicCustomer===true&&token.claims.packtookProductionBeta!==true){
+  const access=await signupAvailability();
+  if(access.accessEnabled!==true){await signOut(auth);throw Error("การเข้าสู่ระบบ Free ยังไม่เปิดให้บริการ")}
+ }
  if(!isEligible(token)){
   const status=await signupAvailability();
   if(status.enabled){
