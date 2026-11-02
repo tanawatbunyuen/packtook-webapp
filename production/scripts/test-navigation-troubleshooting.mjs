@@ -11,7 +11,7 @@ for(const tab of ["packing","dashboard","plans","users","help","troubleshooting"
  assert(html.includes('data-tab="'+tab+'"'),"Missing navigation tab "+tab);
 assert(html.includes('aria-controls="appSidebar"')&&html.includes('aria-expanded="true"'),
  "Sidebar toggle must be accessible to assistive technologies");
-assert(html.includes('app.js?v=6.4.3')&&html.includes('style.css?v=6.4.3'),
+assert(html.includes('app.js?v=6.5.0')&&html.includes('style.css?v=6.5.0'),
  "New UI must invalidate stale cached assets");
 assert(css.includes("#appPage.sidebar-collapsed .sidebar")&&
  css.includes("#appPage.sidebar-collapsed .main")&&
