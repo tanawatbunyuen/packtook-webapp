@@ -25,8 +25,14 @@ assert(topics.length>=12,"Expected at least twelve symptom-based articles");
 const categoryKeys=new Set(topics.map(x=>x[1]));
 for(const key of ["account","camera","barcode","storage","credit","device","payment","network"])
  assert(categoryKeys.has(key),"Support topic missing category "+key);
-assert(html.includes("Credit Recovery")&&html.includes("Omise")&&html.includes("10×24"),
- "Critical credit/payment safety guidance missing");
+const support=html.slice(html.indexOf('<section id="troubleshooting"'),html.indexOf('</section>',html.indexOf('<section id="troubleshooting"')));
+assert(support.includes("Credit Recovery")&&support.includes("QR ยังแสดง Pending")&&support.includes("10 วัน"),
+ "Critical customer credit/payment guidance missing");
+for(const technical of ["Firebase","Firestore","Cloud Shell","GitHub","Secret Key","IndexedDB","Production Beta","node scripts"]){
+ assert(!support.includes(technical),"Customer-facing help should not contain backend terminology: "+technical);
+}
+assert(support.includes("ทีมช่วยเหลือ PACKTOOK")&&support.includes("ก่อนติดต่อทีมช่วยเหลือ"),
+ "Support content should be written directly for customer self-service");
 const begin=js.indexOf("const SIDEBAR_LAYOUT_KEY="),end=js.indexOf("function showTab(",begin);
 assert(begin>=0&&end>begin,"UI-only helper source boundary missing");
 const classes=new Set(),values={},saved={};
