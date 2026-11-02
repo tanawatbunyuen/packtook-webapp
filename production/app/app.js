@@ -750,7 +750,7 @@ function qrAccessMessage(){
   loading:"กำลังตรวจสิทธิ์ PromptPay QR Test…",
   ready:"PromptPay QR Test พร้อมใช้งานสำหรับบัญชีทดสอบนี้",
   feature_disabled:"Backend ยังปิด PACKTOOK_PROMPTPAY_TEST_ENABLED — ต้องเปิด Flag และ Deploy Functions",
-  tester_permission_missing:"บัญชีนี้ยังไม่มีสิทธิ์ QR Tester — ต้อง Grant packtookPaymentTester แล้ว Login ใหม่",
+  tester_permission_missing:"ระบบชำระเงินยังไม่เปิดสำหรับบัญชีนี้ (ช่วงทดสอบเท่านั้น)",
   unavailable:"เชื่อมต่อ Payment Functions ไม่สำเร็จ — ตรวจ Console และ Functions Logs"
  };
  return map[promptPayAccessState]||map.unavailable;
@@ -796,7 +796,7 @@ function planBuyStatus(plan){
  if(target<current)return {allowed:false,label:"ห้าม Downgrade แพ็กเกจ"};
  if(!promptPayTestEnabled)return {allowed:false,label:
   promptPayAccessState==="loading"?"กำลังตรวจสิทธิ์ QR":
-  promptPayAccessState==="tester_permission_missing"?"บัญชียังไม่มีสิทธิ์ QR Tester":
+  promptPayAccessState==="tester_permission_missing"?"ยังไม่เปิดรับชำระเงินสำหรับบัญชีนี้":
   promptPayAccessState==="feature_disabled"?"Backend ยังปิด QR Test":
   "ตรวจสอบสถานะ QR Test ไม่สำเร็จ"};
  if(remoteQuota.openBillingRequestId)return {allowed:false,label:"มีรายการ QR ค้างอยู่"};
