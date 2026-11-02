@@ -1,4 +1,4 @@
-<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b1225"><title>PACKTOOK | Production Beta Packing</title><meta name="robots" content="noindex,nofollow"><link rel="icon" href="logo.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css?v=6.5.0"></head><body><div class="production-beta-banner" role="status">PACKTOOK V6.4.3 · PRODUCTION BETA · OMISE PROMPTPAY QR TEST MODE เท่านั้น · ไม่มีการรับเงินจริงหรือบัตรเครดิต</div>
+<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b1225"><title>PACKTOOK | Production Beta Packing</title><meta name="robots" content="noindex,nofollow"><link rel="icon" href="logo.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css?v=6.5.0"></head><body><div id="customerStageBanner" class="production-beta-banner" role="status">PACKTOOK V6.4.3 · PRODUCTION BETA · OMISE PROMPTPAY QR TEST MODE เท่านั้น · ไม่มีการรับเงินจริงหรือบัตรเครดิต</div>
 <div id="loginPage" class="auth-layout">
   <section class="hero">
     <div class="hero-ambient"></div>
@@ -18,12 +18,12 @@
     <aside class="eagle-tip eagle-login" aria-label="ผู้ช่วย PACKTOOK"><img src="mascot-eagle.svg" alt="มาสคอตนกอินทรี PACKTOOK"><span><strong>สวัสดีครับ ผมอีเกิล!</strong><small>พร้อมช่วยมองเห็นทุกขั้นตอนการแพ็ก</small></span></aside><h2>เข้าสู่ระบบ</h2><p id="firebaseConnectStatus" class="auth-sub" role="status">กำลังเชื่อม Firebase… เมื่อเข้าสู่ระบบสำเร็จจะแสดงเมนู Packing / Dashboard / Packages / Help</p><p class="auth-sub">จัดการบันทึกวิดีโอแพ็กสินค้าอย่างเป็นระบบ<br>ผ่าน PACKTOOK Web App</p>
     <label for="email">อีเมล / Username</label><div class="field-icon"><span>✉</span><input id="email" type="email" required placeholder="อีเมลที่ยืนยันแล้ว" autocomplete="username"></div>
     <label for="password">รหัสผ่าน</label><div class="password-line field-icon"><span>♙</span><input id="password" type="password" required  autocomplete="current-password"><button type="button" id="showPassword" aria-label="แสดงหรือซ่อนรหัสผ่าน">แสดง</button></div>
-    <div class="auth-options"><label class="remember-label"><input id="remember" type="checkbox" checked> จดจำอีเมล</label><span class="demo-mini">PRODUCTION BETA</span></div>
+    <div class="auth-options"><label class="remember-label"><input id="remember" type="checkbox" checked> จดจำอีเมล</label><span id="customerStageBadge" class="demo-mini">PRODUCTION BETA</span></div>
     <button class="primary login-submit" type="submit">เข้าสู่ระบบ <span>➜</span></button><p id="loginError" role="alert" class="error" hidden></p>
     <div class="auth-divider"><span>หรือ</span></div>
     <button type="button" class="trial-button" id="trialBtn" disabled>♧ สำหรับบัญชีที่ได้รับสิทธิ์ทดสอบเท่านั้น <small>ไม่เปิดรับสมัครสาธารณะ</small></button>
     <p style="text-align:center;margin:10px 0"><button id="resetPassword" type="button" class="secondary">ลืมรหัสผ่าน / ตั้งรหัสผ่านใหม่</button></p><p id="publicSignupEntry" class="signup-entry" hidden>ยังไม่มีบัญชี? <button type="button" id="openPublicSignup" class="secondary">สมัครฟรี — 20 วิดีโอ/เดือน</button></p>
-    <p id="betaSignupOnly" style="text-align:center;margin:10px 0"><span>บัญชีทดสอบ Production: ติดต่อผู้ดูแลเพื่อขอสิทธิ์</span></p><small class="authnote">🔒 Firebase Production Beta — จำกัดสิทธิ์บัญชีทดสอบ</small>
+    <p id="betaSignupOnly" style="text-align:center;margin:10px 0"><span>บัญชีทดสอบ Production: ติดต่อผู้ดูแลเพื่อขอสิทธิ์</span></p><small id="customerStageNote" class="authnote">🔒 Firebase Production Beta — จำกัดสิทธิ์บัญชีทดสอบ</small>
   </form>
    <section id="publicSignupPanel" class="login-card signup-panel" hidden aria-labelledby="signupTitle">
     <h2 id="signupTitle">สมัครสมาชิก PACKTOOK Free</h2>
