@@ -14,7 +14,11 @@ const context=(env)=>{
  const db={
   collection(name){
    assert.equal(name,"accounts");
-   return {doc(id){return {id,key:id}}};
+   return {doc(id){return {id,key:id,
+    async get(){return {exists:records.has(id),data:()=>records.get(id)}},
+    async create(value){if(records.has(id)){const e=new Error("Already exists");e.code=6;throw e}
+     records.set(id,value)}
+   }}};
   },
   async runTransaction(callback){
    const writes=[];
