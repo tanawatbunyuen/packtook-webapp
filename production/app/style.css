@@ -606,3 +606,84 @@
 }
 .subscription-expiry-alert button:hover{background:#fff1cf}
 @media(max-width:560px){.subscription-expiry-alert button{width:100%}}
+
+
+/* PACKTOOK V6.4.3 — compact Sidebar. Override legacy widths at the end of the stylesheet. */
+#appPage .sidebar{flex:0 0 310px;min-width:0;transition:width .2s ease,flex-basis .2s ease}
+#appPage .main{flex:1 1 auto;min-width:0;width:auto}
+#appPage .nav .nav-row{display:flex;align-items:center;gap:9px;min-width:0;width:100%;text-align:left}
+#appPage .nav .nav-icon{display:inline-grid;place-items:center;width:27px;flex:0 0 27px;font-size:23px;line-height:1}
+#appPage .nav .nav-label{min-width:0;white-space:normal;text-align:left}
+#appPage .nav small{margin-left:36px}
+#appPage .topbar-heading{display:flex;align-items:center;min-width:0;gap:16px}
+#appPage .topbar-heading>div{min-width:0}
+#appPage .sidebar-toggle{display:inline-flex;align-items:center;justify-content:center;gap:8px;flex:0 0 auto;min-height:45px;padding:9px 13px;border-radius:12px;border:1px solid #ccdaed;background:#fff;color:#195281;font-size:15px;font-weight:800;box-shadow:0 3px 13px rgba(25,62,100,.06)}
+#appPage .sidebar-toggle:hover{background:#e9f4ff}
+#appPage .sidebar-toggle:focus-visible,#appPage .nav:focus-visible{outline:3px solid #31b5e7;outline-offset:2px}
+#appPage .logout-icon{display:none}
+#appPage.sidebar-collapsed .sidebar{width:82px;flex-basis:82px;padding:20px 9px;gap:12px}
+#appPage.sidebar-collapsed .main{width:calc(100% - 82px)}
+#appPage.sidebar-collapsed .sidebrand{justify-content:center;margin:3px 0 18px;padding:9px 4px}
+#appPage.sidebar-collapsed .sidebrand .packtook-lockup{justify-content:center}
+#appPage.sidebar-collapsed .sidebrand .packtook-mark{width:48px!important;height:48px!important;flex:0 0 48px}
+#appPage.sidebar-collapsed .sidebrand .packtook-type{display:none}
+#appPage.sidebar-collapsed .nav{display:flex;align-items:center;justify-content:center;min-height:55px;padding:10px 5px;white-space:normal}
+#appPage.sidebar-collapsed .nav .nav-row{justify-content:center;width:auto}
+#appPage.sidebar-collapsed .nav .nav-icon{font-size:25px;width:31px;flex-basis:31px}
+#appPage.sidebar-collapsed .nav .nav-label,#appPage.sidebar-collapsed .nav small,#appPage.sidebar-collapsed .eagle-sidebar,#appPage.sidebar-collapsed .demoindicator{display:none}
+#appPage.sidebar-collapsed .sidebarbottom{margin-top:auto}
+#appPage.sidebar-collapsed .sidebarbottom #logout{width:100%;padding:9px 4px}
+#appPage.sidebar-collapsed .logout-icon{display:inline;font-size:25px}
+#appPage.sidebar-collapsed .logout-label{display:none}
+@media(max-width:1190px) and (min-width:701px){
+ #appPage .sidebar{flex-basis:286px}
+ #appPage.sidebar-collapsed .sidebar{width:82px;flex-basis:82px}
+}
+@media(max-width:700px){
+ #appPage .sidebar{width:100%;flex:0 0 auto}
+ #appPage .nav .nav-row{gap:4px}
+ #appPage .nav .nav-icon{font-size:18px;flex-basis:19px;width:19px}
+ #appPage .nav .nav-label{white-space:nowrap}
+ #appPage .topbar-heading{gap:10px}
+ #appPage .sidebar-toggle{min-width:46px;padding:7px 10px}
+ #appPage .sidebar-toggle #sidebarToggleLabel{display:none}
+ #appPage.sidebar-collapsed .sidebar{display:none}
+ #appPage.sidebar-collapsed .main{width:100%}
+}
+@media(prefers-reduced-motion:reduce){#appPage .sidebar{transition:none}}
+
+/* V6.4.3 — searchable, accessible, read-only troubleshooting content */
+#troubleshooting .trouble-hero{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:16px 0 22px;padding:27px 30px;background:linear-gradient(110deg,#0c2e5c,#1467a9 75%,#148cbb);border-radius:22px;color:#fff}
+#troubleshooting .trouble-eyebrow{display:block;color:#9fe5ff;letter-spacing:.14em;font-size:13px;font-weight:800}
+#troubleshooting .trouble-hero h3{font-size:clamp(27px,2.8vw,38px);color:#fff;margin:6px 0 5px}
+#troubleshooting .trouble-hero p{font-size:17px;color:#deefff;margin:0}
+#troubleshooting .trouble-hero-icon{font-size:58px}
+#troubleshooting .trouble-filter{display:grid;grid-template-columns:minmax(0,2fr) minmax(180px,1fr);gap:16px;margin-bottom:15px;background:#fff;border:1px solid #deebf7;border-radius:17px;padding:19px 22px}
+#troubleshooting .trouble-filter>div{display:flex;flex-direction:column;gap:8px;min-width:0}
+#troubleshooting .trouble-filter label{font-weight:800;color:#2d4c6b}
+#troubleshooting .trouble-filter input,#troubleshooting .trouble-filter select{width:100%;border:1px solid #cbddec;border-radius:11px;padding:10px 13px;background:#fff;color:#1e3b5c}
+#troubleshooting .trouble-count{color:#55728f;margin:12px 2px;font-weight:750}
+#troubleshooting .trouble-list{display:grid;gap:12px}
+#troubleshooting .trouble-item{min-width:0;background:#fff;border:1px solid #dce8f6;border-radius:15px;box-shadow:0 4px 15px #133b6308;overflow:hidden}
+#troubleshooting .trouble-item summary{display:flex;align-items:center;justify-content:space-between;gap:15px;list-style:none;cursor:pointer;padding:18px 22px;font-weight:850;color:#193b64;line-height:1.45}
+#troubleshooting .trouble-item summary::-webkit-details-marker{display:none}
+#troubleshooting .trouble-item summary:after{content:"+";font-size:24px;font-weight:750;color:#237ec7;flex:0 0 auto;margin-left:2px}
+#troubleshooting .trouble-item[open] summary:after{content:"−"}
+#troubleshooting .trouble-item summary:focus-visible{outline:3px solid #54bdfa;outline-offset:-3px}
+#troubleshooting .trouble-symptom{flex:1;font-size:18px}
+#troubleshooting .trouble-kind{flex:0 0 auto;background:#eaf4ff;color:#2c6699;padding:5px 10px;border-radius:50px;font-size:13px;font-weight:800}
+#troubleshooting .trouble-answer{border-top:1px solid #e3edf8;padding:10px 22px 20px;background:#fbfdff}
+#troubleshooting .trouble-answer ol{padding-left:24px;color:#3b5673;line-height:1.8;margin:8px 0 14px}
+#troubleshooting .trouble-answer li+li{margin-top:5px}
+#troubleshooting .trouble-answer button{background:#e9f4ff;color:#1764a4;border:1px solid #bdd9f0;border-radius:10px;padding:8px 16px}
+#troubleshooting .trouble-empty,#troubleshooting .trouble-safety{border-radius:13px;padding:17px 20px;background:#edf6ff;color:#2c587b;line-height:1.7}
+#troubleshooting .trouble-safety{margin-top:21px;background:#fff8e9;color:#7b5a27;border:1px solid #f0dcaa}
+@media(max-width:730px){
+ #troubleshooting .trouble-filter{grid-template-columns:1fr;padding:14px}
+ #troubleshooting .trouble-hero{padding:20px}
+ #troubleshooting .trouble-hero-icon{display:none}
+ #troubleshooting .trouble-item summary{padding:15px 14px;gap:10px}
+ #troubleshooting .trouble-symptom{font-size:16px}
+ #troubleshooting .trouble-kind{font-size:11px}
+ #troubleshooting .trouble-answer{padding:9px 16px 15px}
+}
