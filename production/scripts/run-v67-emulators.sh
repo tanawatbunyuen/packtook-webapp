@@ -19,7 +19,7 @@ if ! command -v firebase >/dev/null 2>&1; then
   exit 2
 fi
 if [[ ! -d functions/node_modules/firebase-admin || ! -d functions/node_modules/firebase-functions ]]; then
-  echo "Missing Firebase Admin SDK dependencies. Run 'npm ci --prefix functions' with its lockfile first." >&2
+  echo "Missing Firebase Admin SDK dependencies. Run 'npm install --prefix functions --no-audit --no-fund' first (the repository has no functions/package-lock.json)." >&2
   exit 2
 fi
 node --check scripts/test-free-auth-firestore-emulator.mjs
