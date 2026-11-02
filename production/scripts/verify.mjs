@@ -72,8 +72,8 @@ assert(payments.includes("omise-signature")&&payments.includes("timingSafeEqual"
 assert(payments.includes("packtookPaymentTester")&&payments.includes("paymentTester(req)"),"Only explicitly approved QR Tester accounts may purchase");
 assert(!payments.includes("skey_live_")&&!payments.includes("card.create"),"Live or card payment prohibited");
 assert(payments.includes('charge.source?.type!=="promptpay"'),"Only verified PromptPay charges may settle");
-assert(appHTML.includes("OMISE PROMPTPAY QR TEST MODE")&&appHTML.includes("app.js?v=6.4.2"),"V6.3 customer QR Test UI missing");
-assert(appHTML.includes("style.css?v=6.4.2"),"Customer renewal banner CSS cache version missing");
+assert(appHTML.includes("OMISE PROMPTPAY QR TEST MODE")&&appHTML.includes("app.js?v=6.4.3"),"V6.3 customer QR Test UI missing");
+assert(appHTML.includes("style.css?v=6.4.3"),"Customer renewal banner CSS cache version missing");
 assert(betaBridge.includes('api("promptpayCreateCharge")')&&!betaBridge.includes('api("createOmisePayment")'),"Client must use dedicated PromptPay only API");
 assert(appHTML.includes('id="qrAccessStatus"')&&appHTML.includes('id="refreshQrAccess"'),"Customer QR status diagnostics missing");
 assert(payments.includes("featureEnabled:PROMPTPAY_TEST_ENABLED")&&payments.includes("testerAuthorized"),"Payment config must expose safe gate reason");
@@ -94,4 +94,4 @@ assert(customerSource.includes("ห้าม Downgrade แพ็กเกจ")&&
 assert(payments.includes("voluntary renewal at any point")&&payments.includes('kind:"renewal",resetQuota:false'),"Same-tier renewal must be available anytime");
 assert(appHTML.includes('id="subscriptionExpiryAlert"')&&appHTML.includes('id="renewFromAlert"'),"Seven-day Customer notification missing");
 assert(customerSource.includes("function expiryReminder(")&&customerSource.includes("updateRenewalNotice()")&&customerSource.includes("ทดลองต่ออายุแพ็กเกจเดิม"),"Expiry warning or same-tier UI eligibility missing");
-console.log("PACKTOOK V6.4.2 same-tier renewal and 7-day customer alert: PASS for",id);
+console.log("PACKTOOK V6.4.3 Customer UI and V6.4.2 payment policy checks: PASS for",id);
