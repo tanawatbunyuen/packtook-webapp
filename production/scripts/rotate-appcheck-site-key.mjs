@@ -11,13 +11,16 @@ const PROJECT="packtook-prod-01",DOMAIN="packtook-prod-01-app.web.app";
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
 const CONFIG=path.join(ROOT,"app","signup-config.js");
 
-export function checkNewKey({currentConfig,newKey,metadata}){
+export function checkNewKey({currentConfig,newKey,metadata,projectNumber=null}){
  if(!validPublicSiteKey(newKey))throw Error("SAFETY BLOCK: full valid public Site Key required");
  const currentKey=currentConfig.match(/\bappCheckSiteKey\s*:\s*"([^"]*)"/)?.[1]||"";
  if(!validPublicSiteKey(currentKey))throw Error("SAFETY BLOCK: existing Site Key format unexpected");
  if(newKey===currentKey)throw Error("SAFETY BLOCK: new key is identical to old key");
  if(!metadata||typeof metadata!=="object")throw Error("SAFETY BLOCK: Google Cloud key metadata missing");
- if(metadata.name!=="projects/"+PROJECT+"/keys/"+newKey)
+ const acceptedResources=["projects/"+PROJECT+"/keys/"+newKey];
+ if(typeof projectNumber==="string"&&/^[0-9]{6,20}$/.test(projectNumber))
+  acceptedResources.push("projects/"+projectNumber+"/keys/"+newKey);
+ if(!acceptedResources.includes(metadata.name))
   throw Error("SAFETY BLOCK: new Key does not belong to "+PROJECT);
  const web=metadata.webSettings;
  if(!web||web.integrationType!=="SCORE"||web.allowAllDomains===true||
@@ -44,7 +47,8 @@ if(isMain){
   const source=fs.readFileSync(CONFIG,"utf8");
   const metadata=JSON.parse(fs.readFileSync(file,"utf8"));
   const checked=checkNewKey({
-    currentConfig:source,newKey:process.env.PACKTOOK_RECAPTCHA_SITE_KEY_NEW,metadata});
+    currentConfig:source,newKey:process.env.PACKTOOK_RECAPTCHA_SITE_KEY_NEW,metadata,
+    projectNumber:process.env.PACKTOOK_GCP_PROJECT_NUMBER||null});
   fs.writeFileSync(CONFIG,checked.content,"utf8");
   console.log("PASS: public Site Key rotated locally for "+PROJECT);
   console.log("PASS: Google Cloud Production project, Score key and authorized Customer domain");
