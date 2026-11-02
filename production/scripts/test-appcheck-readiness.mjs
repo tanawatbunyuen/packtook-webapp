@@ -20,7 +20,7 @@ assert.equal(baseline.siteKeyValue,"REDACTED/NOT PRINTED");
 assert(baseline.findings.find(x=>x.id==="A03").result==="pass");
 assert(baseline.findings.find(x=>x.id==="A04").result==="pass");
 assert(baseline.findings.find(x=>x.id==="A06").result==="pass");
-assert.equal(baseline.findings.find(x=>x.id==="A07").result,"blocked");
+assert.equal(baseline.findings.find(x=>x.id==="A07").result,baseline.siteKeyPresent?"manual":"blocked");
 assert.equal(baseline.findings.find(x=>x.id==="A08").result,"blocked");
 console.log("PASS: real V6.9 source enforces App Check and public signup remains legally blocked");
 
