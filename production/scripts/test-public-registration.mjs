@@ -137,6 +137,12 @@ assert.equal(third.created,false);
 assert.equal(c.records.get("alice").plan,"Basic");
 assert.equal(c.records.get("alice").creditWalletRemaining,245);
 console.log("PASS: repeated activation cannot reset credits, used count, or a paid plan");
+// Existing public claim must not recreate a deleted account or grant a second Free.
+c.records.delete("alice");
+await rejected(()=>c.fn.completeFreeSignup(input("alice")),"failed-precondition");
+await rejected(()=>c.fn.usageStatus({auth:{uid:"alice",
+ token:{email_verified:true,packtookPublicCustomer:true}}}),"failed-precondition");
+console.log("PASS: public account deletion cannot be exploited to replenish Free quota");
 
 c.users.set("noEmail",{email:"no@example.test",emailVerified:false,disabled:false,customClaims:{}});
 await rejected(()=>c.fn.completeFreeSignup(input("noEmail")),"permission-denied");
@@ -145,6 +151,9 @@ await rejected(()=>c.fn.completeFreeSignup(input("disabled")),"permission-denied
 c.users.set("beta",{email:"beta@example.test",emailVerified:true,disabled:false,
  customClaims:{packtookProductionBeta:true}});
 await rejected(()=>c.fn.completeFreeSignup(input("beta")),"already-exists");
+const betaQuota=await c.fn.usageStatus({auth:{uid:"beta",
+ token:{email_verified:true,packtookProductionBeta:true}}});
+assert.equal(betaQuota.remaining,20,"Legacy Beta first-use provisioning must still work");
 c.users.set("legacy",{email:"legacy@example.test",emailVerified:true,disabled:false,customClaims:{}});
 c.records.set("legacy",{plan:"Starter",used:1});
 await rejected(()=>c.fn.completeFreeSignup(input("legacy")),"already-exists");
