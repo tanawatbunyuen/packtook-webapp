@@ -32,6 +32,8 @@ grep -q 'packing-comparison.css?v=6.5.3' public/index.html
 grep -q 'typography.css?v=6.5.4' public/index.html
 test -s public/assets/typography.css
 grep -q 'howto-photos.css?v=6.5.5' public/index.html
+grep -q 'howto-ready.webp?v=6.5.6' public/index.html
+grep -q 'howto-review.webp?v=6.5.6' public/index.html
 test -s public/assets/howto-photos.css
 for file in ready scan save review; do
   test -s "public/assets/howto-${file}.webp" || { echo "Missing How It Works photo: ${file}" >&2; exit 1; }
