@@ -29,6 +29,8 @@ function ref(path){
   collection(name){return collection(path+"/"+name)},
   async create(data){if(documents.has(path))throw {code:6};documents.set(path,{...data})},
   async get(){return snapshot(path)},
+  async set(data){documents.set(path,{...data})},
+  async delete(){documents.delete(path)},
   async update(patch){merge(path,patch)}};
 }
 function snapshot(path){
