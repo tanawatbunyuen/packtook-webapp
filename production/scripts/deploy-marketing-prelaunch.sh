@@ -15,7 +15,6 @@ node scripts/test-marketing-brand-parity.mjs
 node scripts/test-marketing-workflow-comparison.mjs
 node scripts/test-marketing-typography.mjs
 node --check public/assets/site.js
-node --check public/assets/hero-photo.js
 
 # Guarantee this release remains a prelaunch website without live checkout.
 grep -q 'name="robots" content="noindex, nofollow"' public/index.html
@@ -33,15 +32,21 @@ grep -q 'typography.css?v=6.5.4' public/index.html
 test -s public/assets/typography.css
 test -s public/assets/hero-photo.js
 if [[ ! -s public/assets/packtook-hero-photo.webp ]]; then
-  echo "ERROR: Photoreal Hero asset not installed. Upload the provided V6.5.4 ZIP to Cloud Shell and extract at repo root before deploying." >&2
+  echo "ERROR: Committed AI Hero photo missing. Fetch latest feature/v6.5.4-hero-photo-type-scale branch before deploying." >&2
   exit 1
 fi
 node - <<'JS_PHOTO'
-const fs=require("node:fs");
+const fs=require("node:fs"),crypto=require("node:crypto");
 const p="public/assets/packtook-hero-photo.webp";
 const x=fs.readFileSync(p);
 if(x.length<10000||x.toString("ascii",0,4)!=="RIFF"||x.toString("ascii",8,12)!=="WEBP")
  throw Error("Invalid or incomplete Hero WebP photo: "+p);
+const actual=crypto.createHash("sha256").update(x).digest("hex");
+if(actual!=="5e661c81450755aa3569808628bbd6f1226a6562626cb9a4d9066721f564537e")
+ throw Error("Hero photo does not match the reviewed AI asset SHA-256");
+const html=fs.readFileSync("public/index.html","utf8");
+if(!html.includes('src="/assets/packtook-hero-photo.webp?v=6.5.4.1"'))
+ throw Error("Website Hero does not directly reference the reviewed photo");
 JS_PHOTO
 
 node - "$PROJECT" <<'JS'
