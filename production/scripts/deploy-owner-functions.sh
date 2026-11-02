@@ -6,6 +6,7 @@ PROD="$1"
 [[ "$PROD" == "packtook-prod-01" ]] || { echo "ERROR: Expected exact Production project ID" >&2;exit 1; }
 node scripts/verify.mjs "$PROD"
 node scripts/test-owner.mjs
+node scripts/test-package-policy.mjs
 node scripts/test-owner-charts.mjs
 node scripts/test-owner-management.mjs
 node scripts/test-owner-management-ui.mjs
