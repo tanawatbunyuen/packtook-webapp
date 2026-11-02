@@ -24,7 +24,7 @@ for(const dir of ["public","app","owner"]){
 const runtime=fs.readFileSync(path.join(root,"app","runtime-config.js"),"utf8");
 assert(/enabled:\s*false/.test(runtime)&&/registrationEnabled:\s*false/.test(runtime)&&/policiesApproved:\s*false/.test(runtime),"V6.0 auth/registration must remain disabled");
 const publicHTML=fs.readFileSync(path.join(root,"public","index.html"),"utf8");
-assert(/REGISTRATION & PAYMENT NOT OPEN/.test(publicHTML),"Marketing must say payment is unavailable");
+assert(/REGISTRATION &(?:amp;)? PAYMENT NOT OPEN/.test(publicHTML),"Marketing must say payment is unavailable");
 assert(/noindex/i.test(publicHTML),"Prelaunch should not be indexed");
 assert(id==="packtook-prod-01","V6.2 is provisioned only for packtook-prod-01");
 assert(Array.isArray(cfg.functions)&&cfg.functions.length===3,"V6.3 requires three isolated Functions codebases");
