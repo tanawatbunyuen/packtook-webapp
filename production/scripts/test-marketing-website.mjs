@@ -42,7 +42,8 @@ for(const anchor of html.matchAll(/href="#([A-Za-z0-9_-]+)"/g)){
  assert(html.includes('id="'+anchor[1]+'"'),"Broken in-page link #"+anchor[1]);
 }
 assert(html.includes('/assets/logo.svg')&&html.includes('/assets/mascot-eagle.svg'));
-assert(html.includes('ภาพจำลองเพื่ออธิบายการทำงาน'));
+assert(html.includes('packing-workstation.svg')&&html.includes('ภาพประกอบจำลองการใช้งาน'));
+assert(html.includes('packing-comparison.css?v=6.5.3'));
 assert(html.includes('site.css?v=6.5.1')&&html.includes('site.js?v=6.5.1'));
 assert.equal((html.match(/<details>/g)||[]).length,7);
 console.log("PASS: sections, in-page navigation, 7 native FAQs, accessibility and assets");
@@ -56,21 +57,22 @@ const planFields=(regex)=>{
 const limits=planFields(/const limits=\{([^}]+)\}/);
 const prices=planFields(/const pricesTHB=\{([^}]+)\}/);
 const devices=planFields(/const deviceLimits=\{([^}]+)\}/);
-const cards=[...html.matchAll(/<article class="price-card(?: highlight)?">([\s\S]*?)<\/article>/g)].map(x=>x[1]);
-assert.equal(cards.length,6,"All six payment-function plans must appear in marketing");
+const columns=[...html.matchAll(/<th scope="col" class="comparison-plan(?: is-highlighted)?" data-plan="([A-Za-z]+)" data-test-price="(\d+)" data-credits="(\d+|unlimited)" data-devices="(\d+)">/g)];
+assert.equal(columns.length,6,"All six backend plan columns must appear in comparison");
 for(let i=0;i<names.length;i++){
- const name=names[i],card=cards[i],price=prices[name],amount=limits[name];
- assert(card.includes("<h3>"+name+"</h3>"),"Plan order/name mismatch "+name);
- assert(card.includes(price.toLocaleString("en-US")),"Test price mismatch "+name);
- assert(card.includes(amount===null?"<strong>∞</strong>":"<strong>"+amount.toLocaleString("en-US")+"</strong>"),
- "Video credit amount mismatch "+name);
- assert(card.includes("ลงทะเบียน"+(devices[name]===1?" 1 อุปกรณ์":"ได้ "+devices[name]+" อุปกรณ์")),
- "Device allowance mismatch "+name);
- assert(card.includes("ยังไม่เปิดรับชำระ")||card.includes("เตรียมเปิดรับสมัคร"),
- "No paid checkout / signup should be promised before launch");
+ const col=columns[i],name=names[i];
+ assert.equal(col[1],name,"Plan order/name mismatch "+name);
+ assert.equal(Number(col[2]),prices[name],"Test price mismatch "+name);
+ assert.equal(col[3],limits[name]===null?"unlimited":String(limits[name]),"Credit allowance mismatch "+name);
+ assert.equal(Number(col[4]),devices[name],"Device allowance mismatch "+name);
 }
-assert(html.includes("ระบบทดสอบ ณ V6.5")&&html.includes("ราคาและเงื่อนไขอาจเปลี่ยน"));
-console.log("PASS: six plans match backend amount, device limit and price; prices marked preliminary");
+assert(html.includes('class="comparison-scroll"')&&html.includes('tabindex="0"')&&
+ html.includes('aria-label="ตารางเปรียบเทียบแพ็กเกจ PACKTOOK ทั้งหกระดับ"'),
+ "Comparison matrix must be keyboard-accessible and horizontally scrollable");
+assert(html.includes('scope="row"')&&html.includes('scope="col"')&&html.includes('<caption class="sr-only">'),
+ "Comparison table must have headers and an accessible caption");
+assert(html.includes("ระบบทดสอบ V6.5")&&html.includes("ไม่ใช่ข้อเสนอขายจริง"));
+console.log("PASS: six comparison columns match exact backend prices, credits and devices; accessible table and prelaunch labels");
 
 const hosts=firebase.hosting;
 assert(hosts.length===3);
@@ -117,4 +119,4 @@ handlers["toggle:click"]();
 handlers["link:click"]();
 assert.equal(attrs.get("aria-expanded"),"false");
 console.log("PASS: mobile menu opens, closes on ESC and link selection");
-console.log("RESULT: PACKTOOK V6.5.1 Marketing prelaunch website offline QA PASS.");
+console.log("RESULT: PACKTOOK V6.5.3 Marketing Hero + comparison website offline QA PASS.");

@@ -58,8 +58,10 @@ assert(brandCSS.includes(".eagle-tip.eagle-hero"),
 console.log("PASS: Customer colors, blue CTA, dark sidebar, light canvas and white cards");
 
 // Show a visual analog, never fake a real recording.
-assert(siteHTML.includes('data-mock="customer-dashboard"'));
-assert(siteHTML.includes("ภาพจำลองเพื่ออธิบายการทำงาน"));
+assert(siteHTML.includes('packing-workstation.svg'));
+assert(siteHTML.includes("ภาพประกอบจำลองการใช้งาน"));
+assert(siteHTML.includes('packing-comparison.css?v=6.5.3'));
+assert(siteHTML.includes('class="comparison-table"'));
 assert(siteHTML.includes('src="/assets/mascot-eagle.svg"'));
 assert(siteHTML.includes('src="/assets/logo.svg"'));
 assert(siteHTML.includes('customer-brand.css?v=6.5.2'));
@@ -73,5 +75,5 @@ assert(siteHTML.includes("REGISTRATION &amp; PAYMENT NOT OPEN")&&
  "CI-only deployment must not open public payments/registration");
 assert(!/skey_live_|skey_test_|packtook-staging|firebase-staging/.test(siteHTML+brandCSS),
  "Marketing should not leak payment or staging credentials");
-console.log("PASS: customer-like mockup, responsive brand layer, and prelaunch safety");
+console.log("PASS: branded packing-workflow scene, comparison matrix, responsive layer and prelaunch safety");
 console.log("RESULT: PACKTOOK V6.5.2 Marketing and Customer CI parity source checks PASS.");

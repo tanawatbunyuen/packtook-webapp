@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 680" role="img" aria-labelledby="ptTitle ptDesc">
+<title id="ptTitle">Packing station using the PACKTOOK recording system</title>
+<desc id="ptDesc">An ecommerce worker packs a parcel at a workbench with an overhead camera, barcode scanner and PACKTOOK recording dashboard on a computer monitor.</desc>
+<defs>
+ <linearGradient id="back" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#184578"/><stop offset=".55" stop-color="#0a254b"/><stop offset="1" stop-color="#06142d"/></linearGradient>
+ <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#1a4b7f"/><stop offset="1" stop-color="#0e2a54"/></linearGradient>
+ <linearGradient id="desk" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e3eafa"/><stop offset=".6" stop-color="#a9c5df"/><stop offset="1" stop-color="#7295b8"/></linearGradient>
+ <linearGradient id="box" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#dfb87d"/><stop offset="1" stop-color="#a86c35"/></linearGradient>
+ <linearGradient id="skin" x1="0" y1="0" x2=".7" y2="1"><stop stop-color="#f4c4a2"/><stop offset="1" stop-color="#c8885d"/></linearGradient>
+ <linearGradient id="shirt" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0e83f1"/><stop offset="1" stop-color="#063b96"/></linearGradient>
+ <linearGradient id="device" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#172d50"/><stop offset="1" stop-color="#06132e"/></linearGradient>
+ <linearGradient id="glass" x1="0" y1="0" x2=".8" y2="1"><stop stop-color="#fafdff"/><stop offset="1" stop-color="#d8ebff"/></linearGradient>
+ <filter id="shadow" x="-30%" y="-30%" width="170%" height="180%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#061426" flood-opacity=".36"/></filter>
+ <filter id="soft" x="-30%" y="-30%" width="170%" height="170%"><feGaussianBlur stdDeviation="25"/></filter>
+ <clipPath id="round"><rect width="1000" height="680" rx="30"/></clipPath>
+</defs>
+<g clip-path="url(#round)">
+ <rect width="1000" height="680" fill="url(#back)"/>
+ <path d="M0 0H1000V362L0 455Z" fill="url(#wall)"/>
+ <path d="M0 177H1000M0 295H1000M185 0V430M402 0V420" stroke="#5b96c7" stroke-width="2" opacity=".08"/>
+ <circle cx="839" cy="118" r="225" fill="#20aaf8" opacity=".09" filter="url(#soft)"/>
+ <!-- Workstation desk and shelves -->
+ <path d="M-80 451 920 338 1140 559 140 741Z" fill="url(#desk)" stroke="#bdd6eb" stroke-width="5"/>
+ <path d="M-80 451 140 741V772L-80 489Z" fill="#456d94"/>
+ <path d="M140 741 1140 559V591L140 773Z" fill="#6087ae"/>
+ <path d="M84 401 250 383 330 421 165 443Z" fill="#0e3158" opacity=".27"/>
+ <g opacity=".8"><rect x="44" y="167" width="190" height="15" rx="6" fill="#10365e"/><rect x="62" y="120" width="67" height="45" rx="4" fill="#bd8853"/><rect x="136" y="130" width="71" height="35" rx="3" fill="#d5a267"/><path d="M95 120v45M161 130v35" stroke="#e6bf88" stroke-width="4"/></g>
+ <!-- Recording camera suspended above parcel -->
+ <path d="M445-10V102" stroke="#1b314e" stroke-width="17" stroke-linecap="round"/>
+ <path d="M446 78 529 104" stroke="#1b314e" stroke-width="17" stroke-linecap="round"/>
+ <rect x="505" y="92" width="85" height="53" rx="13" fill="url(#device)" stroke="#5891c8" stroke-width="3" filter="url(#shadow)"/>
+ <circle cx="548" cy="118" r="19" fill="#112d4f" stroke="#3fd3fa" stroke-width="4"/>
+ <circle cx="548" cy="118" r="9" fill="#040d1d"/>
+ <circle cx="554" cy="112" r="3" fill="#dbf9ff"/>
+ <circle cx="577" cy="103" r="4" fill="#3ee1bc"/>
+ <path d="M541 147 400 412M561 147 617 405" stroke="#43d8fa" stroke-width="2" stroke-dasharray="8 10" opacity=".48"/>
+ <!-- Computer monitor on right -->
+ <g filter="url(#shadow)">
+ <rect x="605" y="106" width="340" height="268" rx="17" fill="#07142e" stroke="#609aca" stroke-width="5"/>
+ <rect x="619" y="123" width="312" height="229" rx="9" fill="url(#glass)"/>
+ <path d="M619 123h312v40H619Z" fill="#e2f0ff"/>
+ <circle cx="636" cy="143" r="4" fill="#76caff"/><circle cx="650" cy="143" r="4" fill="#b8d7ef"/><circle cx="664" cy="143" r="4" fill="#b8d7ef"/>
+ <rect x="619" y="163" width="53" height="189" fill="#082754"/>
+ <rect x="631" y="176" width="28" height="28" rx="7" fill="#0c79e6"/>
+ <path d="m645 180 9 6v12l-9 6-9-6v-12Z" fill="none" stroke="#fff" stroke-width="2"/>
+ <rect x="630" y="217" width="32" height="31" rx="8" fill="#115ea9"/>
+ <circle cx="646" cy="232" r="8" fill="none" stroke="#b3e9ff" stroke-width="3"/>
+ <path d="M636 265h21M636 272h18M636 279h21" stroke="#a7ccf2" stroke-width="3"/>
+ <text x="690" y="149" font-family="sans-serif" font-size="13" font-weight="800" fill="#0f4385">PACKTOOK / PACKING</text>
+ <rect x="692" y="176" width="226" height="22" rx="5" fill="#f5f9ff"/>
+ <text x="701" y="191" font-family="sans-serif" font-size="12" font-weight="800" fill="#0e3167">ORDER #PT-2026-00128</text>
+ <rect x="692" y="208" width="226" height="102" rx="9" fill="#0d203e"/>
+ <path d="M708 225h15v-8M902 225h-15v-8M708 294h15v8M902 294h-15v8" fill="none" stroke="#43cef7" stroke-width="3"/>
+ <path d="M760 260h86l-9 27h-73Z" fill="#d5a066"/>
+ <path d="m758 260 13-19 86 1-11 18Z" fill="#ebc390"/>
+ <rect x="700" y="216" width="52" height="16" rx="6" fill="#f9e5e7"/>
+ <circle cx="708" cy="223" r="4" fill="#ec5265"/>
+ <text x="716" y="227" font-family="sans-serif" font-size="10" font-weight="900" fill="#d63e5a">REC</text>
+ <rect x="691" y="320" width="130" height="20" rx="6" fill="#e7f4ff"/>
+ <text x="701" y="334" font-family="sans-serif" font-size="10" font-weight="700" fill="#1d64b7">LOCAL STORAGE</text>
+ <rect x="834" y="320" width="83" height="20" rx="6" fill="#dcf9ec"/>
+ <text x="840" y="334" font-family="sans-serif" font-size="10" font-weight="800" fill="#168456">READY ✓</text>
+ <path d="M744 374h63v36h-63Z" fill="#5f80a3"/><path d="m713 410 124-1 37 22-201 8Z" fill="#1f4268"/>
+ </g>
+ <!-- Operator silhouette; identifiable packing activity -->
+ <g filter="url(#shadow)">
+ <path d="M-40 317Q24 246 99 265Q149 278 175 366L206 507Q126 545 17 512L-50 456Z" fill="url(#shirt)"/>
+ <path d="M61 244Q22 225 26 178Q35 130 83 131Q139 134 143 187Q147 229 110 252Z" fill="url(#skin)"/>
+ <path d="M23 184Q7 128 59 118Q105 106 135 142Q149 151 147 178Q125 161 99 161Q82 143 56 171Z" fill="#15263e"/>
+ <path d="M115 220Q98 236 83 220" fill="none" stroke="#b16c4a" stroke-width="3" stroke-linecap="round"/>
+ <path d="M124 329Q203 352 270 429L365 480 331 511Q241 488 151 433L88 382Z" fill="url(#shirt)" stroke="#0a57b9" stroke-width="3"/>
+ <path d="m344 462 43 10 26 38q-16 18-42 5l-40-29Z" fill="url(#skin)"/>
+ <path d="M53 395Q110 413 182 487L263 522 246 554Q150 546 74 507L-15 478Z" fill="url(#shirt)" stroke="#0b5ca8" stroke-width="3"/>
+ <path d="m240 515 49-4 30 19q-5 24-31 22l-52-12Z" fill="url(#skin)"/>
+ <rect x="51" y="316" width="59" height="32" rx="7" fill="#e8f5ff"/>
+ <text x="59" y="338" font-family="sans-serif" font-size="14" font-weight="900" fill="#0e6ad4">PACK</text>
+ </g>
+ <!-- Active parcel with flaps and shipping goods -->
+ <g filter="url(#shadow)">
+ <path d="m312 438 195-27 100 39-200 37Z" fill="#f1c995"/>
+ <path d="m312 438 95 49v144l-95-44Z" fill="#b78651"/>
+ <path d="m407 487 200-37v140l-200 41Z" fill="url(#box)"/>
+ <path d="m312 438 48-68 172-21-25 62Z" fill="#e8bd84" stroke="#b9824a" stroke-width="3"/>
+ <path d="m507 411 75-66 78 47-53 58Z" fill="#e5b47d" stroke="#be8652" stroke-width="3"/>
+ <path d="M373 449 422 436 460 452 411 466Z" fill="#89cee1"/>
+ <path d="M443 422 485 412 510 432 461 444Z" fill="#86d0bb"/>
+ <path d="M483 464 525 456v118l-42 9Z" fill="#f6e4c7" opacity=".9"/>
+ <rect x="489" y="483" width="30" height="49" rx="2" fill="#fff"/>
+ <path d="M494 492v23M499 491v25M504 489v25M510 490v27M515 488v23" stroke="#172b48" stroke-width="2"/>
+ <text x="489" y="547" font-family="sans-serif" font-size="9" fill="#3a5a72">PT-128</text>
+ <path d="M411 500v106" stroke="#916139" stroke-width="3" opacity=".36"/>
+ </g>
+ <!-- Barcode handheld scanner and visible red beam to packing barcode -->
+ <g transform="rotate(-13 706 548)" filter="url(#shadow)">
+ <path d="M675 466h94v43h-94q-17-14 0-43Z" fill="#122b51" stroke="#88add2" stroke-width="4"/>
+ <rect x="684" y="479" width="56" height="11" rx="4" fill="#2d88d8"/>
+ <path d="M746 507h29l19 79h-30Z" fill="#1c3b67" stroke="#74a3cd" stroke-width="3"/>
+ <path d="M747 516h25" stroke="#49cce6" stroke-width="5"/>
+ </g>
+ <path d="M682 488 511 498M682 498 510 519" stroke="#ff7272" stroke-width="3" opacity=".53" stroke-dasharray="5 6"/>
+ <ellipse cx="510" cy="510" rx="18" ry="9" fill="#f56b7c" opacity=".25"/>
+ <!-- Table props: tape roll and barcode list -->
+ <g filter="url(#shadow)">
+ <ellipse cx="847" cy="533" rx="50" ry="25" fill="#f0c97e" stroke="#d89a5a" stroke-width="3"/>
+ <ellipse cx="847" cy="533" rx="22" ry="11" fill="#f4f9ff" stroke="#c69551" stroke-width="2"/>
+ <path d="m781 589 120-22 29 27-118 24Z" fill="#fff" stroke="#bfd1e7" stroke-width="2"/>
+ <path d="m805 594 7-2m5-1 2-1m6-1 3-1m7-1 2-1m5-1 3-1m8-2 1-1" stroke="#17385e" stroke-width="4"/>
+ <path d="M804 604 894 588" stroke="#6284a8" stroke-width="2"/>
+ </g>
+ <!-- Small safety caption on illustration -->
+ <rect x="20" y="627" width="230" height="34" rx="17" fill="#052450" fill-opacity=".82" stroke="#3376b9"/>
+ <circle cx="42" cy="644" r="7" fill="#34d8ae"/>
+ <text x="59" y="649" fill="#c9e9ff" font-size="13" font-family="sans-serif" font-weight="700">PACKING + BARCODE + VIDEO</text>
+</g>
+</svg>
