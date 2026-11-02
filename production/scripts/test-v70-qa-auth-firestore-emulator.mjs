@@ -5,15 +5,10 @@ import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import {createRequire} from "node:module";
+import {assertV70DemoEnvironment} from "./v70-emulator-guard.mjs";
 
 const DEMO="demo-packtook-v70";
-const validHost=v=>/^(?:127[.]0[.]0[.]1|localhost):[0-9]{2,5}$/.test(v||"");
-if(process.env.PACKTOOK_QA_DEMO_PROJECT!==DEMO||
- !validHost(process.env.FIREBASE_AUTH_EMULATOR_HOST)||
- !validHost(process.env.FIRESTORE_EMULATOR_HOST)||
- ["GCLOUD_PROJECT","GCP_PROJECT","GOOGLE_CLOUD_PROJECT","FIREBASE_PROJECT_ID"]
-  .some(k=>process.env[k]==="packtook-prod-01"))
- throw Error("SAFETY BLOCK: V7 demo requires demo-packtook-v70 and loopback Auth + Firestore emulators");
+assertV70DemoEnvironment(process.env);
 process.env.GCLOUD_PROJECT=DEMO;
 process.env.GCP_PROJECT=DEMO;
 process.env.GOOGLE_CLOUD_PROJECT=DEMO;
