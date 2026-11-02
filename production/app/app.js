@@ -1153,7 +1153,61 @@ async function stopRecording(reason='manual'){
   showRecovery();$('barcode').focus();
  }
 }
-$('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginError').hidden=true;try{const signedInUser=await credit().login($('email').value.trim(),$('password').value);if(!signedInUser?.uid)throw Error('Firebase ไม่ส่งข้อมูล UID ของบัญชีผู้ใช้');remoteUser=signedInUser;$('loginPage').hidden=true;$('appPage').hidden=false;await refreshRemoteQuota();showTab('packing');$('barcode').focus()}catch(err){$('loginError').hidden=false;$('loginError').textContent=err.message}});
+// V6.5 Public Registration Preview — UI is disabled unless the server explicitly
+// allows registration AND Firebase App Check has a configured public site key.
+function showPublicSignupPane(which){
+ $('loginForm').hidden=which!=="login";
+ $('publicSignupPanel').hidden=which!=="register";
+ $('publicSignupFinish').hidden=which!=="finish";
+ $('loginPage').hidden=false;
+}
+async function refreshPublicSignupEntry(){
+ const available=await credit()?.signupAvailability?.();
+ const canRegister=available?.enabled===true;
+ $('publicSignupEntry').hidden=!canRegister;
+ $('betaSignupOnly').hidden=canRegister;
+ if(canRegister)$('trialBtn').hidden=true;
+}
+$('openPublicSignup').addEventListener('click',()=>{
+ $('signupFeedback').textContent="";showPublicSignupPane("register");
+});
+$('signupBack').addEventListener('click',()=>showPublicSignupPane("login"));
+$('publicSignupForm').addEventListener('submit',async e=>{
+ e.preventDefault();
+ const message=$('signupFeedback');message.textContent="";
+ if(!$('signupConsent').checked){message.textContent="กรุณายอมรับเงื่อนไขการใช้งานและนโยบายความเป็นส่วนตัว";return}
+ const email=$('signupEmail').value.trim();
+ const password=$('signupPassword').value;
+ if(password!==$('signupPasswordConfirm').value){message.textContent="ยืนยันรหัสผ่านไม่ตรงกัน";return}
+ const button=$('publicSignupForm').querySelector('button[type="submit"]');
+ button.disabled=true;
+ try{
+  await credit().registerPublic(email,password);
+  $('email').value=email;
+  message.textContent="ส่งอีเมลยืนยันแล้ว กรุณาเปิดลิงก์ในอีเมล จากนั้นกลับมาเข้าสู่ระบบเพื่อรับ Free";
+  $('signupPassword').value="";$('signupPasswordConfirm').value="";
+ }catch(err){message.textContent=err.message||"สมัครสมาชิกไม่สำเร็จ กรุณาลองอีกครั้ง"}
+ finally{button.disabled=false}
+});
+$('signupFinishBtn').addEventListener('click',async()=>{
+ const message=$('signupFinishFeedback');message.textContent="";
+ if(!$('signupFinishConsent').checked){message.textContent="กรุณายอมรับเงื่อนไขก่อนเริ่มใช้งาน";return}
+ const button=$('signupFinishBtn');button.disabled=true;
+ try{
+  const activated=await credit().completePublicSignup();
+  remoteUser=activated.user;
+  if(!remoteUser?.uid)throw Error("ไม่พบสิทธิ์ใช้งานหลังเปิดบัญชี");
+  $('loginPage').hidden=true;$('appPage').hidden=false;
+  await refreshRemoteQuota();showTab('packing');$('barcode').focus();
+ }catch(err){message.textContent=err.message||"เปิดใช้งาน Free ไม่สำเร็จ กรุณาลองอีกครั้ง"}
+ finally{button.disabled=false}
+});
+$('signupFinishLogout').addEventListener('click',async()=>{
+ await credit()?.logout();showPublicSignupPane("login");
+});
+if(credit()?.ready)void refreshPublicSignupEntry();
+else window.addEventListener('packtook-firebase-ready',()=>void refreshPublicSignupEntry(),{once:true});
+$('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginError').hidden=true;try{const signedInUser=await credit().login($('email').value.trim(),$('password').value);if(!signedInUser?.uid)throw Error('Firebase ไม่ส่งข้อมูล UID ของบัญชีผู้ใช้');remoteUser=signedInUser;$('loginPage').hidden=true;$('appPage').hidden=false;await refreshRemoteQuota();showTab('packing');$('barcode').focus()}catch(err){if(err.code==='packtook/finish-signup'){$('signupFinishConsent').checked=false;$('signupFinishFeedback').textContent='';showPublicSignupPane('finish');return}$('loginError').hidden=false;$('loginError').textContent=err.message}});
 $('showPassword').onclick=()=>{$('password').type=$('password').type==='password'?'text':'password'};
 $('resetPassword').addEventListener('click',async()=>{
  const email=$('email').value.trim();

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Deploy ONLY Customer UI V6.3 (keeps Owner/Marketing, Customer Functions and Staging unchanged).
+# Deploy ONLY Customer Hosting. Does NOT deploy V6.5 registration Backend or enable public signups.
 set -Eeuo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)";cd "$ROOT"
 PROD="$1"
@@ -12,6 +12,8 @@ node scripts/test-promptpay.mjs
 node scripts/test-package-policy.mjs
 node scripts/test-renewal-notice.mjs
 node scripts/test-qr-lifecycle.mjs
+node scripts/test-public-registration.mjs
+node scripts/test-onboarding-ui.mjs
 node --check app/app.js
 [[ -s app/login-background.png && -s app/firebase-v4-config.js ]] || {
  echo "ERROR: Copy verified Production app/login-background.png and app/firebase-v4-config.js from V6.1." >&2;exit 1; }
@@ -27,7 +29,7 @@ const c=JSON.parse(m[1]);
 if(c.projectId!==id||c.authDomain!==id+".firebaseapp.com"||!c.apiKey||!c.appId)
  throw Error("Firebase SDK config does not match Production");
 JS
-echo "Only Customer Production Hosting will be updated. No Owner or Customer Backend changes."
+echo "Only Customer Production Hosting will be updated. V6.5 PUBLIC SIGNUP stays OFF until Backend/App Check/legal approval."
 read -r -p "Type DEPLOY-PROD-QR-TEST-CUSTOMER to continue: " OK
 [[ "$OK" == "DEPLOY-PROD-QR-TEST-CUSTOMER" ]] || { echo "Cancelled.";exit 1; }
 firebase deploy --config firebase.json --project "$PROD" --only hosting:app

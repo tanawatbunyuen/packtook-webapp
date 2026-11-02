@@ -687,3 +687,21 @@
  #troubleshooting .trouble-kind{font-size:11px}
  #troubleshooting .trouble-answer{padding:9px 16px 15px}
 }
+
+/* V6.5 — Customer registration and verified Free onboarding (prelaunch gate) */
+#loginPage .signup-entry{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:10px;margin:16px 0;color:#47607e;font-weight:650}
+#loginPage .signup-entry[hidden],#loginPage .signup-panel[hidden]{display:none!important}
+#loginPage .signup-entry .secondary{border-radius:10px;padding:9px 14px}
+#loginPage .signup-panel{width:min(100%,480px);margin:auto;padding:29px 27px;background:#fff;border:1px solid #e0e8f4;border-radius:20px;box-shadow:0 18px 45px rgba(20,50,97,.08)}
+#loginPage .signup-panel h2{margin:0 0 12px;font-size:27px;color:#163a65}
+#loginPage .signup-panel>p{color:#5b718f;line-height:1.75}
+#loginPage .signup-panel form{display:flex;flex-direction:column;gap:10px}
+#loginPage .signup-panel form>label:not(.signup-consent){font-size:14px;font-weight:750;color:#284463;margin-top:3px}
+#loginPage .signup-panel form>input{width:100%;padding:12px 13px;border:1px solid #bfcfe1;border-radius:11px;background:#fff;color:#16314f}
+#loginPage .signup-panel .signup-consent{display:flex;gap:10px;align-items:flex-start;margin:11px 0;font-size:13px;line-height:1.65;color:#355474}
+#loginPage .signup-panel .signup-consent input{width:18px;height:18px;flex:0 0 18px;margin-top:3px}
+#loginPage .signup-panel .signup-consent a{color:#1475ba;text-decoration:underline;text-underline-offset:3px}
+#loginPage .signup-panel .signup-submit{width:100%;min-height:46px;border-radius:11px}
+#loginPage .signup-panel .signup-back{display:block;margin:17px auto 0}
+#loginPage #signupFeedback,#loginPage #signupFinishFeedback{min-height:1.6em;margin:6px 0;color:#15558b;font-size:13px;line-height:1.7}
+@media(max-width:700px){#loginPage .signup-panel{max-width:100%;padding:23px 19px;border-radius:16px}}

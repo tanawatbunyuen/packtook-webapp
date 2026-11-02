@@ -72,8 +72,8 @@ assert(payments.includes("omise-signature")&&payments.includes("timingSafeEqual"
 assert(payments.includes("packtookPaymentTester")&&payments.includes("paymentTester(req)"),"Only explicitly approved QR Tester accounts may purchase");
 assert(!payments.includes("skey_live_")&&!payments.includes("card.create"),"Live or card payment prohibited");
 assert(payments.includes('charge.source?.type!=="promptpay"'),"Only verified PromptPay charges may settle");
-assert(appHTML.includes("OMISE PROMPTPAY QR TEST MODE")&&appHTML.includes("app.js?v=6.4.3"),"V6.3 customer QR Test UI missing");
-assert(appHTML.includes("style.css?v=6.4.3"),"Customer renewal banner CSS cache version missing");
+assert(appHTML.includes("OMISE PROMPTPAY QR TEST MODE")&&appHTML.includes("app.js?v=6.5.0"),"V6.3 customer QR Test UI missing");
+assert(appHTML.includes("style.css?v=6.5.0"),"Customer renewal banner CSS cache version missing");
 assert(betaBridge.includes('api("promptpayCreateCharge")')&&!betaBridge.includes('api("createOmisePayment")'),"Client must use dedicated PromptPay only API");
 assert(appHTML.includes('id="qrAccessStatus"')&&appHTML.includes('id="refreshQrAccess"'),"Customer QR status diagnostics missing");
 assert(payments.includes("featureEnabled:PROMPTPAY_TEST_ENABLED")&&payments.includes("testerAuthorized"),"Payment config must expose safe gate reason");
