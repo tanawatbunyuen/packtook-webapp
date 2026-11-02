@@ -6,7 +6,13 @@ const script=read("scripts/deploy-v70-qa-controlled.sh");
 const emulator=read("scripts/run-v70-emulators.sh");
 const source=read("functions/index.js"),qa=read("app/qa-free.js");
 assert(script.includes('PROJECT="packtook-prod-01"'));
-assert(script.includes('--only "$ONLY" --non-interactive'));
+assert(script.includes('--only "$ONLY_CORE" --non-interactive'));
+assert(script.includes('--only "$ONLY_SUPPORT" --non-interactive'));
+const lists=[...script.matchAll(/ONLY_(?:CORE|SUPPORT)="([^"]+)"/g)];
+assert.equal(lists.length,2,"Expected two explicit scoped deploy batches");
+for(const list of lists)assert(list[1].split(",").length<=10,"Do not deploy >10 functions per batch");
+assert.equal(new Set(lists.flatMap(x=>x[1].split(","))).size,14,
+ "Expected exactly 14 unique named beta callable targets");
 assert(script.includes('node scripts/check-v70-qa-preflight.mjs "$PROJECT" "$MODE"'));
 assert(script.includes('read -r -p "Type $EXPECT'));
 assert(script.includes("DEPLOY-V70-QA-DISABLED")&&
