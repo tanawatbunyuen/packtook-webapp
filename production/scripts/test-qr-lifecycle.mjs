@@ -6,7 +6,7 @@ const html=fs.readFileSync(new URL("../app/index.html",import.meta.url),"utf8");
 const css=fs.readFileSync(new URL("../app/style.css",import.meta.url),"utf8");
 const assert=(ok,message)=>{if(!ok)throw Error("V6.4 QR lifecycle: "+message)};
 assert(html.includes('id="paymentQrResult"')&&html.includes("aria-live=")&&html.includes("hidden></div>"),"QR panel should initially be hidden");
-assert(html.includes("app.js?v=6.4.0")&&html.includes("style.css?v=6.4.0"),"QR lifecycle assets must be cache-busted");
+assert(html.includes("app.js?v=6.4.1")&&html.includes("style.css?v=6.4.1"),"QR lifecycle assets must be cache-busted");
 assert(css.includes("#paymentQrResult[hidden]"),"Hidden QR must not leave empty white panel");
 assert(!app.includes("displayOmiseQR(result.qrImage)"),"QR displays must be bound to request ID");
 assert(app.includes("syncDisplayedPaymentQr(details)")&&app.includes('finishDisplayedPaymentQr("paid",requestId)'),"History/recheck must clear completed QR");
