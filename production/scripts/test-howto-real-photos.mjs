@@ -10,7 +10,7 @@ const section=html.match(/<section id="how-it-works"[\s\S]*?<\/section>/)?.[0];
 assert(section,"How it works section is missing");
 assert(html.includes('<link rel="stylesheet" href="/assets/howto-photos.css?v=6.5.5">'));
 assert.equal((section.match(/<article class="step-card">/g)||[]).length,4);
-assert.equal((section.match(/<figure class="step-photo">/g)||[]).length,4);
+assert.equal((section.match(/<figure class="step-photo" data-angle=/g)||[]).length,4);
 assert.equal((section.match(/loading="lazy"/g)||[]).length,4);
 assert.equal((section.match(/decoding="async"/g)||[]).length,4);
 assert.equal((section.match(/width="720" height="540"/g)||[]).length,4);
@@ -36,10 +36,12 @@ for(const [slug,number,state,title,sha] of expected){
  assert.equal(data.toString("ascii",0,4),"RIFF",path+" needs valid RIFF");
  assert.equal(data.toString("ascii",8,12),"WEBP",path+" needs valid WebP signature");
  assert.equal(crypto.createHash("sha256").update(data).digest("hex"),sha,path+" hash mismatch");
- const expression=new RegExp('<article class="step-card"><div class="step-number">'+number+'<span> / '+state+'<\\/span><\\/div><figure class="step-photo"><img src="\\/assets\\/howto-'+slug+'\\.webp\\?v=6\\.5\\.5" alt="([^"]+)"','u');
- const match=section.match(expression);
- assert(match,"Wrong image/step mapping for "+slug);
- assert(match[1].length>50,"Image needs a meaningful alt description: "+slug);
+ const cards=[...section.matchAll(/<article class="step-card">([\s\S]*?)<\/article>/g)].map(x=>x[1]);
+ const card=cards.find(x=>x.includes('<div class="step-number">'+number+'<span> / '+state+'</span>'));
+ assert(card,"Step card missing "+number);
+ assert(card.includes('src="/assets/howto-'+slug+'.webp?v=6.5.6"'),"Wrong image version/step mapping for "+slug);
+ const alt=card.match(/<img[^>]* alt="([^"]+)"/)?.[1]||"";
+ assert(alt.length>50,"Image needs meaningful Thai alt text: "+slug);
  assert(section.includes("<h3>"+title+"</h3>"),"Missing original step title: "+title);
  console.log("PASS: "+number+" "+state+" — real-look optimized photo, correct title, alt and SHA-256");
 }
