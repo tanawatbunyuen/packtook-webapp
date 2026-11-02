@@ -16,6 +16,9 @@ node scripts/test-public-registration.mjs
 node scripts/test-onboarding-ui.mjs
 node scripts/test-public-signup-navigation.mjs
 node scripts/test-public-launch-preflight.mjs
+node scripts/test-v67-emulator-safety.mjs
+node scripts/test-v67-native-realm.mjs
+node scripts/test-free-deployment-probe.mjs
 node --check app/app.js
 [[ -s app/login-background.png && -s app/firebase-v4-config.js ]] || {
  echo "ERROR: Copy verified Production app/login-background.png and app/firebase-v4-config.js from V6.1." >&2;exit 1; }
