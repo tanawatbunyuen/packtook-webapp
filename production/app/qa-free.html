@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="th">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>PACKTOOK V7.0 | Controlled Free QA</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+*{box-sizing:border-box}body{margin:0;background:#0b1529;color:#e7edf9;line-height:1.55}
+main{max-width:650px;margin:40px auto;padding:24px;background:#14233b;border:1px solid #33465e;border-radius:16px}
+h1{font-size:1.45rem;margin-top:0}h2{font-size:1rem}p,li{color:#b7cae3}
+label{display:block;font-size:.94rem;margin:14px 0 4px}
+input[type=email],input[type=password]{width:100%;padding:12px;border-radius:8px;border:1px solid #50637b;background:#0e1c31;color:#fff}
+button{padding:12px 16px;background:#51c3dd;color:#082034;border:0;border-radius:8px;font-weight:700;cursor:pointer;margin:10px 10px 0 0}
+button:disabled{opacity:.42;cursor:not-allowed}a{color:#86deef}
+.notice{background:#22324a;border-left:3px solid #f1ba65;padding:10px 14px}
+fieldset{margin-top:20px;border:1px solid #50637b;border-radius:10px;padding:15px}
+#status{white-space:pre-wrap;background:#0a1930;padding:16px;border-radius:8px;min-height:64px}
+small{color:#94afca}
+</style></head>
+<body><main>
+<h1>PACKTOOK — Controlled Free Signup QA V7.0</h1>
+<p class="notice"><strong>เฉพาะบัญชีทดสอบที่ผู้ดูแลเชิญ</strong> ไม่ใช่หน้ารับสมัครลูกค้าทั่วไป ไม่รับเงิน และสิทธิ์ QA มีวันหมดอายุ</p>
+<p>ผู้ดูแลต้องสร้างบัญชีทดสอบใน Firebase Authentication และกำหนด UID เดียวที่ได้รับอนุญาตก่อนเริ่มใช้งาน QA</p>
+<form id="loginForm">
+<h2>1. เข้าสู่ระบบด้วยบัญชี QA</h2>
+<label for="email">อีเมลทดสอบ</label><input id="email" type="email" required autocomplete="username">
+<label for="password">รหัสผ่าน</label><input id="password" type="password" required autocomplete="current-password">
+<button type="submit">เข้าสู่ระบบทดสอบ</button>
+</form>
+<section id="memberPanel" hidden>
+<h2>2. ยืนยันอีเมลก่อนเปิด Free</h2>
+<p id="identity">กำลังตรวจสิทธิ์</p>
+<button id="sendVerify" type="button">ส่งอีเมลยืนยัน</button>
+<button id="refresh" type="button">ตรวจสอบการยืนยันอีเมล</button>
+<fieldset>
+<legend>3. เปิดใช้ Free QA แบบครั้งเดียว</legend>
+<label><input type="checkbox" id="accept"> ฉันเข้าใจว่านี่คือบัญชี QA สำหรับทดสอบเท่านั้น ยอมรับการเก็บข้อมูลการทดสอบตามเอกสารร่างรุ่น 2026-11-v1 โดยไม่ถือเป็นการเปิดบริการสาธารณะ</label>
+<button id="activate" type="button" disabled>เปิดบัญชี Free QA (20 วิดีโอ)</button>
+</fieldset>
+<button id="logout" type="button">ออกจากระบบทดสอบ</button>
+</section>
+<p id="status" role="status" aria-live="polite">กำลังเริ่มการทดสอบแบบจำกัดสิทธิ์</p>
+<p><small>เมื่อเปิดใช้งานสำเร็จ ระบบจะพาไปยังหน้า Packing จริงเพื่อทดสอบ Barcode → วิดีโอ → 20 เหลือ 19 เครดิต โดยใช้เฉพาะข้อมูลทดสอบ</small></p>
+</main>
+<script type="module" src="./qa-free.js?v=7.0.0"></script>
+</body></html>
