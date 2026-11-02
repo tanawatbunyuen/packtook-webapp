@@ -16,11 +16,18 @@ assert.equal((section.match(/decoding="async"/g)||[]).length,4);
 assert.equal((section.match(/width="720" height="540"/g)||[]).length,4);
 assert(!section.includes('class="step-illustration"'),"Legacy icons must be replaced");
 assert(!section.includes('class="step-rec"'),"Legacy REC icon must be replaced");
+assert(!section.includes('webp?v=6.5.5'),"Old cached photo URLs must not remain");
+const angles=[...section.matchAll(/<figure class="step-photo" data-angle="([^"]+)"/g)].map(x=>x[1]);
+assert.deepEqual(angles,[
+ "over-shoulder-monitor","close-up-barcode-scanner",
+ "front-three-quarter-packing","close-up-dashboard-laptop"
+],"The four steps must use different camera framing");
+assert.equal(new Set(angles).size,4,"Duplicate camera angles not allowed");
 const expected=[
- ["ready","01","READY","เลือกโฟลเดอร์และเปิดกล้อง","902193ef7841b5379739638021c8bd88d039ab457a298b7ae094c75f35cefca8"],
- ["scan","02","START","สแกนบาร์โค้ดออเดอร์","9cf9ac56b81b96b1487ab85ae93d649a7125ff93cc5cb932838ce5ae49473328"],
- ["save","03","STOP","แพ็กเสร็จ แล้วสแกนซ้ำ","5f1e7824fa76878c72ec408cf757c1c635d61c7d9ad66985979dd66912110b6d"],
- ["review","04","REVIEW","ค้นหาและเปิดวิดีโอย้อนหลัง","16b172f849d427144308e8b3086b503443633e66ef54d0aa6db4d30dcc0e0ebf"]
+ ["ready","01","READY","เลือกโฟลเดอร์และเปิดกล้อง","97bae0391e73676dcf2fe539984980f114deada8ee78b59d7b3ce9335d264a78"],
+ ["scan","02","START","สแกนบาร์โค้ดออเดอร์","5a1ca6cba6fd2a1840a74ea9f0fac9102373da13186064b69c27f4593c04bb49"],
+ ["save","03","STOP","แพ็กเสร็จ แล้วสแกนซ้ำ","e71b8ec0170ea257f1d8a3963ea9d27cd39be127337f8bbb9311d0c6e7386d39"],
+ ["review","04","REVIEW","ค้นหาและเปิดวิดีโอย้อนหลัง","8b291e1d4031c42e308303007aa8c946acce825a0c4815b2aefc107936226377"]
 ];
 for(const [slug,number,state,title,sha] of expected){
  const path="public/assets/howto-"+slug+".webp";
@@ -42,4 +49,4 @@ assert(css.includes("@media(max-width:980px)")&&css.includes("@media(max-width:6
 assert(css.includes("display:flex")&&css.includes("flex-direction:column"),"Mobile cards must show usable full-width photos");
 assert(html.includes('name="robots" content="noindex, nofollow"'));
 assert(html.includes("REGISTRATION &amp; PAYMENT NOT OPEN"),"No public registration/payment");
-console.log("RESULT: PACKTOOK V6.5.5 4 real-look photos, responsive cards and prelaunch protections PASS.");
+console.log("RESULT: PACKTOOK V6.5.6 4 distinct camera angles, optimized photo assets, responsive cards and prelaunch protections PASS.");
