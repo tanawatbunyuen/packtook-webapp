@@ -58,7 +58,7 @@ assert(ownerClient.includes("function fetchRevenue()")&&ownerClient.includes("fu
 assert(!/exports\.(?:createOmisePayment|requestPlanChange|ownerAdjustCredits)\s*=/.test(ownerBackend),"Revenue report must remain read-only");
 assert(ownerHTML.includes('id="revenueModeChart"')&&ownerHTML.includes('id="revenuePlanChart"')&&ownerHTML.includes('id="revenueTrendChart"'),"Owner V6.2.2 revenue graphs missing");
 assert(!ownerHTML.includes('id="revenuePlanRows"')&&!ownerHTML.includes('id="revenueLive"'),"Legacy revenue table or KPI cards should not be shown");
-assert(ownerHTML.includes("app.js?v=6.4.0")&&ownerHTML.includes("style.css?v=6.4.0"),"Owner assets not cache-busted for V6.2.3");
+assert(ownerHTML.includes("app.js?v=6.4.1")&&ownerHTML.includes("style.css?v=6.4.1"),"Owner assets not cache-busted for V6.2.3");
 assert(ownerClient.includes("renderRevenueTrendChart")&&ownerClient.includes("renderRevenuePlanChart"),"Owner revenue chart renderers missing");
 assert(ownerBackend.includes('exports.ownerManageCustomer=onCall')&&ownerBackend.includes('exports.ownerManagementStatus=onCall')&&ownerBackend.includes('exports.ownerCustomerManagementHistory=onCall'),"Owner Customer Management endpoints missing");
 assert(ownerBackend.includes('PACKTOOK_OWNER_MANAGEMENT_ENABLED')&&ownerBackend.includes('packtookOwnerManager')&&ownerBackend.includes('creditWalletV1!==true'),"Owner Customer Management security/Free quota gates missing");
@@ -66,13 +66,13 @@ assert(ownerHTML.includes('id="manageForm"')&&ownerHTML.includes('id="ownerManag
 assert(ownerClient.includes("async function submitManagement(")&&ownerClient.includes("async function fetchManagementStatus()"),"Owner Customer Management client missing");
 const payments=fs.readFileSync(path.join(root,"payment-functions","index.js"),"utf8");
 const payExports=[...payments.matchAll(/exports\.([A-Za-z0-9_]+)=/g)].map(x=>x[1]);
-assert(payExports.length===10&&payExports.every(x=>x.startsWith("promptpay")),"Only 10 PromptPay scoped functions allowed");
+assert(payExports.length===11&&payExports.every(x=>x.startsWith("promptpay"))&&payExports.includes("promptpayExpireUnusedCredits"),"Eleven reviewed PromptPay functions including scheduled credit expiry required");
 assert(payments.includes('PACKTOOK_PROMPTPAY_TEST_ENABLED')&&payments.includes('skey_test_'),"Test-mode fail-closed gates missing");
 assert(payments.includes("omise-signature")&&payments.includes("timingSafeEqual")&&payments.includes("reconcileCharge"),"Signed Webhook and verified charge reconciliation required");
 assert(payments.includes("packtookPaymentTester")&&payments.includes("paymentTester(req)"),"Only explicitly approved QR Tester accounts may purchase");
 assert(!payments.includes("skey_live_")&&!payments.includes("card.create"),"Live or card payment prohibited");
 assert(payments.includes('charge.source?.type!=="promptpay"'),"Only verified PromptPay charges may settle");
-assert(appHTML.includes("OMISE PROMPTPAY QR TEST MODE")&&appHTML.includes("app.js?v=6.4.0"),"V6.3 customer QR Test UI missing");
+assert(appHTML.includes("OMISE PROMPTPAY QR TEST MODE")&&appHTML.includes("app.js?v=6.4.1"),"V6.3 customer QR Test UI missing");
 assert(betaBridge.includes('api("promptpayCreateCharge")')&&!betaBridge.includes('api("createOmisePayment")'),"Client must use dedicated PromptPay only API");
 assert(appHTML.includes('id="qrAccessStatus"')&&appHTML.includes('id="refreshQrAccess"'),"Customer QR status diagnostics missing");
 assert(payments.includes("featureEnabled:PROMPTPAY_TEST_ENABLED")&&payments.includes("testerAuthorized"),"Payment config must expose safe gate reason");
@@ -86,4 +86,8 @@ assert(ownerClient.includes('api("ownerPaymentHealth")')&&ownerClient.includes("
 assert(payments.includes("paidEvidence(charge)")&&payments.includes("postSettlementAlert"),"Omise paid verification evidence / anomaly guard missing");
 assert(payments.includes("providerExpiryIso(charge.expires_at)")&&payments.includes("providerFailureCode"),"QR expiry and failure evidence missing");
 assert(customerSource.includes("qr-expiry-info")&&customerSource.includes("result.qrExpiresAt"),"Customer QR expiration display missing");
-console.log("PACKTOOK V6.4 PromptPay Test Payment Hardening checks: PASS for",id);
+assert(payments.includes('const CREDIT_GRACE_DAYS=10')&&payments.includes('target<current')&&payments.includes("carryoverCredits(a,now)"),"Ten-day carryover and downgrade restriction missing");
+assert(payments.includes('exports.promptpayExpireUnusedCredits=onSchedule')&&payments.includes('expired_wallet_10_day_forfeiture'),"Daily transactional expiry cleanup/Audit missing");
+assert(ownerBackend.includes('status:"retained"')&&ownerClient.includes('a.creditsStatus==="retained"'),"Owner must show retained expired credit separately from usable credit");
+assert(customerSource.includes("ห้าม Downgrade แพ็กเกจ")&&customerSource.includes("เครดิตพักรอต่ออายุ"),"Customer downgrade block or grace period UX missing");
+console.log("PACKTOOK V6.4.1 10-day credits, no downgrade, upgrade carryover isolation: PASS for",id);
