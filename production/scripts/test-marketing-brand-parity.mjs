@@ -38,6 +38,9 @@ for(const [name,color] of colors){
  assert(customerCSS.toLowerCase().includes(color),"Customer app missing "+name+" "+color);
  assert(brandCSS.toLowerCase().includes(color),"Marketing brand missing "+name+" "+color);
 }
+const customerFont=customerCSS.match(/^:root\{font-family:([^;]+);/);
+assert(customerFont&&brandCSS.includes("font-family:"+customerFont[1]+";"),
+ "Marketing font stack must match Customer CSS exactly");
 assert(brandCSS.includes("linear-gradient(115deg,#00a6f2,#2250ef)"),
  "Marketing CTA must use Customer login primary button gradient");
 assert(customerCSS.includes("linear-gradient(115deg,#00a6f2,#2250ef)"),
