@@ -18,7 +18,7 @@ const env=publicOff+[
  "PACKTOOK_V7_QA_APP_ID="+appId,
  "PACKTOOK_V7_QA_EXPIRES_AT="+expires
 ].join("\n")+"\n";
-const okay=checkQaEnvironment({specific:env,mode:"--approved-qa",now});
+const okay=checkQaEnvironment({specific:env,mode:"--approved-qa",now,expectedAppId:appId});
 assert.equal(okay.pass,true);
 assert.equal(okay.publicFlagsOff,true);
 assert.equal(okay.qaEnabled,true);
@@ -44,6 +44,8 @@ rejects("policy approval enabled",env.replace("PACKTOOK_PUBLIC_POLICIES_APPROVED
 rejects("incorrect project",env.replace("packtook-prod-01","packtook-staging"));
 rejects("multiple UID list",env.replace(qaUid,qaUid+","+qaUid));
 rejects("wrong App Check App ID",env.replace(appId,"1:777:web: invalid"));
+assert.throws(()=>checkQaEnvironment({specific:env,mode:"--approved-qa",now,expectedAppId:"1:999:web:otherprodapp000000"}),/SAFETY BLOCK/);
+console.log("PASS: App Check app ID mismatch with actual Customer Firebase config rejected");
 rejects("expired lease",env.replace(expires,new Date(now-60000).toISOString()));
 rejects("lease too long",env.replace(expires,new Date(now+50*60*60*1000).toISOString()));
 rejects("generic env QA override",env,"PACKTOOK_V7_QA_ENABLED=true");
