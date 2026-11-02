@@ -14,6 +14,8 @@ for(const list of lists)assert(list[1].split(",").length<=10,"Do not deploy >10 
 assert.equal(new Set(lists.flatMap(x=>x[1].split(","))).size,14,
  "Expected exactly 14 unique named beta callable targets");
 assert(script.includes('node scripts/check-v70-qa-preflight.mjs "$PROJECT" "$MODE"'));
+assert(script.includes('bash scripts/prepare-v70-qa-disabled.sh "$PROJECT" --qa-off'),
+ "QA-disabled Production deploy must snapshot existing functions first");
 assert(script.includes('read -r -p "Type $EXPECT'));
 assert(script.includes("DEPLOY-V70-QA-DISABLED")&&
  script.includes("DEPLOY-V70-APPROVED-INVITE"));
