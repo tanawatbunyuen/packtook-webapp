@@ -12,6 +12,7 @@ fi
 MODE="$2"
 node scripts/verify.mjs "$PROJECT"
 node scripts/test-v70-qa-source-safety.mjs
+node scripts/test-v70-deploy-scope.mjs
 node scripts/test-v70-qa-preflight.mjs
 node scripts/check-v70-qa-preflight.mjs "$PROJECT" "$MODE"
 node scripts/test-public-registration.mjs
@@ -21,7 +22,7 @@ node scripts/test-customer-cache-contract.mjs
 node scripts/test-promptpay.mjs
 node scripts/test-v67-native-realm.mjs
 node --check functions/index.js
-node --check app/qa-free.js
+node --check --input-type=module < app/qa-free.js
 
 [[ -d functions/node_modules/firebase-functions ]] || {
  echo "SAFETY BLOCK: Firebase dependencies are missing" >&2;exit 2; }
