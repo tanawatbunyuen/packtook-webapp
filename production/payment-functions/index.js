@@ -1,6 +1,7 @@
 "use strict";
 const {onCall,onRequest,HttpsError}=require("firebase-functions/v2/https");
 const {defineSecret}=require("firebase-functions/params");
+const {onSchedule}=require("firebase-functions/v2/scheduler");
 const omiseKey=defineSecret("PACKTOOK_OMISE_TEST_SECRET_KEY");
 const omiseWebhookKey=defineSecret("PACKTOOK_OMISE_TEST_WEBHOOK_SECRET");
 const admin=require("firebase-admin");
@@ -11,6 +12,8 @@ const {FieldValue}=admin.firestore;
 const limits={Free:20,Starter:50,Basic:300,Growth:1500,Business:5000,Pro:null};
 const pricesTHB={Free:0,Starter:199,Basic:299,Growth:599,Business:1290,Pro:1990};
 const deviceLimits={Free:1,Starter:1,Basic:1,Growth:3,Business:5,Pro:10};
+const PLAN_TIERS=["Free","Starter","Basic","Growth","Business","Pro"];
+const CREDIT_GRACE_DAYS=10,CREDIT_GRACE_MS=CREDIT_GRACE_DAYS*86400000;
 const region="asia-southeast1";
 const options={region,maxInstances:5,timeoutSeconds:30};
 const PROMPTPAY_TEST_ENABLED=process.env.PACKTOOK_PROMPTPAY_TEST_ENABLED==="true";
@@ -58,33 +61,78 @@ function creditAvailable(a,now=Date.now()){
  const same=a.period===periodId(now);
  return Math.max(0,limit-(same?(a.used||0)+(a.reserved||0):0));
 }
+// PACKTOOK V6.4.1 — account wallet credit retention policy
+// Paid expiry blocks recording immediately (enforced in the unchanged Recording Function).
+// Unused finite credits may be carried forward for exactly 10*24h after expiry.
+function carryoverDeadline(a){
+ if(a.plan==="Free"||!a.planExpiresAt)return null;
+ const ms=Date.parse(a.planExpiresAt);
+ if(!Number.isFinite(ms))return null;
+ return ms+CREDIT_GRACE_MS;
+}
+function isExpiredWithinGrace(a,now=Date.now()){
+ const expiry=Date.parse(a.planExpiresAt||"");
+ const until=carryoverDeadline(a);
+ return a.plan!=="Free"&&Number.isFinite(expiry)&&expiry<=now&&until!==null&&now<=until;
+}
+function carryoverCredits(a,now=Date.now()){
+ const state=subscriptionState(a);
+ if(a.plan==="Free"||state==="active"||isExpiredWithinGrace(a,now)){
+  // Legacy paid (non-wallet) accounts retain their last period's used amount;
+  // do not grant a fresh monthly quota merely because a grace period crosses months.
+  if(a.plan!=="Free"&&state==="expired"&&!walletEnabled(a)){
+   const limit=limits[a.plan];
+   if(limit===null)return null;
+   if(!Number.isSafeInteger(a.used)||a.used<0||
+      !Number.isSafeInteger(a.reserved)||a.reserved<0)
+    throw new HttpsError("failed-precondition","Legacy credit balance needs review");
+   return Math.max(0,limit-a.used-a.reserved);
+  }
+  return creditAvailable(a,now);
+ }
+ return 0;
+}
+function retainedCredits(a,now=Date.now()){
+ if(a.plan==="Free"||a.plan==="Pro")return {credits:null,until:null,eligible:false};
+ const expiry=Date.parse(a.planExpiresAt||"");
+ if(!Number.isFinite(expiry)||expiry>now)return {credits:null,until:null,eligible:false};
+ const until=carryoverDeadline(a),eligible=until!==null&&now<=until;
+ return {credits:eligible?carryoverCredits(a,now):0,
+  until:until===null?null:new Date(until).toISOString(),eligible};
+}
 function purchasedCreditBalance(a,nextPlan,now=Date.now()){
- const purchased=limits[nextPlan],current=creditAvailable(a,now);
+ const purchased=limits[nextPlan],transferred=carryoverCredits(a,now);
  if(purchased===undefined)throw new HttpsError("invalid-argument","Unknown plan");
- const eligible=hasActivePaidPlan(a)||a.plan==="Free";
- const transferred=eligible&&current!==null?current:0;
  if(purchased===null)return {purchased:null,transferred:0,total:null};
- const total=purchased+transferred;
- if(!Number.isSafeInteger(total)||total<0)throw new HttpsError("failed-precondition","Credit total exceeds supported range");
- return {purchased,transferred,total};
+ const total=purchased+(transferred??0);
+ if(!Number.isSafeInteger(total)||total<0)
+  throw new HttpsError("failed-precondition","Credit total exceeds supported range");
+ return {purchased,transferred:transferred??0,total};
 }
 function purchaseDecision(a,target,now=Date.now()){
- if(!Object.hasOwn(pricesTHB,target)||target==="Free")return {allowed:false,reason:"Invalid paid plan"};
- const state=subscriptionState(a),active=hasActivePaidPlan(a),limit=limits[a.plan];
- if(a.plan!=="Free"&&["unconfigured","invalid"].includes(state))return {allowed:false,reason:"Subscription data needs administrator review before any new payment"};
- if(pendingReservations(a,now)>0)return {allowed:false,reason:"Finish outstanding recordings before purchasing or renewing"};
- if(!active)return {allowed:true,kind:"new",resetQuota:false};
- const tiers=Object.keys(pricesTHB),remaining=creditAvailable(a,now);
- const reserved=pendingReservations(a,now);
- if(reserved>0)return {allowed:false,reason:"Finish outstanding recordings before purchasing or renewing"};
- const exhausted=remaining===0;
- const exp=Date.parse(a.planExpiresAt),nearExpiry=Number.isFinite(exp)&&exp>now&&exp-now<=7*86400000;
- // Upgrading to a higher-priced tier is permitted immediately, including when credits remain.
- // Keep all unused credits and add the new tier allowance only after Omise confirms payment.
- if(tiers.indexOf(target)>tiers.indexOf(a.plan))return {allowed:true,kind:"upgrade",resetQuota:false};
- if(exhausted&&target===a.plan)return {allowed:true,kind:"exhausted_topup",resetQuota:false};
- if(nearExpiry&&target===a.plan)return {allowed:true,kind:"renewal",resetQuota:false};
- return {allowed:false,reason:"Active subscriptions cannot downgrade. Same-tier purchases require exhausted credits or at most 7 days until expiry; upgrades to higher tiers are allowed now."};
+ if(!Object.hasOwn(pricesTHB,target)||target==="Free")
+  return {allowed:false,reason:"Invalid paid plan"};
+ const current=PLAN_TIERS.indexOf(a.plan),next=PLAN_TIERS.indexOf(target);
+ if(current<0||next<0)
+  return {allowed:false,reason:"Unknown current plan; contact support"};
+ // No downgrades — even after paid plan expiry, during the grace period,
+ // or after the remaining credit has been forfeited.
+ if(next<current)
+  return {allowed:false,reason:"Downgrading to a lower plan is not allowed"};
+ const state=subscriptionState(a),active=hasActivePaidPlan(a);
+ if(a.plan!=="Free"&&["unconfigured","invalid"].includes(state))
+  return {allowed:false,reason:"Subscription data needs review before any new payment"};
+ if(pendingReservations(a,now)>0)
+  return {allowed:false,reason:"Finish outstanding recordings before purchasing or renewing"};
+ if(a.plan==="Free")return {allowed:true,kind:"new",resetQuota:false};
+ if(next>current)return {allowed:true,kind:"upgrade",resetQuota:false};
+ if(!active)return {allowed:true,kind:"renewal",resetQuota:false};
+ const remaining=creditAvailable(a,now);
+ const exhausted=remaining===0,expiry=Date.parse(a.planExpiresAt);
+ const nearExpiry=Number.isFinite(expiry)&&expiry>now&&expiry-now<=7*86400000;
+ if(exhausted)return {allowed:true,kind:"exhausted_topup",resetQuota:false};
+ if(nearExpiry)return {allowed:true,kind:"renewal",resetQuota:false};
+ return {allowed:false,reason:"Same-tier renewal is available when credits run out or within the final 7 days; higher-tier upgrades are available anytime"};
 }
 function billingOpen(a){return typeof a.openBillingRequestId==="string"&&a.openBillingRequestId.length>0}
 // V6.4: an expired QR must be confirmed by the provider, not local clock alone.
@@ -154,8 +202,13 @@ exports.promptpaySubscriptionOverview=onCall(options,async req=>{
   if(open.exists&&open.data().requestedBy===id)docs.unshift(open);
  }
  const period=periodId(Date.now());
+ const retention=retainedCredits(a);
  return {plan:a.plan,status:subscriptionState(a),expiresAt:a.planExpiresAt||null,
-  priceTHB:pricesTHB[a.plan]??null,remaining:creditAvailable(a),
+  priceTHB:pricesTHB[a.plan]??null,
+  // Expired credits are retained for the next purchase but cannot record videos.
+  remaining:subscriptionState(a)==="expired"?0:creditAvailable(a),
+  retainedCredits:retention.credits,carryoverUntil:retention.until,
+  carryoverEligible:retention.eligible,creditGraceDays:CREDIT_GRACE_DAYS,
   used:a.period===period?(a.used||0):0,reserved:pendingReservations(a),
   walletEnabled:walletEnabled(a),purchaseWindow:purchaseDecision(a,a.plan),
   openBillingRequestId:a.openBillingRequestId||null,requests:docs.map(publicBillingRequest)};
@@ -264,7 +317,9 @@ async function reconcileCharge(accountId,requestId,chargeId){
     creditWalletV1:true,creditWalletRemaining:credits.total,walletStartingCredits:credits.total,period:periodId(Date.now()),used:0,reserved:0,
     ...(lockOk?{openBillingRequestId:FieldValue.delete()}:{}),updatedAt:FieldValue.serverTimestamp()});
    tx.update(ref,{status:"paid",paidAt:FieldValue.serverTimestamp(),paymentProvider:"omise",omiseLivemode:false,paymentMethod:"promptpay",activationExpiresAt:expiresAt,
-    creditsPurchased:credits.purchased,transferredCredits:credits.transferred,balanceAfter:credits.total,expiryBefore:a.planExpiresAt||null,
+    creditsPurchased:credits.purchased,transferredCredits:credits.transferred,balanceAfter:credits.total,
+    carryoverDeadlineBefore:carryoverDeadline(a)===null?null:new Date(carryoverDeadline(a)).toISOString(),
+    expiryBefore:a.planExpiresAt||null,
     ...paidEvidence(charge)});
    tx.create(acc.collection("audit").doc(),{action:"subscription_credits_merged",billingRequestId:requestId,omiseChargeId:chargeId,plan:item.plan,creditsPurchased:credits.purchased,transferredCredits:credits.transferred,balanceAfter:credits.total,createdAt:FieldValue.serverTimestamp()});
    return {status:"paid",plan:item.plan,expiresAt,creditsPurchased:credits.purchased,transferredCredits:credits.transferred,balanceAfter:credits.total};
@@ -440,6 +495,7 @@ exports.promptpayAudit=onCall(paymentSecrets,async req=>{
     item.providerVerifiedCurrency==="thb"&&item.providerVerifiedSource==="promptpay"&&
     item.providerVerifiedLivemode===false;
    result.postSettlementAlert=item.postSettlementAlert||null;
+   result.carryoverDeadlineBefore=item.carryoverDeadlineBefore||null;
  }
  return result;
 });
