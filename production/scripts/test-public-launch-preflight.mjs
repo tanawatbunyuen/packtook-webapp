@@ -52,14 +52,14 @@ console.log("PASS: tampered App Check, form, deep link, Marketing CTA and Firest
 
 const simulatedValidKey=inspectSource({
  ...source,
- signupConfig:source.signupConfig.replace('appCheckSiteKey:""',
+ signupConfig:source.signupConfig.replace(/appCheckSiteKey:"[^"]*"/,
  'appCheckSiteKey:"6LeRealExamplePublicSiteKeyOnlyForTest"')
 });
 assert.equal(item(simulatedValidKey,"B01")?.state,"blocked",
  "Example/placeholder key must not be treated as valid");
 const simKey=inspectSource({
  ...source,
- signupConfig:source.signupConfig.replace('appCheckSiteKey:""',
+ signupConfig:source.signupConfig.replace(/appCheckSiteKey:"[^"]*"/,
  'appCheckSiteKey:"6LdYzfEwAAAAADemoApprovedLocalFixture"')
 });
 assert.equal(item(simKey,"B01")?.state,"pass",
