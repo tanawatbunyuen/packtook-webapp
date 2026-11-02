@@ -234,7 +234,36 @@ function updateQuota(){
   Math.min(100,used/(q?.limit||20)*100)+'%';
 }
 
-function showTab(tab){document.querySelectorAll('.tabcontent').forEach(e=>e.hidden=e.id!==tab);document.querySelectorAll('.nav').forEach(e=>e.classList.toggle('active',e.dataset.tab===tab));$('crumb').textContent=tab.toUpperCase();$('pageTitle').textContent={packing:'บันทึกวิดีโอการแพ็กสินค้า',dashboard:'ค้นหาประวัติวิดีโอ',plans:'แพ็กเกจและโควตาวิดีโอ',help:'คู่มือการใช้งาน',users:'จัดการผู้ใช้และอุปกรณ์'}[tab];if(tab==='dashboard'){renderHistory();void runRetention(false)}if(tab==='plans'){renderPlans();void refreshQrTestAccess();if(displayedPaymentQr)scheduleQrPoll();}if(tab==='users'){updateUsersSummary();void refreshRemoteQuota().catch(e=>toast(e.message));void renderDeviceManager()}}
+// PACKTOOK V6.4.3 — sidebar is UI-only: never changes video, auth, wallet or payment state.
+const SIDEBAR_LAYOUT_KEY="packtook-sidebar-collapsed-v643";
+function setSidebarCollapsed(collapsed){
+ const page=$("appPage"),button=$("sidebarToggle"),label=$("sidebarToggleLabel");
+ if(!page||!button)return;
+ page.classList.toggle("sidebar-collapsed",!!collapsed);
+ button.setAttribute("aria-expanded",String(!collapsed));
+ const description=collapsed?"ขยายแถบเมนู":"ยุบแถบเมนู";
+ button.setAttribute("aria-label",description);
+ button.title=description;
+ if(label)label.textContent=collapsed?"ขยายเมนู":"ยุบเมนู";
+ try{localStorage.setItem(SIDEBAR_LAYOUT_KEY,collapsed?"1":"0")}catch{}
+}
+function filterTroubleshooting(){
+ const text=($("troubleSearch")?.value||"").trim().toLocaleLowerCase("th-TH");
+ const category=$("troubleCategory")?.value||"all";
+ let visible=0;
+ document.querySelectorAll("#troubleList .trouble-item").forEach(item=>{
+  const matchesCategory=category==="all"||item.dataset.category===category;
+  const searchable=(item.dataset.keywords||"")+" "+item.textContent;
+  const normalized=searchable.toLocaleLowerCase("th-TH");
+  const matchesText=!text||text.split(/\s+/).every(term=>normalized.includes(term));
+  item.hidden=!(matchesCategory&&matchesText);
+  if(!item.hidden)visible++;
+ });
+ const count=$("troubleCount");if(count)count.textContent="พบ "+visible+" หัวข้อ";
+ const empty=$("troubleEmpty");if(empty)empty.hidden=visible!==0;
+}
+
+function showTab(tab){document.querySelectorAll('.tabcontent').forEach(e=>e.hidden=e.id!==tab);document.querySelectorAll('.nav').forEach(e=>e.classList.toggle('active',e.dataset.tab===tab));$('crumb').textContent=tab.toUpperCase();$('pageTitle').textContent={packing:'บันทึกวิดีโอการแพ็กสินค้า',dashboard:'ค้นหาประวัติวิดีโอ',plans:'แพ็กเกจและโควตาวิดีโอ',help:'คู่มือการใช้งาน',users:'จัดการผู้ใช้และอุปกรณ์',troubleshooting:'แก้ปัญหาเบื้องต้น'}[tab];if(tab==='dashboard'){renderHistory();void runRetention(false)}if(tab==='plans'){renderPlans();void refreshQrTestAccess();if(displayedPaymentQr)scheduleQrPoll();}if(tab==='users'){updateUsersSummary();void refreshRemoteQuota().catch(e=>toast(e.message));void renderDeviceManager()}}
 async function verifyAfterPaymentReturn(){
  if(new URLSearchParams(location.search).get('payment')!=='return')return;
  showTab('plans');
@@ -1133,7 +1162,15 @@ $('resetPassword').addEventListener('click',async()=>{
  catch(e){toast('ส่งลิงก์ตั้งรหัสผ่านไม่ได้: '+e.message)}
 });
 $('logout').onclick=async()=>{if(activeBarcode||recordingOp)return toast('กรุณาหยุดการบันทึกและตรวจเครดิตก่อนออกจากระบบ');await credit().logout();remoteUser=null;remoteQuota=null;$('appPage').hidden=true;$('loginPage').hidden=false;stream?.getTracks().forEach(t=>t.stop());stream=null;cameraState(false)};
-document.querySelectorAll('[data-tab]').forEach(e=>e.onclick=()=>showTab(e.dataset.tab));$('refreshUserDevices').onclick=()=>{void renderDeviceManager();void refreshRemoteQuota().catch(e=>toast(e.message))};$('cameraBtn').onclick=toggleCamera;$('folderBtn').onclick=selectFolder;$('stopBtn').onclick=stopRecording;$('focusScan').onclick=()=>$('barcode').focus();$('refreshHistory').onclick=()=>{void renderHistory(false)};$('dateFilter').onchange=()=>{void renderHistory(false)};
+document.querySelectorAll('[data-tab]').forEach(e=>e.onclick=()=>{showTab(e.dataset.tab);if(window.matchMedia('(max-width:700px)').matches)setSidebarCollapsed(true)});
+$('sidebarToggle').addEventListener('click',()=>setSidebarCollapsed(!$('appPage').classList.contains('sidebar-collapsed')));
+let sidebarSaved='0';try{sidebarSaved=localStorage.getItem(SIDEBAR_LAYOUT_KEY)||'0'}catch{}
+setSidebarCollapsed(sidebarSaved==='1');
+$('troubleSearch').addEventListener('input',filterTroubleshooting);
+$('troubleCategory').addEventListener('change',filterTroubleshooting);
+document.querySelectorAll('[data-troubleshoot-goto]').forEach(b=>b.addEventListener('click',()=>{showTab(b.dataset.troubleshootGoto);if(window.matchMedia('(max-width:700px)').matches)setSidebarCollapsed(true)}));
+filterTroubleshooting();
+$('refreshUserDevices').onclick=()=>{void renderDeviceManager();void refreshRemoteQuota().catch(e=>toast(e.message))};$('cameraBtn').onclick=toggleCamera;$('folderBtn').onclick=selectFolder;$('stopBtn').onclick=stopRecording;$('focusScan').onclick=()=>$('barcode').focus();$('refreshHistory').onclick=()=>{void renderHistory(false)};$('dateFilter').onchange=()=>{void renderHistory(false)};
 $('barcode').addEventListener('keydown',e=>{if(e.key!=='Enter')return;e.preventDefault();const code=$('barcode').value.trim();$('barcode').value='';if(!code){toast('กรุณาสแกนหรือพิมพ์ Barcode ก่อนกด Enter');return}if(ending||reservation){toast('ระบบกำลังดำเนินการ กรุณารอสักครู่');return}if(activeBarcode){if(code===activeBarcode)stopRecording();else toast('กำลังอัด '+activeBarcode+' ต้องสแกนรหัสเดิมเพื่อหยุด');return}reservation=true;startRecording(code).catch(e=>toast('เกิดข้อผิดพลาด: '+e.message)).finally(()=>{reservation=false;$('barcode').focus()})});
 function connectFirebaseUI(){if(!credit()?.ready)return;credit().onUser(u=>{remoteUser=u;if(u){
  void refreshQrTestAccess();

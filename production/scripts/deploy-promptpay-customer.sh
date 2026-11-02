@@ -7,6 +7,7 @@ PROD="$1"
 node scripts/verify.mjs "$PROD"
 node scripts/test-auth-uid.mjs
 node scripts/test-customer-ui.mjs
+node scripts/test-navigation-troubleshooting.mjs
 node scripts/test-promptpay.mjs
 node scripts/test-package-policy.mjs
 node scripts/test-renewal-notice.mjs
