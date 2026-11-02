@@ -13,8 +13,8 @@ assert(html.includes('aria-controls="appSidebar"')&&html.includes('aria-expanded
  "Sidebar toggle must be accessible to assistive technologies");
 // Check the real linked versions rather than pinning this V6.4.3 test to V6.5.0.
 // V6.6 updates app.js independently while still using the V6.5 Customer stylesheet.
-const jsVersion=html.match(/<script src="app\\.js\\?v=(\\d+)\\.(\\d+)\\.(\\d+)"><\\/script>/);
-const cssVersion=html.match(/<link rel="stylesheet" href="style\\.css\\?v=(\\d+)\\.(\\d+)\\.(\\d+)">/);
+const jsVersion=html.match(/<script src="app[.]js[?]v=([0-9]+)[.]([0-9]+)[.]([0-9]+)"><\/script>/);
+const cssVersion=html.match(/<link rel="stylesheet" href="style[.]css[?]v=([0-9]+)[.]([0-9]+)[.]([0-9]+)">/);
 const supportedAsset=(match)=>match&&
  (Number(match[1])>6||(Number(match[1])===6&&Number(match[2])>=5));
 assert(supportedAsset(jsVersion)&&supportedAsset(cssVersion),
