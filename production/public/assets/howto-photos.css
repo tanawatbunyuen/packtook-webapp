@@ -1,0 +1,104 @@
+/* PACKTOOK V6.5.5 — photo-driven How It Works.
+   Scoped to Marketing only. Overrides old SVG/icon card styling. */
+.how-section .step-card{
+ display:flex;
+ flex-direction:column;
+ align-items:stretch;
+ min-width:0;
+ padding:17px;
+ overflow:hidden;
+}
+.how-section .step-card .step-number{
+ flex:0 0 auto;
+ margin:0 0 13px;
+ font-size:24px;
+ line-height:1.35;
+}
+.how-section .step-photo{
+ display:block;
+ flex:0 0 auto;
+ width:100%;
+ margin:0 0 17px;
+ border:1px solid #d9e6f7;
+ border-radius:12px;
+ overflow:hidden;
+ background:linear-gradient(135deg,#e4effd,#c4dff8);
+ box-shadow:0 5px 15px rgba(12,50,100,.075);
+}
+.how-section .step-photo img{
+ display:block;
+ width:100%;
+ height:clamp(148px,15.8vw,189px);
+ object-fit:cover;
+ object-position:center;
+}
+.how-section .step-card h3{
+ display:block;
+ margin:0 0 10px;
+ grid-column:auto;
+ grid-row:auto;
+ font-size:17px;
+ line-height:1.52;
+ font-weight:850;
+}
+.how-section .step-card>p{
+ display:block;
+ margin:0;
+ grid-column:auto;
+ grid-row:auto;
+ font-size:14px;
+ line-height:1.8;
+ color:#647f9d;
+}
+.how-section .step-photo-disclaimer{
+ margin:18px 3px 0;
+ color:#557c9e;
+ font-size:12px;
+ line-height:1.7;
+ text-align:center;
+}
+.how-section .workflow-note{margin-top:18px}
+@media(max-width:980px){
+ .how-section .step-card{padding:18px}
+ .how-section .step-photo img{height:clamp(190px,27vw,250px)}
+}
+@media(max-width:640px){
+ .how-section .step-card{
+  display:flex;
+  flex-direction:column;
+  padding:16px;
+  gap:0;
+ }
+ .how-section .step-card .step-number{
+  grid-column:auto;
+  grid-row:auto;
+  font-size:23px;
+  margin:0 0 12px;
+ }
+ .how-section .step-photo{
+  grid-column:auto;
+  grid-row:auto;
+  margin:0 0 15px;
+  border-radius:11px;
+ }
+ .how-section .step-photo img{
+  width:100%;
+  height:clamp(182px,55vw,245px);
+  object-fit:cover;
+  object-position:center;
+ }
+ .how-section .step-card h3{
+  grid-column:auto;
+  grid-row:auto;
+  margin:0 0 7px;
+  font-size:16px;
+ }
+ .how-section .step-card>p{
+  grid-column:auto;
+  grid-row:auto;
+  margin:0;
+  font-size:13px;
+  line-height:1.78;
+ }
+ .how-section .step-photo-disclaimer{font-size:11px;line-height:1.65}
+}
