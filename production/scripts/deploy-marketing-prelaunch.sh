@@ -13,7 +13,9 @@ node scripts/verify.mjs "$PROJECT"
 node scripts/test-marketing-website.mjs
 node scripts/test-marketing-brand-parity.mjs
 node scripts/test-marketing-workflow-comparison.mjs
+node scripts/test-marketing-typography.mjs
 node --check public/assets/site.js
+node --check public/assets/hero-photo.js
 
 # Guarantee this release remains a prelaunch website without live checkout.
 grep -q 'name="robots" content="noindex, nofollow"' public/index.html
@@ -27,6 +29,20 @@ test -s public/assets/mascot-eagle.svg
 test -s public/assets/packing-workstation.svg
 test -s public/assets/packing-comparison.css
 grep -q 'packing-comparison.css?v=6.5.3' public/index.html
+grep -q 'typography.css?v=6.5.4' public/index.html
+test -s public/assets/typography.css
+test -s public/assets/hero-photo.js
+if [[ ! -s public/assets/packtook-hero-photo.webp ]]; then
+  echo "ERROR: Photoreal Hero asset not installed. Upload the provided V6.5.4 ZIP to Cloud Shell and extract at repo root before deploying." >&2
+  exit 1
+fi
+node - <<'JS_PHOTO'
+const fs=require("node:fs");
+const p="public/assets/packtook-hero-photo.webp";
+const x=fs.readFileSync(p);
+if(x.length<10000||x.toString("ascii",0,4)!=="RIFF"||x.toString("ascii",8,12)!=="WEBP")
+ throw Error("Invalid or incomplete Hero WebP photo: "+p);
+JS_PHOTO
 
 node - "$PROJECT" <<'JS'
 const fs=require("node:fs"),project=process.argv[2];
