@@ -9,13 +9,22 @@ const limits={Free:20,Starter:50,Basic:300,Growth:1500,Business:5000,Pro:null};
 const pricesTHB={Free:0,Starter:199,Basic:299,Growth:599,Business:1290,Pro:1990};
 const deviceLimits={Free:1,Starter:1,Basic:1,Growth:3,Business:5,Pro:10};
 const region="asia-southeast1";
-const options={region,maxInstances:5,timeoutSeconds:30}; // Enable enforceAppCheck:true after configuring web App Check.
+const options={region,maxInstances:5,timeoutSeconds:30}; // Existing Beta functions retain their current App Check policy.
+const PUBLIC_SIGNUP_ENABLED=process.env.PACKTOOK_PUBLIC_SIGNUP_ENABLED==="true";
+const PUBLIC_ACCESS_ENABLED=process.env.PACKTOOK_PUBLIC_ACCESS_ENABLED==="true";
+const PUBLIC_POLICIES_APPROVED=process.env.PACKTOOK_PUBLIC_POLICIES_APPROVED==="true";
+const PUBLIC_POLICY_VERSION="2026-11-v1";
+const PUBLIC_GATE=PUBLIC_SIGNUP_ENABLED&&PUBLIC_ACCESS_ENABLED&&PUBLIC_POLICIES_APPROVED;
+function isPublicMember(auth){return PUBLIC_ACCESS_ENABLED&&auth?.token?.packtookPublicCustomer===true}
+function productionProjectReady(){return process.env.PACKTOOK_PRODUCTION_PROJECT_ID==="packtook-prod-01" &&
+ (!process.env.GCLOUD_PROJECT||process.env.GCLOUD_PROJECT==="packtook-prod-01") &&
+ (!process.env.GCP_PROJECT||process.env.GCP_PROJECT==="packtook-prod-01")}
 // Production Beta: all callables are restricted to explicitly approved Auth UIDs.
 function uid(req){
  if(process.env.PACKTOOK_PRODUCTION_PROJECT_ID!=="packtook-prod-01")throw new HttpsError("failed-precondition","Production project environment is not configured");
  if(!req.auth?.uid)throw new HttpsError("unauthenticated","Please sign in");
  if(req.auth.token.email_verified!==true)throw new HttpsError("permission-denied","Verify your email");
- if(req.auth.token.packtookProductionBeta!==true)throw new HttpsError("permission-denied","Production Beta account not approved");
+ if(req.auth.token.packtookProductionBeta!==true&&!isPublicMember(req.auth))throw new HttpsError("permission-denied","Account is not authorized for PACKTOOK");
  return req.auth.uid;
 }
 function data(req){return req.data&&typeof req.data==="object"?req.data:{}}
@@ -84,6 +93,63 @@ async function ensureAccount(id){
  catch(e){if(e.code!==6&&e.code!=="already-exists")throw e}
  return ref;
 }
+
+// V6.5: self-registration stays completely disabled until THREE independent
+// server-side production rollout flags are enabled after legal/App Check QA.
+// This read-only status API does not grant entitlements or create Auth users.
+exports.publicSignupStatus=onCall(options,async()=>{
+ return {enabled:productionProjectReady()&&PUBLIC_GATE,
+  accessEnabled:productionProjectReady()&&PUBLIC_ACCESS_ENABLED,
+  policyVersion:PUBLIC_POLICY_VERSION,freeVideosPerMonth:20,freeDevices:1};
+});
+// Only the verified Auth user can create their own once-only Free account.
+// The callable enforces Firebase App Check before this handler runs.
+// This function never grants extra credits, never changes paid accounts,
+// and never downgrades a preexisting account.
+exports.completeFreeSignup=onCall({...options,enforceAppCheck:true},async req=>{
+ if(!productionProjectReady()||!PUBLIC_GATE)
+  throw new HttpsError("failed-precondition","Public registration is not available");
+ if(!req.app?.appId)throw new HttpsError("permission-denied","App verification is required");
+ if(!req.auth?.uid)throw new HttpsError("unauthenticated","Please sign in");
+ const d=data(req);
+ if(d.acceptTerms!==true||d.termsVersion!==PUBLIC_POLICY_VERSION||
+    d.privacyVersion!==PUBLIC_POLICY_VERSION)
+  throw new HttpsError("invalid-argument","Accept the current Terms and Privacy Policy");
+ const id=req.auth.uid;
+ // Never trust emailVerified or email supplied by the browser.
+ const live=await admin.auth().getUser(id);
+ if(live.disabled||live.emailVerified!==true||!live.email)
+  throw new HttpsError("permission-denied","Verify your email address before activating Free");
+ if(live.customClaims?.packtookProductionBeta===true)
+  throw new HttpsError("already-exists","This account already belongs to Production Beta");
+ const ref=own(id);
+ const result=await db.runTransaction(async tx=>{
+  const snap=await tx.get(ref);
+  if(snap.exists){
+   const a=snap.data();
+   // A retry after a successful Firestore creation must NOT grant Free again.
+   if(a.registrationSource!=="self_service_v65"||a.ownerUid!==id)
+    throw new HttpsError("already-exists","This account is already registered");
+   return {created:false,plan:a.plan};
+  }
+  tx.create(ref,{ownerUid:id,registrationSource:"self_service_v65",
+   registeredEmail:live.email,plan:"Free",period:periodId(Date.now()),
+   used:0,reserved:0,devices:[],creditWalletV1:false,
+   acceptedTermsVersion:PUBLIC_POLICY_VERSION,
+   acceptedPrivacyVersion:PUBLIC_POLICY_VERSION,
+   consentAt:FieldValue.serverTimestamp(),createdAt:FieldValue.serverTimestamp()});
+  return {created:true,plan:"Free"};
+ });
+ // If Auth claim update fails after DB commit, retry is safe/idempotent.
+ const fresh=await admin.auth().getUser(id);
+ if(fresh.disabled||fresh.emailVerified!==true)
+  throw new HttpsError("permission-denied","Account authorization changed");
+ await admin.auth().setCustomUserClaims(id,{
+  ...(fresh.customClaims||{}),packtookPublicCustomer:true
+ });
+ return {activated:true,created:result.created,plan:result.plan,
+  freeVideosPerMonth:20,freeDevices:1,refreshToken:true};
+});
 exports.usageStatus=onCall(options,async req=>{
  const id=uid(req),ref=await ensureAccount(id),snap=await ref.get();
  if(!snap.exists)throw new HttpsError("failed-precondition","Account not provisioned");
