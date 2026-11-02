@@ -109,6 +109,14 @@ assert(customers.customers[1].expiryState==="active"&&customers.customers[1].day
 assert(customers.customers[2].expiryState==="expired"&&customers.customers[2].daysRemaining===0,"Expired plan must show expired state");
 assert(customers.customers[1].creditsRemaining===42,"Wallet credit remaining incorrect");
 assert(customers.customers[2].creditsRemaining===0&&customers.customers[2].creditsStatus==="expired","Expired membership should not show usable credits");
+const previousExpiredData=accounts[2].data;
+accounts[2].data=()=>({...previousExpiredData(),
+ planExpiresAt:new Date(Date.now()-5*86400000).toISOString(),creditWalletRemaining:37});
+const retained=await exportsObj.ownerAnalyticsCustomers(valid);
+assert(retained.customers[2].creditsStatus==="retained"&&
+ retained.customers[2].creditsRemaining===37&&retained.customers[2].creditCarryoverUntil,
+ "Owner must show expired wallet as 37 retained credits for up to ten days, not usable credits");
+accounts[2].data=previousExpiredData;
 const revenue=await exportsObj.ownerAnalyticsRevenue(valid);
 assert(revenue.billingEnabled===false&&revenue.reconciliation==="NOT_RECONCILED","Production payment must remain closed");
 assert(revenue.totals.liveSalesTHB===199&&revenue.totals.livePayments===1,"Explicit live ledger amount counted");
