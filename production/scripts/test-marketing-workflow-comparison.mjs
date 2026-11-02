@@ -12,24 +12,28 @@ const customerCSS=read("app/style.css");
 // Verify Hero is an actual packing workstation, not the previous lone-box mock.
 const hero=html.match(/<section class="hero container"[\s\S]*?<\/section>/)?.[0];
 assert(hero,"Cannot find the main PACKTOOK Hero");
-assert(hero.includes('src="/assets/packing-workstation.svg"'),"Hero must show packing workstation");
-assert(hero.includes("พนักงานกำลังแพ็กสินค้า")&&hero.includes("เครื่องสแกนบาร์โค้ด")&&hero.includes("PACKTOOK")&&hero.includes("REC"),
+assert(hero.includes('src="/assets/packing-workstation.svg"')&&hero.includes('data-photo-src="/assets/packtook-hero-photo.webp"'),
+ "Hero must load local AI photoreal packing photo with illustration fallback");
+assert(hero.includes("พนักงานกำลังแพ็กพัสดุ")&&hero.includes("เครื่องสแกน Barcode")&&hero.includes("PACKTOOK")&&hero.includes("REC"),
  "Hero image needs accessible alt describing worker, scanner and PACKTOOK");
-for(const token of ["SCAN BARCODE","PACKTOOK · REC","SCAN AGAIN → SAVE","บันทึกวิดีโอไว้ในเครื่อง"])
- assert(hero.includes(token),"Missing packing process description: "+token);
+for(const token of ["สแกน Barcode","แพ็ก + REC","สแกนซ้ำ + SAVE"])
+ assert(hero.includes(token),"Missing packing process legend: "+token);
 assert(!hero.includes('data-mock="customer-dashboard"'),"Legacy lone-box hero should be replaced");
-assert(hero.includes("ภาพประกอบจำลองการใช้งาน"),"Do not present original illustration as a real customer recording");
+assert(hero.includes("ภาพจำลองจาก Generative AI"),"AI image must not be presented as a real customer recording");
+assert(!hero.includes('packing-flow-callout'),"Do not duplicate callouts already embedded in the AI photo");
 assert(scene.startsWith('<svg xmlns="http://www.w3.org/2000/svg"'));
 assert(scene.trim().endsWith("</svg>"));
 assert(scene.includes("An ecommerce worker packs a parcel"));
 assert(scene.includes("Barcode handheld scanner")&&scene.includes("Recording camera suspended above parcel"));
 assert(scene.includes("Computer monitor")&&scene.includes("PACKTOOK / PACKING"));
 assert(!/<script\b|https?:\/\/|data:|foreignObject/i.test(scene.replace('xmlns="http://www.w3.org/2000/svg"','')),"SVG must be self-contained and script-free");
-console.log("PASS: Hero shows real-world packing workflow concept, scanner, overhead camera and PACKTOOK UI");
+console.log("PASS: local AI photoreal Hero, packing workflow legend, scanner/camera/PACKTOOK alt and SVG fallback");
 
 assert(html.includes('href="/assets/packing-comparison.css?v=6.5.3"')||
  html.includes('href="/assets/packing-comparison.css?v=6.5.3">'),
  "Versioned comparison CSS asset missing");
+assert(html.includes('typography.css?v=6.5.4')&&html.includes('hero-photo.js?v=6.5.4'),
+ "Versioned typography and photo loader assets must be present");
 assert(css.includes(".packing-scene")&&css.includes(".packing-flow-callout")&&css.includes(".packing-flow-legend"));
 assert(css.includes(".comparison-scroll{")&&css.includes("overflow-x:auto"));
 assert(css.includes("position:sticky;left:0")&&css.includes(".comparison-table"));
