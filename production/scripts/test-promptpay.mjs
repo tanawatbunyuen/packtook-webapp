@@ -261,6 +261,41 @@ for(const scenario of [
   "Upgrade Payment status repetition must not credit twice");
  await rejects(api.promptpayRequestPlanChange(request({plan:"Starter"})),"failed-precondition");
 }
+// V6.4.2: purchase the SAME tier at any point in the term, even when credits remain.
+for(const scenario of [
+ {name:"early",daysLeft:21,old:120,expected:170},
+ {name:"reminder",daysLeft:6,old:40,expected:90},
+ {name:"grace",daysLeft:-9,old:45,expected:95}
+]){
+ userId="samePlanRenew_"+scenario.name;
+ ticketId="req_selfrenew_"+scenario.name+"_1234567890123";
+ const oldExpiry=new Date(Date.now()+scenario.daysLeft*86400000).toISOString();
+ documents.set("accounts/"+userId,{
+  plan:"Starter",planExpiresAt:oldExpiry,creditWalletV1:true,
+  creditWalletRemaining:scenario.old,used:0,reserved:0,billingVersion:0
+ });
+ paid=false;chargeStatus="pending";currentMode="promptpay";currentLive=false;
+ const requestRow=await api.promptpayRequestPlanChange(request({plan:"Starter"}));
+ assert(requestRow.purchaseKind==="renewal","Active/expired same-tier request must be a renewal");
+ const pendingQr=await api.promptpayCreateCharge(request({requestId:requestRow.requestId,method:"promptpay"}));
+ assert(pendingQr.status==="pending"&&charge.amount===19900,
+  "Same-tier Starter renewal must create only one THB199 Test Charge");
+ assert(documents.get("accounts/"+userId).creditWalletRemaining===scenario.old,
+  "Pending QR must not reset/add credit before verified Paid");
+ chargeStatus="successful";paid=true;
+ const settled=await api.promptpayChargeStatus(request({requestId:requestRow.requestId}));
+ const acc=documents.get("accounts/"+userId);
+ const receipt=documents.get("accounts/"+userId+"/billingRequests/"+requestRow.requestId);
+ assert(settled.status==="paid"&&acc.plan==="Starter"&&acc.creditWalletRemaining===scenario.expected&&
+  receipt.transferredCredits===scenario.old&&receipt.creditsPurchased===50,
+  "Same-tier "+scenario.name+" renewal must retain original wallet plus 50 new credits");
+ const expectedExpiry=new Date(Math.max(Date.now(),Date.parse(oldExpiry))+30*86400000);
+ assert(Math.abs(Date.parse(acc.planExpiresAt)-expectedExpiry.getTime())<15000,
+  "Same-plan "+scenario.name+" must extend original active expiry or start 30 days after payment");
+ const retry=await api.promptpayChargeStatus(request({requestId:requestRow.requestId}));
+ assert(retry.status==="paid"&&documents.get("accounts/"+userId).creditWalletRemaining===scenario.expected,
+  "Same-tier repeated payment status cannot grant credit twice");
+}
 // After expiry, lower-tier packages are still prohibited.
 userId="expiredProNoDowngrade";ticketId="r6qrexpro12345678901234";
 documents.set("accounts/"+userId,{
@@ -298,4 +333,4 @@ assert(forfeitureLogs.length===1&&documents.get(forfeitureLogs[0]).action==="exp
 await api.promptpayExpireUnusedCredits();
 assert([...documents.keys()].filter(k=>k.startsWith("accounts/expiredWalletForfeit/audit/")).length===1,
  "Repeated daily expiry job must not reset or audit twice");
-console.log("PASS: V6.4.1 Omise QR Paid/Failed/Expired, signed webhook, verified evidence, 10-day wallet forfeiture and idempotency");
+console.log("PASS: V6.4.2 same-plan early renewals 120+50, pre-expiry notice window, grace carryover, no downgrades, QR idempotency");
