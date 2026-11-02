@@ -9,6 +9,7 @@ node scripts/test-auth-uid.mjs
 node scripts/test-customer-ui.mjs
 node scripts/test-promptpay.mjs
 node scripts/test-package-policy.mjs
+node scripts/test-renewal-notice.mjs
 node scripts/test-qr-lifecycle.mjs
 node --check app/app.js
 [[ -s app/login-background.png && -s app/firebase-v4-config.js ]] || {
