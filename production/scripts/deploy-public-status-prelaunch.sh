@@ -14,6 +14,7 @@ fi
 
 node --check functions/index.js
 node scripts/check-public-status-rollout.mjs "$PROJECT"
+node scripts/test-public-status-prelaunch.mjs
 node scripts/test-public-registration.mjs
 node scripts/test-public-signup-navigation.mjs
 node scripts/test-v67-native-realm.mjs
