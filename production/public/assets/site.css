@@ -299,3 +299,6 @@ strong,b{font-weight:800}
 @media(prefers-reduced-motion:reduce){
  *,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
 }
+
+/* V6.6 launch readiness: hidden registration CTA stays truly hidden despite .button display rules. */
+#publicFreeSignupCta[hidden]{display:none!important}
