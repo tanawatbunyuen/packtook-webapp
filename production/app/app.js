@@ -1168,7 +1168,7 @@ let sidebarSaved='0';try{sidebarSaved=localStorage.getItem(SIDEBAR_LAYOUT_KEY)||
 setSidebarCollapsed(sidebarSaved==='1');
 $('troubleSearch').addEventListener('input',filterTroubleshooting);
 $('troubleCategory').addEventListener('change',filterTroubleshooting);
-document.querySelectorAll('[data-troubleshoot-goto]').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.troubleshootGoto)));
+document.querySelectorAll('[data-troubleshoot-goto]').forEach(b=>b.addEventListener('click',()=>{showTab(b.dataset.troubleshootGoto);if(window.matchMedia('(max-width:700px)').matches)setSidebarCollapsed(true)}));
 filterTroubleshooting();
 $('refreshUserDevices').onclick=()=>{void renderDeviceManager();void refreshRemoteQuota().catch(e=>toast(e.message))};$('cameraBtn').onclick=toggleCamera;$('folderBtn').onclick=selectFolder;$('stopBtn').onclick=stopRecording;$('focusScan').onclick=()=>$('barcode').focus();$('refreshHistory').onclick=()=>{void renderHistory(false)};$('dateFilter').onchange=()=>{void renderHistory(false)};
 $('barcode').addEventListener('keydown',e=>{if(e.key!=='Enter')return;e.preventDefault();const code=$('barcode').value.trim();$('barcode').value='';if(!code){toast('กรุณาสแกนหรือพิมพ์ Barcode ก่อนกด Enter');return}if(ending||reservation){toast('ระบบกำลังดำเนินการ กรุณารอสักครู่');return}if(activeBarcode){if(code===activeBarcode)stopRecording();else toast('กำลังอัด '+activeBarcode+' ต้องสแกนรหัสเดิมเพื่อหยุด');return}reservation=true;startRecording(code).catch(e=>toast('เกิดข้อผิดพลาด: '+e.message)).finally(()=>{reservation=false;$('barcode').focus()})});
