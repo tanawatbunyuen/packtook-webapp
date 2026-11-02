@@ -127,12 +127,12 @@ function purchaseDecision(a,target,now=Date.now()){
  if(a.plan==="Free")return {allowed:true,kind:"new",resetQuota:false};
  if(next>current)return {allowed:true,kind:"upgrade",resetQuota:false};
  if(!active)return {allowed:true,kind:"renewal",resetQuota:false};
+ // Same-tier purchase is a voluntary renewal at any point in the paid term.
+ // The 7-day window is a Customer notification threshold, not a restriction
+ // on renewal. Wallet carryover and expiry extension remain transactional.
  const remaining=creditAvailable(a,now);
- const exhausted=remaining===0,expiry=Date.parse(a.planExpiresAt);
- const nearExpiry=Number.isFinite(expiry)&&expiry>now&&expiry-now<=7*86400000;
- if(exhausted)return {allowed:true,kind:"exhausted_topup",resetQuota:false};
- if(nearExpiry)return {allowed:true,kind:"renewal",resetQuota:false};
- return {allowed:false,reason:"Same-tier renewal is available when credits run out or within the final 7 days; higher-tier upgrades are available anytime"};
+ if(remaining===0)return {allowed:true,kind:"exhausted_topup",resetQuota:false};
+ return {allowed:true,kind:"renewal",resetQuota:false};
 }
 function billingOpen(a){return typeof a.openBillingRequestId==="string"&&a.openBillingRequestId.length>0}
 // V6.4: an expired QR must be confirmed by the provider, not local clock alone.
