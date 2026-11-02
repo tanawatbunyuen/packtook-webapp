@@ -254,7 +254,8 @@ function filterTroubleshooting(){
  document.querySelectorAll("#troubleList .trouble-item").forEach(item=>{
   const matchesCategory=category==="all"||item.dataset.category===category;
   const searchable=(item.dataset.keywords||"")+" "+item.textContent;
-  const matchesText=!text||searchable.toLocaleLowerCase("th-TH").includes(text);
+  const normalized=searchable.toLocaleLowerCase("th-TH");
+  const matchesText=!text||text.split(/\s+/).every(term=>normalized.includes(term));
   item.hidden=!(matchesCategory&&matchesText);
   if(!item.hidden)visible++;
  });
