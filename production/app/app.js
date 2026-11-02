@@ -520,10 +520,11 @@ function subscriptionHero(details){
  const metrics=subscriptionNode('div','sub-summary-metrics');
  const days=details.expiresAt&&Number.isFinite(Date.parse(details.expiresAt))?Math.max(0,Math.ceil((Date.parse(details.expiresAt)-Date.now())/86400000)):null;
  const retention=details.status==='expired'&&details.plan!=='Free';
+ const expiredPro=retention&&details.plan==='Pro';
  const retained=Number(details.retainedCredits||0);
  const metricValues=[
-  [retention?'เครดิตพักรอต่ออายุ':'เครดิตพร้อมใช้',
-   retention?retained.toLocaleString('th-TH'):
+  [expiredPro?'สิทธิ์ Pro หมดอายุ':retention?'เครดิตพักรอต่ออายุ':'เครดิตพร้อมใช้',
+   expiredPro?'—':retention?retained.toLocaleString('th-TH'):
     details.remaining===null?'∞':Number(details.remaining||0).toLocaleString('th-TH'),
    retention?'ยังใช้บันทึกไม่ได้จนกว่าจะต่ออายุ':'วิดีโอที่ยังใช้ได้'],
   ['วันหมดอายุ',details.expiresAt?subscriptionDate(details.expiresAt):'ไม่กำหนด',days===null?'':days+' วันคงเหลือ'],
@@ -535,9 +536,14 @@ function subscriptionHero(details){
  }
  hero.append(metrics);
  if(retention){
-  const message=details.carryoverEligible?
+  const deadline=details.carryoverUntil?new Date(details.carryoverUntil)
+   .toLocaleString('th-TH',{timeZone:'Asia/Bangkok',day:'numeric',month:'short',
+    year:'numeric',hour:'2-digit',minute:'2-digit'}):null;
+  const message=expiredPro?
+   'แพ็กเกจ Pro หมดอายุ • ต่ออายุ Pro เพื่อกลับมาใช้วิดีโอไม่จำกัด (ไม่รองรับการ Downgrade)':
+   details.carryoverEligible?
    'เก็บเครดิตเดิม '+retained.toLocaleString('th-TH')+
-   ' วิดีโอไว้จนถึง '+subscriptionDate(details.carryoverUntil)+
+   ' วิดีโอไว้จนถึง '+deadline+
    ' (ครบ 10 วันหลังหมดอายุ) • ต่ออายุแพ็กเกจเดิมหรือสูงกว่าเพื่อยกยอด':
    'หมดอายุเกิน 10 วันแล้ว • เครดิตเดิมจะไม่ได้รับการยกยอด';
   hero.append(subscriptionNode('p','sub-notice sub-notice-attention',message));
