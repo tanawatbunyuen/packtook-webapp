@@ -54,7 +54,18 @@ function state(a){
 }
 function credits(a){
  if(!Object.hasOwn(limits,a.plan))return {balance:null,status:"review"};
- if(state(a)==="expired")return {balance:0,status:"expired"};
+ if(state(a)==="expired"){
+  const expiry=Date.parse(a.planExpiresAt||"");
+  const until=expiry+10*86400000,eligible=Number.isFinite(until)&&Date.now()<=until;
+  if(!eligible)return {balance:0,status:"expired",carryoverUntil:Number.isFinite(until)?new Date(until).toISOString():null};
+  if(limits[a.plan]===null)return {balance:null,status:"expired",carryoverUntil:new Date(until).toISOString()};
+  let balance;
+  if(a.creditWalletV1===true)balance=a.creditWalletRemaining;
+  else balance=limits[a.plan]-(a.used||0)-(a.reserved||0);
+  if(!Number.isSafeInteger(balance)||balance<0)
+   return {balance:null,status:"review",carryoverUntil:new Date(until).toISOString()};
+  return {balance,status:"retained",carryoverUntil:new Date(until).toISOString()};
+ }
  if(!["active","free"].includes(state(a)))return {balance:null,status:"inactive"};
  if(limits[a.plan]===null)return {balance:null,status:"unlimited"};
  if(a.creditWalletV1===true){
@@ -147,7 +158,7 @@ exports.ownerAnalyticsCustomers=onCall(options,async req=>{
    joinedAt:basic.joinedAt===null?null:new Date(basic.joinedAt).toISOString(),
    expiresAt:basic.expiresAt,expiryState:basic.expiryState,daysRemaining:basic.daysRemaining,
    creditsRemaining:c.balance,
-   creditsUnlimited:c.status==="unlimited",creditsStatus:c.status,walletEnabled:a.creditWalletV1===true,reservedCredits:basic.reservedCredits,
+   creditsUnlimited:c.status==="unlimited",creditsStatus:c.status,creditCarryoverUntil:c.carryoverUntil||null,walletEnabled:a.creditWalletV1===true,reservedCredits:basic.reservedCredits,
    hasBilling:false};
  });
  return {customers,nextCursor:snap.docs.length>PER_PAGE&&docs.length?docs[docs.length-1].id:null};
