@@ -141,3 +141,14 @@ body{font-size:var(--pt-type-body);line-height:var(--pt-type-line)}
  .launch-card p{font-size:14px}
  .footer-links{font-size:13px}
 }
+
+/* Photographic marketing Hero: clean crop, no duplicate UI cards over the photo. */
+.hero-workflow .packing-stage{overflow:hidden}
+.hero-workflow .packing-scene{width:100%;height:auto;aspect-ratio:1150 / 716;object-fit:cover}
+html.packtook-photo-ready .hero-workflow .packing-stage{
+ border-color:rgba(84,168,239,.72);
+ box-shadow:0 20px 54px rgba(0,17,47,.44);
+}
+@media(max-width:640px){
+ .hero-workflow .packing-scene{aspect-ratio:1150 / 716}
+}
