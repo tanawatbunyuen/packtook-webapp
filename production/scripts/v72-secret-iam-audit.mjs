@@ -48,7 +48,7 @@ export function readMetadata(command,args,runner=execFileSync){
   ["secrets","versions","list",SECRET,"--project="+PROJECT,"--format=json"],
   ["secrets","get-iam-policy",SECRET,"--project="+PROJECT,"--format=json"],
   ["projects","get-iam-policy",PROJECT,"--format=json"],
-  ...FUNCTIONS.map(name=>["functions","describe",name,"--gen2",
+  ...FUNCTIONS.map(name=>["functions","describe",name,"--v2",
    "--region="+REGION,"--project="+PROJECT,"--format=json"])
  ];
  if(command!=="gcloud"||!allowed.some(a=>JSON.stringify(a)===JSON.stringify(args)))
@@ -205,7 +205,7 @@ export function auditWithRunner(source,runner=execFileSync){
  const projectIam=g("projects","get-iam-policy",PROJECT,"--format=json");
  const functionsByName={};
  for(const name of FUNCTIONS)
-  functionsByName[name]=g("functions","describe",name,"--gen2",
+  functionsByName[name]=g("functions","describe",name,"--v2",
    "--region="+REGION,"--project="+PROJECT,"--format=json");
  return summarizeAudit({source,secret,versions,secretIam,projectIam,functionsByName});
 }
