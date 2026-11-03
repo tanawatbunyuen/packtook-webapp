@@ -10,28 +10,36 @@ class HttpsError extends Error{
  constructor(code,message){super(message);this.code=code}
 }
 const context=(env)=>{
- const records=new Map(),users=new Map(),callOptions={};
+ const records=new Map(),guards=new Map(),users=new Map(),callOptions={};
+ const store=ref=>ref.collection==="accounts"?records:guards;
  const db={
   collection(name){
-   assert.equal(name,"accounts");
-   return {doc(id){return {id,key:id,
-    async get(){return {exists:records.has(id),data:()=>records.get(id)}},
-    async create(value){if(records.has(id)){const e=new Error("Already exists");e.code=6;throw e}
-     records.set(id,value)}
-   }}};
+   assert(["accounts","publicSignupGuards"].includes(name),"Unexpected collection "+name);
+   return {doc(id){
+    const ref={id,key:id,collection:name};
+    return {...ref,
+     async get(){const data=store(ref);return {exists:data.has(id),data:()=>data.get(id)}},
+     async create(value){const data=store(ref);if(data.has(id)){const e=new Error("Already exists");e.code=6;throw e}
+      data.set(id,value)}
+    };
+   }};
   },
   async runTransaction(callback){
    const writes=[];
    const tx={
-    async get(ref){return {exists:records.has(ref.key),
-     data:()=>records.get(ref.key)}},
+    async get(ref){const data=store(ref);return {exists:data.has(ref.key),
+     data:()=>data.get(ref.key)}},
     create(ref,value){
-     if(records.has(ref.key))throw Error("Already exists");
-     writes.push([ref.key,value]);
+     if(store(ref).has(ref.key))throw Error("Already exists");
+     writes.push(()=>store(ref).set(ref.key,value));
+    },
+    update(ref,patch){
+     if(!store(ref).has(ref.key))throw Error("Document missing");
+     writes.push(()=>store(ref).set(ref.key,{...store(ref).get(ref.key),...patch}));
     }
    };
    const result=await callback(tx);
-   for(const [key,value] of writes)records.set(key,value);
+   for(const write of writes)write();
    return result;
   }
  };
@@ -65,7 +73,7 @@ const context=(env)=>{
   console:{log(){},warn(){},error(){}}
  };
  vm.runInNewContext(source,sandbox,{timeout:3000,filename:"functions/index.js"});
- return {fn:sandbox.exports,records,users,callOptions};
+ return {fn:sandbox.exports,records,guards,users,callOptions};
 };
 const env=(more={})=>({
  PACKTOOK_PRODUCTION_PROJECT_ID:"packtook-prod-01",
@@ -73,6 +81,9 @@ const env=(more={})=>({
  PACKTOOK_PUBLIC_ACCESS_ENABLED:"true",
  PACKTOOK_PUBLIC_POLICIES_APPROVED:"true",
  PACKTOOK_PUBLIC_CUSTOMER_APP_ID:"1:123456789:web:approvedCustomerApp",
+ PACKTOOK_PUBLIC_FREE_NEW_DAY_CAP:"2",
+ PACKTOOK_PUBLIC_FREE_NEW_15M_CAP:"2",
+ PACKTOOK_PUBLIC_FREE_EMAIL_HMAC_KEY_HEX:"a".repeat(64),
  ...more
 });
 const policy="2026-11-v1";
@@ -101,6 +112,13 @@ const noCustomerApp=context(env({PACKTOOK_PUBLIC_CUSTOMER_APP_ID:""}));
 assert.equal((await noCustomerApp.fn.publicSignupStatus()).enabled,false);
 noCustomerApp.users.set("noAppKey",{email:"noapp@example.test",emailVerified:true,disabled:false,customClaims:{}});
 await rejected(()=>noCustomerApp.fn.completeFreeSignup(input("noAppKey")),"failed-precondition");
+const noAbuseKey=context(env({PACKTOOK_PUBLIC_FREE_EMAIL_HMAC_KEY_HEX:""}));
+assert.equal((await noAbuseKey.fn.publicSignupStatus()).enabled,false);
+const noDailyCap=context(env({PACKTOOK_PUBLIC_FREE_NEW_DAY_CAP:"0"}));
+assert.equal((await noDailyCap.fn.publicSignupStatus()).enabled,false);
+const noShortCap=context(env({PACKTOOK_PUBLIC_FREE_NEW_15M_CAP:"0"}));
+assert.equal((await noShortCap.fn.publicSignupStatus()).enabled,false);
+console.log("PASS: missing HMAC secret or admission cap blocks Public Free before credits");
 const c=context(env());
 assert.equal(c.callOptions.signup.enforceAppCheck,true);
 assert.equal((await c.fn.publicSignupStatus()).enabled,true);
@@ -173,6 +191,18 @@ const recovered=await c.fn.completeFreeSignup(input("recovery"));
 assert.equal(recovered.created,false);
 assert.equal(c.users.get("recovery").customClaims.packtookPublicCustomer,true);
 console.log("PASS: Auth claim failure can retry without creating a second Free grant");
+assert.equal(c.guards.size,4,"2 distinct email locks + day + window counters");
+const daily=[...c.guards.entries()].find(([key])=>key.startsWith("day_"));
+const short=[...c.guards.entries()].find(([key])=>key.startsWith("window15_"));
+assert.equal(daily?.[1].count,2);
+assert.equal(short?.[1].count,2);
+c.users.set("sameEmailNewUid",{email:"alice@example.test",emailVerified:true,disabled:false,customClaims:{}});
+await rejected(()=>c.fn.completeFreeSignup(input("sameEmailNewUid")),"already-exists");
+c.users.set("dailyCapHit",{email:"newthird@example.test",emailVerified:true,disabled:false,customClaims:{}});
+await rejected(()=>c.fn.completeFreeSignup(input("dailyCapHit")),"resource-exhausted");
+assert.equal(c.guards.size,4);
+assert.equal(c.records.has("dailyCapHit"),false);
+console.log("PASS: email HMAC prevents regrant to different UID; atomic short/daily caps reject new Free");
 
 const badProject=context(env({PACKTOOK_PRODUCTION_PROJECT_ID:"packtook-staging"}));
 assert.equal((await badProject.fn.publicSignupStatus()).enabled,false);
