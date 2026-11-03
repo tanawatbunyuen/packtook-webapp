@@ -9,6 +9,7 @@ import {loadLocalQa,loadCustomerAppEvidence,evaluateV71} from "./v71-public-read
 import {assessOperations} from "./v71-ops-readiness.mjs";
 import {probe} from "./probe-free-deployment.mjs";
 import {inspectPilotSource} from "./v72-pilot-source-check.mjs";
+import {assessPilotBrowserSource,collectBrowserSource} from "./v72-pilot-browser-source-check.mjs";
 
 const PROJECT="packtook-prod-01";
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
@@ -28,7 +29,7 @@ const REQUIRED_EVIDENCE=[
  "releaseSpecificRollbackAndRevocationDrill",
  "ownerPilotSignoff"
 ];
-export function assessV72({manifest,baseline,operations,backend=""}){
+export function assessV72({manifest,baseline,operations,backend="",browser=null}){
  const blockers=[];
  const add=r=>{if(!blockers.includes(r))blockers.push(r)};
  if(!manifest||manifest.schemaVersion!=="7.2.0"||manifest.project!==PROJECT||
@@ -71,7 +72,9 @@ export function assessV72({manifest,baseline,operations,backend=""}){
  // authorization system works: a guarded public pilot cannot reuse either
  // V7.1 generic Public signup or the V7.0 single-UID QA gate.
  const pilotSource=inspectPilotSource(backend);
+ const browserSourcePass=browser?.sourcePass===true;
  add("PILOT_SERVER_SIDE_COHORT_GUARD_NOT_RUNTIME_VERIFIED");
+ if(!browserSourcePass)add("PILOT_INVITE_BROWSER_SOURCE_CONTRACT_INCOMPLETE");
  if(!pilotSource.sourcePass)add("PILOT_SOURCE_SECURITY_CONTRACT_INCOMPLETE");
  // Manually editable evidence cannot authorize a pilot, even if someone
  // writes "PASS" here. Proof must come from independently reviewed artifacts.
@@ -86,11 +89,13 @@ export function assessV72({manifest,baseline,operations,backend=""}){
  add("REAL_BROWSER_APPCHECK_AND_INVITED_UNINVITED_TEST_NOT_PROVEN");
  add("PILOT_ROLLBACK_REVOCATION_AND_BETA_SMOKE_NOT_PROVEN");
  add("OWNER_GO_NO_GO_SIGNOFF_REQUIRED");
- const safetyPass=cohortSafe&&proposedFlagsSafe&&existingSourceSafe&&pilotSource.sourcePass&&localClosed&&
+ const safetyPass=cohortSafe&&proposedFlagsSafe&&existingSourceSafe&&pilotSource.sourcePass&&browserSourcePass&&localClosed&&
   remoteClosed&&blockers.every(b=>!b.startsWith("INVALID_OR_UNSAFE"));
  return {
   version:"7.2",project:PROJECT,scope:"READ-ONLY / CLOSED-PILOT PREPARATION / NO DEPLOY / OMISE LIVE OFF",
-  sourceBaseline:{pilotBackendSourcePass:pilotSource.sourcePass,
+  sourceBaseline:{pilotBrowserSourcePass:browserSourcePass,
+   realBrowserAppCheckVerified:false,
+   pilotBackendSourcePass:pilotSource.sourcePass,
    pilotProtectedCallablesChecked:pilotSource.assessedProtectedCallableCount,
    criticalPass:baseline?.source?.criticalPass===true,
    antiAbuseSourcePass:baseline?.source?.antiAbuseSourcePass===true,
@@ -103,6 +108,8 @@ export function assessV72({manifest,baseline,operations,backend=""}){
   proposedPilot:{maxInvitedUsers:plan.maxInvitedUsers??null,
    maxWindowHours:plan.maxWindowHours??null,serverAllowlistImplemented:false,
    pilotBackendSourcePresent:pilotSource.sourcePass,
+   pilotBrowserSourcePresent:browserSourcePass,
+   pilotBrowserDeployedAndAttested:false,
    publicSignupWillRemainOff:plan.publicSignupEnabled===false,
    genericSignupCtaWillRemainHidden:plan.genericSignupCTAVisible===false},
   evidenceStatus:"OPERATOR_LOG_BASELINE_ONLY_NOT_PILOT_APPROVAL",
@@ -125,11 +132,13 @@ if(isMain){
   const baseline=evaluateV71({
    localQa:loadLocalQa(),appEvidence:loadCustomerAppEvidence(),source,remote});
   const operations=assessOperations(localSource.backend);
-  const report=assessV72({manifest,baseline,operations,backend:localSource.backend});
+  const browser=assessPilotBrowserSource(collectBrowserSource());
+  const report=assessV72({manifest,baseline,operations,backend:localSource.backend,browser});
   console.log(JSON.stringify(report,null,2));
   console.log("RESULT: V7.2 CONTROLLED PILOT READINESS NO-GO (preparation only; no writes)");
   if(!report.preparationSafetyPass&&args.includes("--remote"))process.exitCode=2;
-  if(!report.sourceBaseline.criticalPass||!report.sourceBaseline.opsSourcePass)
+  if(!report.sourceBaseline.criticalPass||!report.sourceBaseline.opsSourcePass||
+     !report.sourceBaseline.pilotBrowserSourcePass)
    process.exitCode=2;
  }catch(e){console.error("V7.2 READ-ONLY PRECHECK FAILED:",e.message);process.exitCode=2}
 }
