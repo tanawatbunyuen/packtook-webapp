@@ -107,6 +107,12 @@ const initializeApp=cfg=>({cfg});
 const getAuth=()=>auth;
 const getFunctions=()=>({});
 const initializeAppCheck=()=>({});
+let appCheckTokenShouldFail=false;
+const getToken=async(_appCheck,forceRefresh)=>{
+ assert.equal(forceRefresh,true);
+ if(appCheckTokenShouldFail)throw Error("attestation fixture failure");
+ return {token:"fixture-only-never-send-real-token-1234567890"};
+};
 class ReCaptchaEnterpriseProvider{constructor(key){this.key=key}}
 const httpsCallable=(_functions,name)=>async(payload)=>{
  calls.push(name);
@@ -137,17 +143,28 @@ const runnable=script.replace(/^import[^\n]*;\s*$/gm,"");
 const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
 await new AsyncFunction("initializeApp","getAuth","onAuthStateChanged",
  "signInWithEmailAndPassword","signOut","sendEmailVerification","reload",
- "initializeAppCheck","ReCaptchaEnterpriseProvider",
+ "initializeAppCheck","ReCaptchaEnterpriseProvider","getToken",
  "getFunctions","httpsCallable","firebaseConfig","signupConfig",
  "document","location",runnable)(
  initializeApp,getAuth,onAuthStateChanged,signInWithEmailAndPassword,
  signOut,sendEmailVerification,reload,initializeAppCheck,
- ReCaptchaEnterpriseProvider,getFunctions,httpsCallable,
+ ReCaptchaEnterpriseProvider,getToken,getFunctions,httpsCallable,
  firebaseConfig,signupConfig,document,location
 );
 
 await listener(null);
 assert.equal(el("memberPanel").hidden,true);
+await el("checkAppCheck").click();
+assert(el("appCheckStatus").textContent.includes("CLIENT APP CHECK TOKEN RECEIVED"));
+assert(!el("appCheckStatus").textContent.includes("fixture-only"),
+ "Do not show raw App Check tokens in UI");
+assert(el("appCheckStatus").textContent.includes("ยังไม่ยืนยันว่า"),
+ "Client token alone must not be misrepresented as server attestation");
+appCheckTokenShouldFail=true;
+await el("checkAppCheck").click();
+assert(el("appCheckStatus").textContent.includes("CLIENT APP CHECK FAILED"));
+appCheckTokenShouldFail=false;
+console.log("PASS: App Check client token/negative diagnostic reveals no raw token and never claims Function attestation");
 assert.equal(el("loginForm").hidden,false);
 assert.equal(el("activate").disabled,true);
 
