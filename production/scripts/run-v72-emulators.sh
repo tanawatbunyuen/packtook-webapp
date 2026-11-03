@@ -15,6 +15,11 @@ command -v firebase >/dev/null 2>&1 || { echo "Firebase CLI required" >&2;exit 2
  echo "Install local SDK: npm install --prefix functions --no-audit --no-fund" >&2;exit 2; }
 node --check functions/index.js
 node --check scripts/test-v72-pilot-auth-firestore-emulator.mjs
+node --check app/pilot-free.js
+node --check app/firebase-packing-bridge.js
+node scripts/v72-pilot-browser-source-check.mjs
+node scripts/test-v72-pilot-browser-source-safety.mjs
+node scripts/test-v72-pilot-browser-flow.mjs
 node scripts/test-v70-emulator-guard.mjs
 node scripts/test-v70-demo-env-isolation.mjs
 node scripts/test-v72-pilot-source-safety.mjs
