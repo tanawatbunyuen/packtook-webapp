@@ -52,7 +52,10 @@ assert(!/process\.env\.PACKTOOK_PUBLIC_(?:SIGNUP|ACCESS|POLICIES)/.test(demo),
  "DEMO test must never change shell Public flags");
 assert(backend.includes("exports.completeFreeSignup=onCall({...options,enforceAppCheck:true}"));
 assert(backend.includes("PUBLIC_SIGNUP_ENABLED&&PUBLIC_ACCESS_ENABLED&&PUBLIC_POLICIES_APPROVED"));
-assert(backend.includes("if(req.auth.token.packtookProductionBeta!==true&&!isPublicMember(req.auth)&&!isQaMember(req))"));
+assert(backend.includes("if(req.auth.token.packtookProductionBeta!==true&&!isPublicMember(req)&&!isQaMember(req)"));
+assert(backend.includes("req.app?.appId===PUBLIC_CUSTOMER_APP_ID"));
+assert(backend.includes("req.app?.appId!==PUBLIC_CUSTOMER_APP_ID"));
+assert(backend.includes("PACKTOOK_PUBLIC_CUSTOMER_APP_ID"));
 assert(assessment.includes("readyForPublic:false"));
 assert(assessment.includes("decision:\"NO_GO_PUBLIC\""));
 assert(!/^[^#\n]*firebase deploy\b/m.test(assessment));
