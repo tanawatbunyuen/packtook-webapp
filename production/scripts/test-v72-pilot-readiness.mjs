@@ -29,7 +29,14 @@ assert.equal(good.decision,"NO_GO_CONTROLLED_PILOT");
 assert.equal(good.proposedPilot.maxInvitedUsers,3);
 assert.equal(good.proposedPilot.maxWindowHours,4);
 assert.equal(good.proposedPilot.serverAllowlistImplemented,false);
-assert(good.blockers.includes("PILOT_ISOLATED_ADMISSION_PATH_NOT_IMPLEMENTED"));
+assert.equal(good.sourceBaseline.pilotBackendSourcePass,true);
+assert.equal(good.sourceBaseline.pilotProtectedCallablesChecked,12);
+assert.equal(good.proposedPilot.pilotBackendSourcePresent,true);
+assert(!good.blockers.includes("PILOT_SOURCE_SECURITY_CONTRACT_INCOMPLETE"));
+const missingPilotGuard=run(manifest,baseline,operations,
+ backend.replace("exports.usageStatus=guardedCall", "exports.usageStatus=onCall"));
+assert.equal(missingPilotGuard.preparationSafetyPass,false);
+assert(missingPilotGuard.blockers.includes("PILOT_SOURCE_SECURITY_CONTRACT_INCOMPLETE"));
 assert(good.blockers.includes("PILOT_SERVER_SIDE_COHORT_GUARD_NOT_RUNTIME_VERIFIED"));
 assert(good.blockers.includes("OWNER_GO_NO_GO_SIGNOFF_REQUIRED"));
 assert.equal(run(change("publicSignupEnabled",true)).preparationSafetyPass,false);
