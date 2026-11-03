@@ -37,10 +37,15 @@ assert.equal(good.decision,"NO_GO_PUBLIC");
 assert.equal(good.local.publicFlagsOff,true);
 assert.equal(good.source.criticalPass,true);
 assert.equal(good.source.antiAbuseSourcePass,true);
+assert.equal(good.source.secretBindingSourcePass,true);
 const strippedAbuse=evaluateV71({localQa:qa,source:{
  ...source,backend:backend.replace("PACKTOOK_PUBLIC_FREE_EMAIL_HMAC_KEY_HEX","REMOVED_TEST_MARKER")
 },remote:http,appEvidence});
 assert(strippedAbuse.reasons.includes("ANTI_ABUSE_SOURCE_CONTROLS_MISSING"));
+const strippedSecret=evaluateV71({localQa:qa,source:{
+ ...source,backend:backend.replace('secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET]','secrets:[]')
+},remote:http,appEvidence});
+assert(strippedSecret.reasons.includes("HMAC_SECRET_BINDING_SOURCE_MISSING"));
 assert.equal(good.remote.httpPass,true);
 assert(good.reasons.includes("OWNER_GO_NO_GO_SIGNOFF_REQUIRED"));
 assert(good.reasons.includes("LEGAL_PDPA_TERMS_PRIVACY_APPROVAL_REQUIRED"));
