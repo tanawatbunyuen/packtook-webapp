@@ -58,6 +58,7 @@ function harness({enabled=true,allowedUid=uid,qaAppId=appId,expiry=Date.now()+60
  };
  const fakeRequire=id=>{
   if(id==="firebase-functions/v2/https")return {onCall,HttpsError};
+  if(id==="firebase-functions/params")return {defineSecret:key=>({name:key,value:()=>env[key]})};
   if(id==="firebase-admin")return fakeAdmin;
   if(id==="node:crypto")return crypto;
   throw Error("Unexpected Backend import: "+id);
