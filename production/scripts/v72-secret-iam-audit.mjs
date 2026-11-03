@@ -149,8 +149,10 @@ export function summarizeAudit({source,secret,versions,secretIam,projectIam,func
   blockers.push("FUNCTION_RUNTIME_SERVICE_ACCOUNT_NOT_VERIFIED");
  if(checks.publicStatusSecretBound!==true||checks.publicSignupSecretBound!==true)
   blockers.push("DEPLOYED_PUBLIC_FUNCTION_SECRET_BINDINGS_NOT_VERIFIED");
- if(IAM.some(x=>x.directSecretAccessor!==true&&x.projectSecretAccessor!==true))
-  blockers.push("DIRECT_RUNTIME_SECRET_ACCESSOR_GRANT_NOT_PROVEN");
+ if(IAM.some(x=>x.directSecretAccessor!==true))
+  blockers.push("SECRET_LEVEL_RUNTIME_ACCESSOR_GRANT_NOT_PROVEN");
+ if(IAM.some(x=>x.projectSecretAccessor===true))
+  blockers.push("PROJECT_WIDE_SECRET_ACCESSOR_SCOPE_REVIEW_REQUIRED");
  if(checks.secretPolicyBroadGrant===true||checks.projectPolicyBroadGrant===true)
   blockers.push("OVERBROAD_SECRET_POLICY_REVIEW_REQUIRED");
  if(checks.pilotStatusDeployed===true||checks.pilotSignupDeployed===true)
@@ -167,7 +169,7 @@ export function summarizeAudit({source,secret,versions,secretIam,projectIam,func
   checks.deployedPublicSignup===true&&checks.publicStatusSecretBound===true&&
   checks.publicSignupSecretBound===true&&checks.runtimeAccountsIdentified&&
   IAM.length>0&&IAM.every(x=>
-   x.directSecretAccessor===true||x.projectSecretAccessor===true)&&
+   x.directSecretAccessor===true&&x.projectSecretAccessor!==true)&&
   checks.secretPolicyBroadGrant===false&&checks.projectPolicyBroadGrant===false&&
   checks.pilotStatusDeployed!==true&&checks.pilotSignupDeployed!==true;
  return {
