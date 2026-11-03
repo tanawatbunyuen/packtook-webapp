@@ -40,6 +40,13 @@ export function diagnosePublicServices(remote){
  };
 }
 
+export function shouldRetryPublicProbe(diagnostic){
+ // Never retry away an observed enabled flag, even if its HTTP status failed.
+ return diagnostic?.closed===false&&
+  diagnostic?.publicSignupEnabled!==true&&
+  diagnostic?.publicAccessEnabled!==true;
+}
+
 export function assessV72LiveSurfaces({ownerHome,ownerJS,ownerConfig,pilotPage,remote}){
  const ownerOnline=ownerHome?.http===200&&
   ownerHome?.body?.includes('id="ownerApp"')===true;
@@ -113,17 +120,10 @@ if(isMain){
   const first=await probe();
   let remote=first,probeAttempts=1;
   const firstStatus=diagnosePublicServices(first);
-  const explicitUnsafe=firstStatus.publicSignupEnabled===true||
-   firstStatus.publicAccessEnabled===true;
-  if(!firstStatus.closed&&!explicitUnsafe){
-   // A cold start/network timeout may affect one probe. Retry once without
-   // enabling flags, treating any observed ON as unsafe.
-   const second=await probe();probeAttempts=2;
-   const secondStatus=diagnosePublicServices(second);
-   if(secondStatus.publicSignupEnabled===true||secondStatus.publicAccessEnabled===true)
-    remote=second;
-   else if(secondStatus.closed)remote=second;
-   else remote=second;
+  if(shouldRetryPublicProbe(firstStatus)){
+   // A cold start/network timeout may affect one probe. Retry once, and
+   // never discard any first-observed ON flag. No writes or state changes.
+   remote=await probe();probeAttempts=2;
   }
   const report=assessV72LiveSurfaces({remote,ownerHome,ownerJS,ownerConfig,pilotPage});
   report.publicProbe.attempts=probeAttempts;
