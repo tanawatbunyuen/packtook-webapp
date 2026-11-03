@@ -51,7 +51,8 @@ for(const field of ["invitedUsersStoredInGit","allowPublicAuthCreation",
  "genericSignupCTAVisible"])
  assert.equal(run(change(field,true)).preparationSafetyPass,false);
 for(const field of ["customerAppCheckRequired",
- "requireVerifiedFirebaseAuthEmail","requireConsentEvidence"])
+ "requireVerifiedFirebaseAuthEmail","requireConsentEvidence",
+ "preCreatedInvitedAuthUsersPreferred"])
  assert.equal(run(change(field,false)).preparationSafetyPass,false);
 assert.equal(run(manifest,{...baseline,local:{
  ...baseline.local,qaOff:false}}).preparationSafetyPass,false);
@@ -65,6 +66,9 @@ assert.equal(run(manifest,{...baseline,source:{
  ...baseline.source,secretBindingSourcePass:false}}).preparationSafetyPass,false);
 assert.equal(run(manifest,baseline,{sourcePass:false}).preparationSafetyPass,false);
 assert.equal(run({...manifest,productionDeployAuthorized:true}).readyForPilot,false);
+assert.equal(run({...manifest,productionDeployAuthorized:true}).preparationSafetyPass,false);
+assert.equal(run({...manifest,readyForPilot:true}).preparationSafetyPass,false);
+assert.equal(run({...manifest,project:"another-project"}).preparationSafetyPass,false);
 assert(run({...manifest,productionDeployAuthorized:true}).blockers.includes(
  "INVALID_OR_UNSAFE_PILOT_MANIFEST"));
 const allEvidenceClaimed={...manifest,evidence:Object.fromEntries(
