@@ -5,7 +5,7 @@ export function assessPilotBrowserSource({html,js,bridge,backend,marketing,custo
  const has=(text,needle)=>typeof text==="string"&&text.includes(needle);
  const htmlIds=["loginForm","memberPanel","identity","inviteState","expiry",
   "sendVerify","refresh","acceptTerms","acceptPrivacy","activate",
-  "enterPacking","logout","status"];
+  "enterPacking","logout","status","checkAppCheck","appCheckStatus"];
  const checks={
   invitationOnlyNoindex:has(html,'name="robots" content="noindex,nofollow,noarchive"')&&
    has(html,'src="./pilot-free.js?v=7.2.0"')&&
@@ -20,6 +20,14 @@ export function assessPilotBrowserSource({html,js,bridge,backend,marketing,custo
    has(js,"new ReCaptchaEnterpriseProvider(")&&
    has(js,"isTokenAutoRefreshEnabled:true")&&
    has(js,'getFunctions(app,"asia-southeast1")'),
+  clientAppCheckDiagnosticSafe:
+   has(js,'getToken(appCheck,true)')&&
+   has(js,'const appCheck=initializeAppCheck(app,{')&&
+   has(js,'el("appCheckStatus").textContent=')&&
+   has(js,'CLIENT APP CHECK TOKEN RECEIVED')&&
+   has(js,'CLIENT APP CHECK FAILED')&&
+   !has(js,'console.log(value.token)')&&
+   !has(js,'localStorage.setItem("appcheck'),
   signedInServerInvitation:has(js,"onAuthStateChanged(")&&
    has(js,'call("pilotInvitationStatus")')&&
    has(backend,"req.app?.appId!==PUBLIC_CUSTOMER_APP_ID")&&
