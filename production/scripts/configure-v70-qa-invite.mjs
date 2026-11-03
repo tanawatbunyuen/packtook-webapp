@@ -45,6 +45,28 @@ export function replaceV7QaKeys(original,values){
  return out.join("\n")+"\n";
 }
 
+
+export function buildApprovedInvitation({existing,generic="",environment={},
+ configSource,uid,now=Date.now()}){
+ const appId=readVerifiedAppId(configSource);
+ // Server-side Public gates and QA must be OFF before preparing a new invite.
+ checkQaEnvironment({specific:existing,generic,mode:"--qa-off",environment,now});
+ if(!/^[A-Za-z0-9_-]{20,128}$/.test(uid||""))
+  throw Error("SAFETY BLOCK: invalid test UID (20-128 ASCII alphanumeric, '-' or '_')");
+ const expiry=new Date(now+4*60*60*1000).toISOString();
+ const updated=replaceV7QaKeys(existing,{
+  PACKTOOK_V7_QA_ENABLED:"true",
+  PACKTOOK_V7_QA_UID:uid,
+  PACKTOOK_V7_QA_APP_ID:appId,
+  PACKTOOK_V7_QA_EXPIRES_AT:expiry
+ });
+ const result=checkQaEnvironment({
+  specific:updated,generic,mode:"--approved-qa",environment,
+  expectedAppId:appId,now
+ });
+ return {updated,result};
+}
+
 async function main(){
  const mode=process.argv[3];
  if(process.argv.length!==4||process.argv[2]!==PROJECT||
@@ -58,34 +80,29 @@ async function main(){
   throw Error("SAFETY BLOCK: Production functions env must be a normal file");
  const old=fs.readFileSync(envFile,"utf8");
  const generic=fs.existsSync(genericFile)?fs.readFileSync(genericFile,"utf8"):"";
- let updated,checkMode;
+ let updated,checkMode,result;
  if(mode==="--prepare"){
-  const appId=readVerifiedAppId(fs.readFileSync(cfgFile,"utf8"));
-  // Refuse replacing an existing active invite; first revoke via --disable.
+  // Fail fast before requesting a UID, and keep config inside the same
+  // validated helper as the offline regression: no out-of-scope appId.
   checkQaEnvironment({specific:old,generic,mode:"--qa-off",environment:process.env});
+  const configSource=fs.readFileSync(cfgFile,"utf8");
+  readVerifiedAppId(configSource);
   if(!process.stdin.isTTY)throw Error("SAFETY BLOCK: enter the one test UID from an interactive Cloud Shell terminal");
   const rl=createInterface({input:process.stdin,output:process.stdout});
   let uid;
   try{uid=(await rl.question("Enter ONE dedicated TEST Firebase Auth UID (not email): ")).trim()}
   finally{rl.close()}
-  if(!/^[A-Za-z0-9_-]{20,128}$/.test(uid))
-   throw Error("SAFETY BLOCK: invalid test UID (20-128 ASCII alphanumeric, '-' or '_')");
-  const expiry=new Date(Date.now()+4*60*60*1000).toISOString();
-  updated=replaceV7QaKeys(old,{
-   PACKTOOK_V7_QA_ENABLED:"true",
-   PACKTOOK_V7_QA_UID:uid,
-   PACKTOOK_V7_QA_APP_ID:appId,
-   PACKTOOK_V7_QA_EXPIRES_AT:expiry
-  });
+  ({updated,result}=buildApprovedInvitation({
+   existing:old,generic,environment:process.env,configSource,uid
+  }));
   checkMode="--approved-qa";
  }else{
   updated=replaceV7QaKeys(old,{PACKTOOK_V7_QA_ENABLED:"false"});
   checkMode="--qa-off";
+  result=checkQaEnvironment({
+   specific:updated,generic,mode:checkMode,environment:process.env
+  });
  }
- const result=checkQaEnvironment({
-  specific:updated,generic,mode:checkMode,environment:process.env,
-  expectedAppId:mode==="--prepare"?appId:null
- });
  // Atomic local write with private backup outside functions source and git tree.
  const base=path.join(process.env.HOME||"", "packtook-rollout-records");
  if(!path.isAbsolute(base))throw Error("SAFETY BLOCK: private backup directory unavailable");
