@@ -43,7 +43,8 @@
     "ownerDashboardProductionE2E": "OWNER_REPORTED_PASS_2026_11_03_NOT_INDEPENDENTLY_RETESTED",
     "realBrowserAppCheckClientToken": "NOT_TESTED_DIAGNOSTIC_SOURCE_READY",
     "realBrowserAppCheckCallableTransport": "NOT_TESTED",
-    "productionSurfacesReadOnlyPreflight": "SOURCE_TESTED_CLOUD_SHELL_RUN_PENDING"
+    "productionSurfacesReadOnlyPreflight": "SOURCE_TESTED_CLOUD_SHELL_RUN_PENDING",
+    "secretIAMMetadataAudit": "SOURCE_AND_OFFLINE_FIXTURES_IMPLEMENTED_LIVE_METADATA_NOT_INSPECTED"
   },
   "acceptanceGates": [
     "V72_PILOT_BACKEND_SEPARATE_FROM_PUBLIC_FLAGS_AND_SINGLE_UID_QA",
@@ -59,6 +60,7 @@
     "WRITTEN_OWNER_PILOT_GO_NO_GO_APPROVAL"
   ],
   "notes": [
+    "V7.2 Secret Manager/IAM metadata read-only audit script and negative fixtures added; live Cloud metadata and runtime access evidence are pending.",
     "Browser getToken diagnostic never displays token or proves Functions enforceAppCheck acceptance; live-surface tool uses fixed URL GETs and pre-existing read-only status probe.",
     "Owner confirmed Owner Dashboard Production E2E; does not constitute Owner Pilot GO or Monitoring/Secret/Legal approval.",
     "V7.2 invite-only browser UI and live Pilot status check are implemented in source only; no browser URL, Auth account, hosting, signed App Check or Cloud Functions was deployed.",
