@@ -31,7 +31,7 @@
     "v71SecretBindingSource": "OPERATOR_REPORTED_PASS_2026_11_03",
     "exactCustomerAppIdLocal": "OPERATOR_REPORTED_PASS_2026_11_03",
     "pilotServerAllowlistImplemented": "SOURCE_IMPLEMENTED_DEMO_PENDING",
-    "realSecretManagerProvisioningAndIAM": "NOT_VERIFIED",
+    "realSecretManagerProvisioningAndIAM": "SECRET_NOT_FOUND_NO_ENABLED_VERSION_NO_SECRET_IAM_NOT_VERIFIED",
     "authCreationAndVerificationEmailAbuseControls": "NOT_VERIFIED",
     "cloudLoggingMetricsAndNotifications": "NOT_CONFIGURED",
     "billingBudgetAndNotificationChannel": "NOT_CONFIGURED",
@@ -39,12 +39,12 @@
     "realBrowserAppCheckAndPilotE2E": "NOT_TESTED",
     "releaseSpecificRollbackAndRevocationDrill": "NOT_TESTED",
     "ownerPilotSignoff": "NOT_GRANTED",
-    "inviteOnlyBrowserFlowSource": "SOURCE_IMPLEMENTED_OFFLINE_DOM_TEST_PASS_CLOUD_SHELL_PENDING",
+    "inviteOnlyBrowserFlowSource": "OPERATOR_CLOUD_SHELL_OFFLINE_REGRESSION_PASS_2026_11_03",
     "ownerDashboardProductionE2E": "OWNER_REPORTED_PASS_2026_11_03_NOT_INDEPENDENTLY_RETESTED",
     "realBrowserAppCheckClientToken": "NOT_TESTED_DIAGNOSTIC_SOURCE_READY",
     "realBrowserAppCheckCallableTransport": "NOT_TESTED",
-    "productionSurfacesReadOnlyPreflight": "SOURCE_TESTED_CLOUD_SHELL_RUN_PENDING",
-    "secretIAMMetadataAudit": "SOURCE_AND_OFFLINE_FIXTURES_IMPLEMENTED_LIVE_METADATA_NOT_INSPECTED"
+    "productionSurfacesReadOnlyPreflight": "OPERATOR_PRODUCTION_HTTP_PASS_2026_11_03_PUBLIC_OFF",
+    "secretIAMMetadataAudit": "OPERATOR_CLOUD_METADATA_AUDIT_2026_11_03_NO_GO_SECRET_NOT_FOUND"
   },
   "acceptanceGates": [
     "V72_PILOT_BACKEND_SEPARATE_FROM_PUBLIC_FLAGS_AND_SINGLE_UID_QA",
@@ -60,6 +60,7 @@
     "WRITTEN_OWNER_PILOT_GO_NO_GO_APPROVAL"
   ],
   "notes": [
+    "2026-11-03 owner operator audit: HMAC secret and enabled version NOT_FOUND; publicSignupStatus deployed but not secret-bound; completeFreeSignup and both V7.2 Pilot functions NOT_FOUND. No live Secret Manager/IAM/Function changes authorized or performed.",
     "V7.2 Secret Manager/IAM metadata read-only audit script and negative fixtures added; live Cloud metadata and runtime access evidence are pending.",
     "Browser getToken diagnostic never displays token or proves Functions enforceAppCheck acceptance; live-surface tool uses fixed URL GETs and pre-existing read-only status probe.",
     "Owner confirmed Owner Dashboard Production E2E; does not constitute Owner Pilot GO or Monitoring/Secret/Legal approval.",
