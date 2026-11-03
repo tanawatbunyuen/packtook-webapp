@@ -36,10 +36,22 @@ async function qaAvailability(){
   return value?.enabled===true&&value.verified===true;
  }catch{return false}
 }
+// V7.2: a Pilot claim alone never authorizes PACKING. Ask the protected
+// backend for the CURRENT invite lease/session on every new login/session.
+// This remains separate from Public availability and V7.0 QA.
+async function pilotAvailability(){
+ try{
+  if(!appCheckReady)return {active:false};
+  const value=(await api("pilotInvitationStatus")({})).data;
+  return {active:value?.enabled===true&&value?.verified===true&&
+   value?.active===true&&value?.policyVersion===signupConfig.policyVersion};
+ }catch{return {active:false}}
+}
 function isEligible(token){
  return token?.claims?.packtookProductionBeta===true||
   token?.claims?.packtookPublicCustomer===true||
-  token?.claims?.packtookControlledQa===true;
+  token?.claims?.packtookControlledQa===true||
+  token?.claims?.packtookPilotV72===true;
 }
 onIdTokenChanged(auth,async u=>{
  try{
@@ -49,6 +61,8 @@ onIdTokenChanged(auth,async u=>{
   if(token?.claims?.packtookProductionBeta===true)user=u;
   else if(token?.claims?.packtookControlledQa===true)
    user=await qaAvailability()?u:null;
+  else if(token?.claims?.packtookPilotV72===true)
+   user=(await pilotAvailability()).active===true?u:null;
   else if(token?.claims?.packtookPublicCustomer===true){
    const status=await signupAvailability();user=status.accessEnabled===true?u:null;
   }else user=null;
@@ -96,6 +110,9 @@ window.PACKTOOK_FIREBASE={
  const token=await result.user.getIdTokenResult(true);
  if(token.claims.packtookControlledQa===true&&token.claims.packtookProductionBeta!==true){
   if(!await qaAvailability()){await signOut(auth);throw Error("สิทธิ์ทดสอบ V7.0 หมดอายุหรือถูกปิด โปรดติดต่อผู้ดูแล")}
+ }
+ if(token.claims.packtookPilotV72===true&&token.claims.packtookProductionBeta!==true){
+  if(!(await pilotAvailability()).active){await signOut(auth);throw Error("สิทธิ์ทดสอบ Pilot หมดอายุหรือถูกปิด โปรดติดต่อผู้ดูแล")}
  }
  if(token.claims.packtookPublicCustomer===true&&token.claims.packtookProductionBeta!==true){
   const access=await signupAvailability();
