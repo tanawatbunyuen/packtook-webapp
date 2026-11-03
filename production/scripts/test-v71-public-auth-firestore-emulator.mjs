@@ -44,6 +44,7 @@ function harness({signup=false,access=false,approved=false}={}){
   PACKTOOK_PUBLIC_SIGNUP_ENABLED:String(signup),
   PACKTOOK_PUBLIC_ACCESS_ENABLED:String(access),
   PACKTOOK_PUBLIC_POLICIES_APPROVED:String(approved),
+  PACKTOOK_PUBLIC_CUSTOMER_APP_ID:"1:123456789:web:demoappcheckv71",
   PACKTOOK_V7_QA_ENABLED:"false"
  };
  const requireFake=id=>{
@@ -96,6 +97,9 @@ try{
  stage="actual Auth verification, consent, App Check fixture";
  await deny(()=>f.fn.completeFreeSignup(call(userA,consent)),"permission-denied");
  await deny(()=>f.fn.completeFreeSignup(call(userA,consent,{noApp:true})),"permission-denied");
+ await deny(()=>f.fn.completeFreeSignup({
+  ...call(userA,consent),app:{appId:"1:999:web:otherfirebaseapp"}
+ }),"permission-denied");
  await auth.updateUser(userA,{emailVerified:true});
  await deny(()=>f.fn.completeFreeSignup(call(userA,{acceptTerms:false,
   termsVersion:policy,privacyVersion:policy})),"invalid-argument");
