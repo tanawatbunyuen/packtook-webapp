@@ -94,7 +94,8 @@ if(isMain){
   if(args[0]!==PROJECT||args.slice(1).some(x=>x!=="--remote")||args.length>2)
    throw Error("Usage: node scripts/v71-public-readiness.mjs packtook-prod-01 [--remote]");
   const localQa=loadLocalQa();
-  const source=inspectSource(collectLocalSource());
+  const localSource=collectLocalSource();
+  const source={...inspectSource(localSource),backend:localSource.backend};
   const appEvidence=loadCustomerAppEvidence();
   const remote=args.includes("--remote")?await probe():null;
   const result=evaluateV71({localQa,source,remote,appEvidence});
