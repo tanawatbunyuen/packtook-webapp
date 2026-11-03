@@ -32,8 +32,11 @@ tamper('c.invitedUids.includes(req.auth.uid)',
 tamper('tx.get(PILOT_V72_CONTROL)',
  'Promise.resolve({exists:true,data:()=>({enabled:true})})',
  "firestoreRuntimeKillSwitch");
-tamper('if(isPilotToken(req))await requirePilotLease(req,{claimRequired:true});',
- 'if(false)await requirePilotLease(req,{claimRequired:true});',
+tamper('PILOT_VALIDATED_REQUESTS.add(req);',
+ '/* omitted live-lease attestation */',
+ "onEveryProtectedRequest");
+tamper('PILOT_VALIDATED_REQUESTS.has(req)',
+ 'true',
  "onEveryProtectedRequest");
 tamper('exports.reserveCredit=guardedCall(options,async req=>{',
  'exports.reserveCredit=onCall(options,async req=>{',
