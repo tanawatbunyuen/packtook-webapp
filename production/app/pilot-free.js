@@ -117,8 +117,8 @@ el("loginForm").addEventListener("submit",async event=>{
  try{
   const email=el("email").value.trim(),password=el("password").value;
   if(!email||!password)throw Error("Missing credentials");
-  await signInWithEmailAndPassword(auth,email,password);
   report("กำลังตรวจคำเชิญจาก Backend");
+  await signInWithEmailAndPassword(auth,email,password);
  }catch(error){report(labelError(error))}
  finally{el("password").value="";busy=false;resetUI()}
 });
