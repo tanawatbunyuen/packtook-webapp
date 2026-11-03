@@ -56,6 +56,11 @@ function publicEmailKey(email){
  return crypto.createHmac("sha256",publicFreeHmacKey())
   .update(normalized,"utf8").digest("hex");
 }
+// Fixed event names only — no email, UID, IP, App ID or secret in audit logs.
+function publicFreeAudit(event){
+ if(["new_free","duplicate_email","capacity_exhausted"].includes(event))
+  console.log("PACKTOOK_PUBLIC_FREE_AUDIT",{event,policyVersion:PUBLIC_POLICY_VERSION});
+}
 function publicSignupBuckets(at){
  return {day:new Date(at).toISOString().slice(0,10).replaceAll("-",""),
   quarterHour:String(Math.floor(at/(15*60*1000)))};
@@ -229,8 +234,10 @@ exports.completeFreeSignup=onCall({...options,enforceAppCheck:true,secrets:[PUBL
   const dayRef=guard.doc("day_"+b.day);
   const [emailSnap,shortSnap,daySnap]=await Promise.all([
    tx.get(emailIndex),tx.get(shortRef),tx.get(dayRef)]);
-  if(emailSnap.exists&&emailSnap.data().ownerUid!==id)
+  if(emailSnap.exists&&emailSnap.data().ownerUid!==id){
+   publicFreeAudit("duplicate_email");
    throw new HttpsError("already-exists","Email already received Free eligibility");
+  }
   if(emailSnap.exists)
    throw new HttpsError("failed-precondition","Email grant record requires manual review");
   const shortCount=shortSnap.exists?shortSnap.data().count:0;
@@ -238,8 +245,10 @@ exports.completeFreeSignup=onCall({...options,enforceAppCheck:true,secrets:[PUBL
   if(!Number.isSafeInteger(shortCount)||shortCount<0||
      !Number.isSafeInteger(dayCount)||dayCount<0)
    throw new HttpsError("failed-precondition","Signup abuse counter requires review");
-  if(shortCount>=PUBLIC_FREE_15M_CAP||dayCount>=PUBLIC_FREE_DAY_CAP)
+  if(shortCount>=PUBLIC_FREE_15M_CAP||dayCount>=PUBLIC_FREE_DAY_CAP){
+   publicFreeAudit("capacity_exhausted");
    throw new HttpsError("resource-exhausted","Free signup capacity reached; please try later");
+  }
   tx.create(emailIndex,{ownerUid:id,createdAt:FieldValue.serverTimestamp(),
    kind:"public_free_email_claim_v1"});
   if(shortSnap.exists)tx.update(shortRef,{count:shortCount+1});
@@ -261,8 +270,7 @@ exports.completeFreeSignup=onCall({...options,enforceAppCheck:true,secrets:[PUBL
  await admin.auth().setCustomUserClaims(id,{
   ...(fresh.customClaims||{}),packtookPublicCustomer:true
  });
- if(result.created)console.log("PACKTOOK_PUBLIC_FREE_GRANT",{action:"new_free",
-  policyVersion:PUBLIC_POLICY_VERSION}); // aggregate event: no UID/email/IP/secret
+ if(result.created)publicFreeAudit("new_free");
  return {activated:true,created:result.created,plan:result.plan,
   freeVideosPerMonth:20,freeDevices:1,refreshToken:true};
 });
