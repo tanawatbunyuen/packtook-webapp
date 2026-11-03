@@ -51,6 +51,7 @@ assert.equal(good.iam.deployedRuntimeIdentityCount,1);
 assert.equal(good.iam.runtimeBindings[0].directSecretAccessor,true);
 assert.equal(good.iam.runtimeBindings[0].effectiveAccessProven,false);
 assert.equal(good.metadataInspectionComplete,true);
+assert.equal(good.metadataFindingsPass,true);
 assert.equal(good.readyForPilot,false);
 assert.equal(good.decision,"NO_GO_CONTROLLED_PILOT");
 assert(!JSON.stringify(good).includes("read-only-runtime@"),"Runtime identity must be redacted");
@@ -62,6 +63,7 @@ console.log("PASS: source binding + secret metadata/versions + two deployed Publ
 const notEnabled=auditWithRunner(source,(c,a)=>a[0]==="secrets"&&a[1]==="versions"?
  JSON.stringify([{state:"DISABLED"}]):goodRunner(c,a));
 assert(notEnabled.blockers.includes("ENABLED_SECRET_VERSION_NOT_VERIFIED"));
+assert.equal(notEnabled.metadataFindingsPass,false);
 const missingSecret=auditWithRunner(source,(c,a)=>{
  if(a[0]==="secrets"&&a[1]==="describe")return absent();
  return goodRunner(c,a);
@@ -83,7 +85,8 @@ const noGrant=auditWithRunner(source,(c,a)=>{
  if(a[0]==="secrets"&&a[1]==="get-iam-policy")return JSON.stringify({bindings:[]});
  return goodRunner(c,a);
 });
-assert(noGrant.blockers.includes("DIRECT_RUNTIME_SECRET_ACCESSOR_GRANT_NOT_PROVEN"));
+assert(noGrant.blockers.includes("SECRET_LEVEL_RUNTIME_ACCESSOR_GRANT_NOT_PROVEN"));
+assert.equal(noGrant.metadataFindingsPass,false);
 const projectGrant=auditWithRunner(source,(c,a)=>{
  if(a[0]==="secrets"&&a[1]==="get-iam-policy")return JSON.stringify({bindings:[]});
  if(a[0]==="projects"&&a[1]==="get-iam-policy")
@@ -91,6 +94,8 @@ const projectGrant=auditWithRunner(source,(c,a)=>{
  return goodRunner(c,a);
 });
 assert.equal(projectGrant.iam.runtimeBindings[0].projectSecretAccessor,true);
+assert(projectGrant.blockers.includes("PROJECT_WIDE_SECRET_ACCESSOR_SCOPE_REVIEW_REQUIRED"));
+assert.equal(projectGrant.metadataFindingsPass,false);
 assert.equal(projectGrant.iam.effectiveRuntimeAccessVerified,false);
 const conditional=auditWithRunner(source,(c,a)=>{
  if(a[0]==="secrets"&&a[1]==="get-iam-policy")
@@ -100,7 +105,7 @@ const conditional=auditWithRunner(source,(c,a)=>{
 });
 assert.equal(conditional.iam.runtimeBindings[0].conditionalSecretAccessor,true);
 assert.equal(conditional.iam.runtimeBindings[0].directSecretAccessor,false);
-assert(conditional.blockers.includes("DIRECT_RUNTIME_SECRET_ACCESSOR_GRANT_NOT_PROVEN"));
+assert(conditional.blockers.includes("SECRET_LEVEL_RUNTIME_ACCESSOR_GRANT_NOT_PROVEN"));
 const broad=auditWithRunner(source,(c,a)=>{
  if(a[0]==="projects"&&a[1]==="get-iam-policy")
   return JSON.stringify({bindings:[{role:"roles/secretmanager.secretAccessor",
