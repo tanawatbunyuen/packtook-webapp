@@ -20,6 +20,12 @@
  <p class="intro">สำหรับผู้ทดสอบที่ได้รับเชิญและมีบัญชี Firebase Authentication อยู่แล้วเท่านั้น ไม่ใช่หน้าสมัครสมาชิกทั่วไปและไม่มีการชำระเงิน</p>
  <div class="features" aria-label="เงื่อนไขบัญชีทดลอง"><span>สูงสุด 3 บัญชี</span><span>สิทธิ์ไม่เกิน 4 ชั่วโมง</span><span>Free 20 วิดีโอ</span><span>1 อุปกรณ์</span></div>
 </section>
+<section class="panel" aria-label="Browser App Check readiness">
+ <div class="step"><span class="step-num">✓</span><h2>ตรวจสอบ App Check บน Browser</h2></div>
+ <p class="muted">ตรวจว่า Browser ได้รับ App Check Token จาก reCAPTCHA Enterprise หรือไม่ โดยไม่เปิดเผยหรือบันทึก Token และไม่สร้างบัญชีหรือให้เครดิต</p>
+ <button id="checkAppCheck" type="button" class="secondary">ตรวจสอบ App Check ฝั่ง Browser</button>
+ <p class="feedback" id="appCheckStatus" role="status" aria-live="polite">ยังไม่ได้ตรวจ Token · ผลฝั่ง Browser ไม่ใช่การยืนยันจาก Backend</p>
+</section>
 <section class="panel" aria-label="เข้าสู่ Pilot">
  <div class="step"><span class="step-num">01</span><h2>เข้าสู่ระบบด้วยบัญชีที่ได้รับเชิญ</h2></div>
  <form id="loginForm" autocomplete="on">
