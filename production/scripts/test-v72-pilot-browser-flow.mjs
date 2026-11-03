@@ -134,7 +134,8 @@ const firebaseConfig={
 const signupConfig={appCheckSiteKey:"local-only-fixture-recaptcha-enterprise-key",
  policyVersion:"2026-11-v1"};
 const runnable=script.replace(/^import[^\n]*;\s*$/gm,"");
-new Function("initializeApp","getAuth","onAuthStateChanged",
+const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
+await new AsyncFunction("initializeApp","getAuth","onAuthStateChanged",
  "signInWithEmailAndPassword","signOut","sendEmailVerification","reload",
  "initializeAppCheck","ReCaptchaEnterpriseProvider",
  "getFunctions","httpsCallable","firebaseConfig","signupConfig",
