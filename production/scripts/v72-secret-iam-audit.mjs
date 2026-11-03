@@ -159,6 +159,17 @@ export function summarizeAudit({source,secret,versions,secretIam,projectIam,func
  blockers.push("SECURITY_IAM_HIERARCHY_CONDITIONS_AND_ROTATION_OWNER_REVIEW_REQUIRED");
  blockers.push("MONITORING_BILLING_PDPA_REAL_BROWSER_AND_PILOT_GO_PENDING");
  const safeFns=functions.map(({_runtimeMember,...f})=>f);
+ const metadataInspectionComplete=secretPresent&&versionsReadable&&
+  secretPolicyReadable&&projectPolicyReadable&&
+  functions.every(x=>x.metadataReadable||x.inspectionError==="NOT_FOUND");
+ const metadataFindingsPass=metadataInspectionComplete&&sourceCheck.pass&&
+  enabledVersionCount>0&&checks.deployedPublicStatus===true&&
+  checks.deployedPublicSignup===true&&checks.publicStatusSecretBound===true&&
+  checks.publicSignupSecretBound===true&&checks.runtimeAccountsIdentified&&
+  IAM.length>0&&IAM.every(x=>
+   x.directSecretAccessor===true||x.projectSecretAccessor===true)&&
+  checks.secretPolicyBroadGrant===false&&checks.projectPolicyBroadGrant===false&&
+  checks.pilotStatusDeployed!==true&&checks.pilotSignupDeployed!==true;
  return {
   project:PROJECT,region:REGION,version:"7.2",mode:"CLOUD_METADATA_READ_ONLY",
   secretName:SECRET,
@@ -177,9 +188,7 @@ export function summarizeAudit({source,secret,versions,secretIam,projectIam,func
    deployedRuntimeIdentityCount:runtimeMembers.length,
    runtimeBindings:IAM,rawPrincipalsReturned:false,
    effectiveRuntimeAccessVerified:false},
-  checks,metadataInspectionComplete:
-   secretPresent&&versionsReadable&&secretPolicyReadable&&projectPolicyReadable&&
-   functions.every(x=>x.metadataReadable||x.inspectionError==="NOT_FOUND"),
+  checks,metadataInspectionComplete,metadataFindingsPass,
   readyForPilot:false,readyForPublic:false,
   decision:"NO_GO_CONTROLLED_PILOT",blockers,
   note:"Metadata and policy bindings do not prove effective runtime Secret access. No payload was read; missing Pilot functions can be expected while Pilot is not deployed."
@@ -208,6 +217,6 @@ if(isMain){
   const report=auditWithRunner(source);
   console.log(JSON.stringify(report,null,2));
   console.log("RESULT: PACKTOOK V7.2 SECRET/IAM METADATA AUDIT NO-GO (read-only)");
-  if(!report.metadataInspectionComplete||!report.source.pass)process.exitCode=2;
+  if(!report.metadataFindingsPass)process.exitCode=2;
  }
 }
