@@ -1,5 +1,6 @@
 "use strict";
 const {onCall,HttpsError}=require("firebase-functions/v2/https");
+const {defineSecret}=require("firebase-functions/params");
 const admin=require("firebase-admin");
 const crypto=require("node:crypto");
 admin.initializeApp();
@@ -28,13 +29,19 @@ function publicCustomerAppReady(){
 // to scale. 0/missing secret or caps fail CLOSED, independently of Public flags.
 const PUBLIC_FREE_DAY_CAP=Number(process.env.PACKTOOK_PUBLIC_FREE_NEW_DAY_CAP||0);
 const PUBLIC_FREE_15M_CAP=Number(process.env.PACKTOOK_PUBLIC_FREE_NEW_15M_CAP||0);
-const PUBLIC_FREE_EMAIL_HMAC_KEY=(process.env.PACKTOOK_PUBLIC_FREE_EMAIL_HMAC_KEY_HEX||"").trim();
+// Secret value is read at request time, ONLY in functions bound with secrets:[].
+// Never place this value in dotenv, GitHub, client code or deployment logs.
+const PUBLIC_FREE_EMAIL_HMAC_SECRET=defineSecret("PACKTOOK_PUBLIC_FREE_EMAIL_HMAC_KEY_HEX");
+function publicFreeHmacKey(){
+ const value=PUBLIC_FREE_EMAIL_HMAC_SECRET.value();
+ return typeof value==="string"?value.trim():"";
+}
 function publicAbuseReady(){
  return Number.isSafeInteger(PUBLIC_FREE_DAY_CAP)&&PUBLIC_FREE_DAY_CAP>=1&&
   PUBLIC_FREE_DAY_CAP<=1000&&Number.isSafeInteger(PUBLIC_FREE_15M_CAP)&&
   PUBLIC_FREE_15M_CAP>=1&&PUBLIC_FREE_15M_CAP<=100&&
   PUBLIC_FREE_15M_CAP<=PUBLIC_FREE_DAY_CAP&&
-  /^[A-Fa-f0-9]{64}$/.test(PUBLIC_FREE_EMAIL_HMAC_KEY);
+  /^[A-Fa-f0-9]{64}$/.test(publicFreeHmacKey());
 }
 function publicSignupReady(){
  return productionProjectReady()&&PUBLIC_GATE&&publicCustomerAppReady()&&
@@ -46,7 +53,7 @@ function publicEmailKey(email){
   throw new HttpsError("permission-denied","Verified email required");
  // HMAC, not a plain SHA256 of a guessable email. Rotating/removing the key
  // requires a documented migration and review of old identifier indexes.
- return crypto.createHmac("sha256",PUBLIC_FREE_EMAIL_HMAC_KEY)
+ return crypto.createHmac("sha256",publicFreeHmacKey())
   .update(normalized,"utf8").digest("hex");
 }
 function publicSignupBuckets(at){
@@ -171,7 +178,7 @@ async function ensureAccount(id){
 // V6.5: self-registration stays completely disabled until THREE independent
 // server-side production rollout flags are enabled after legal/App Check QA.
 // This read-only status API does not grant entitlements or create Auth users.
-exports.publicSignupStatus=onCall(options,async()=>{
+exports.publicSignupStatus=onCall({...options,secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET]},async()=>{
  return {enabled:publicSignupReady(),
   accessEnabled:productionProjectReady()&&PUBLIC_ACCESS_ENABLED&&publicCustomerAppReady(),
   policyVersion:PUBLIC_POLICY_VERSION,freeVideosPerMonth:20,freeDevices:1};
@@ -180,7 +187,7 @@ exports.publicSignupStatus=onCall(options,async()=>{
 // The callable enforces Firebase App Check before this handler runs.
 // This function never grants extra credits, never changes paid accounts,
 // and never downgrades a preexisting account.
-exports.completeFreeSignup=onCall({...options,enforceAppCheck:true},async req=>{
+exports.completeFreeSignup=onCall({...options,enforceAppCheck:true,secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET]},async req=>{
  if(!publicSignupReady())
   throw new HttpsError("failed-precondition","Public registration is not available");
  if(req.app?.appId!==PUBLIC_CUSTOMER_APP_ID)
