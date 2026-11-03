@@ -60,6 +60,7 @@ const context=(env)=>{
   exports:{},process:{env},
   require(name){
    if(name==="firebase-functions/params")return {defineSecret:key=>({name:key,value:()=>env[key]})};
+   if(name==="firebase-functions/logger")return {info(){}};
    if(name==="firebase-admin")return admin;
    if(name==="node:crypto")return crypto;
    if(name==="firebase-functions/v2/https")return {
