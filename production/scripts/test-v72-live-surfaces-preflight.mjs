@@ -1,7 +1,7 @@
 // V7.2 fixed-URL live-surface preflight negative tests. OFFLINE / NO HTTP.
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import {assessV72LiveSurfaces} from "./v72-live-surfaces-preflight.mjs";
+import {assessV72LiveSurfaces,shouldRetryPublicProbe} from "./v72-live-surfaces-preflight.mjs";
 const src=fs.readFileSync(new URL("./v72-live-surfaces-preflight.mjs",import.meta.url),"utf8");
 const good={
  ownerHome:{http:200,body:'<div id="ownerApp" hidden>Owner Dashboard</div>'},
@@ -18,6 +18,14 @@ assert.equal(ok.readyForPilot,false);
 assert.equal(ok.readyForPublic,false);
 assert.equal(ok.decision,"NO_GO_CONTROLLED_PILOT");
 assert.equal(ok.owner.exactProductionConfig,true);
+assert.equal(shouldRetryPublicProbe(ok.publicProbe),false);
+assert.equal(shouldRetryPublicProbe({closed:false,publicSignupEnabled:null,publicAccessEnabled:null}),true,
+ "Unknown remote should allow exactly one read-only retry");
+assert.equal(shouldRetryPublicProbe({closed:false,publicSignupEnabled:true,publicAccessEnabled:false}),false,
+ "Explicit Public ON must never be overwritten by a later retry");
+assert.equal(shouldRetryPublicProbe({closed:false,publicSignupEnabled:false,publicAccessEnabled:true}),false,
+ "Explicit Access ON must never be overwritten");
+
 assert.equal(ok.owner.authenticatedOwnerFirestoreE2E,"OWNER_REPORTED_PASS_NOT_RETESTED_HERE");
 assert(!JSON.stringify(ok).includes("fixture_only"),
  "Never print source Firebase API keys in report");
