@@ -83,6 +83,7 @@ const deny=async(run,code)=>assert.rejects(run,error=>error?.code===code);
 const off=harness(),oneFlag=harness({signup:true}),twoFlags=harness({signup:true,access:true});
 const f=harness({signup:true,access:true,approved:true});
 let stage="init";
+const intentionallyDeletedAuthUsers=new Set();
 try{
  stage="isolated disabled public gates";
  assert.equal((await off.fn.publicSignupStatus()).enabled,false);
@@ -182,6 +183,7 @@ try{
  // New UID + SAME prior email after deletion must not receive fresh 20.
  // This tests the HMAC email lock even when Firebase Auth has released email.
  await auth.deleteUser(userA);
+ intentionallyDeletedAuthUsers.add(userA);
  await auth.createUser({uid:userReuse,email:userA+"@example.test",emailVerified:true});
  await deny(()=>f.fn.completeFreeSignup(call(userReuse,consent)),"already-exists");
  assert.equal((await ref(userReuse).get()).exists,false);
@@ -195,7 +197,7 @@ try{
 }finally{
  for(const id of users){
   try{await db.recursiveDelete(ref(id))}catch(e){console.warn("DEMO cleanup Firestore:",e.message)}
-  try{await auth.deleteUser(id)}catch(e){console.warn("DEMO cleanup Auth:",e.message)}
+  if(!intentionallyDeletedAuthUsers.has(id))try{await auth.deleteUser(id)}catch(e){console.warn("DEMO cleanup Auth:",e.message)}
  }
  await admin.app().delete();
 }
