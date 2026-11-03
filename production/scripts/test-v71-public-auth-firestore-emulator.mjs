@@ -26,7 +26,7 @@ const src=fs.readFileSync(new URL("../functions/index.js",import.meta.url),"utf8
 class HttpsError extends Error{
  constructor(code,message){super(message);this.code=code}
 }
-function harness({signup=false,access=false,approved=false}={}){
+function harness({signup=false,access=false,approved=false,dayCap="2",shortCap="2",hmacKey="b".repeat(64)}={}){
  const opts=new Map();
  const onCall=(options,handler)=>{
   if(handler.toString().includes("Public registration is not available"))
@@ -45,6 +45,9 @@ function harness({signup=false,access=false,approved=false}={}){
   PACKTOOK_PUBLIC_ACCESS_ENABLED:String(access),
   PACKTOOK_PUBLIC_POLICIES_APPROVED:String(approved),
   PACKTOOK_PUBLIC_CUSTOMER_APP_ID:"1:123456789:web:demoappcheckv71",
+  PACKTOOK_PUBLIC_FREE_NEW_DAY_CAP:dayCap,
+  PACKTOOK_PUBLIC_FREE_NEW_15M_CAP:shortCap,
+  PACKTOOK_PUBLIC_FREE_EMAIL_HMAC_KEY_HEX:hmacKey,
   PACKTOOK_V7_QA_ENABLED:"false"
  };
  const requireFake=id=>{
@@ -59,8 +62,9 @@ function harness({signup=false,access=false,approved=false}={}){
  return {fn:exports,opts};
 }
 const tag=crypto.randomUUID().replaceAll("-","").slice(0,20);
-const userA="v71-a-"+tag,userB="v71-b-"+tag,userBeta="v71-beta-"+tag;
-const users=[userA,userB,userBeta];
+const userA="v71-a-"+tag,userB="v71-b-"+tag,userBeta="v71-beta-"+tag,
+ userCap="v71-cap-"+tag,userReuse="v71-reuse-"+tag;
+const users=[userA,userB,userBeta,userCap,userReuse];
 const policy="2026-11-v1";
 const consent={acceptTerms:true,termsVersion:policy,privacyVersion:policy};
 const deviceA="v71-device-a-"+tag,deviceA2="v71-device-c-"+tag;
@@ -85,9 +89,12 @@ try{
  assert.equal((await oneFlag.fn.publicSignupStatus()).enabled,false);
  assert.equal((await twoFlags.fn.publicSignupStatus()).enabled,false);
  assert.equal(f.opts.get("completeFreeSignup")?.enforceAppCheck,true);
+ assert.equal((await harness({signup:true,access:true,approved:true,dayCap:"0"}).fn.publicSignupStatus()).enabled,false);
+ assert.equal((await harness({signup:true,access:true,approved:true,hmacKey:""}).fn.publicSignupStatus()).enabled,false);
  await auth.createUser({uid:userA,email:userA+"@example.test",emailVerified:false});
  await auth.createUser({uid:userB,email:userB+"@example.test",emailVerified:true});
  await auth.createUser({uid:userBeta,email:userBeta+"@example.test",emailVerified:true});
+ await auth.createUser({uid:userCap,email:userCap+"@example.test",emailVerified:true});
  await deny(()=>off.fn.completeFreeSignup(call(userA,consent)),"failed-precondition");
  await deny(()=>oneFlag.fn.completeFreeSignup(call(userA,consent)),"failed-precondition");
  await deny(()=>twoFlags.fn.completeFreeSignup(call(userA,consent)),"failed-precondition");
@@ -126,6 +133,11 @@ try{
  assert.equal((await f.fn.usageStatus(b())).remaining,20);
  await deny(()=>off.fn.usageStatus(a()),"permission-denied");
  console.log("PASS: real DEMO Firestore Free creation exactly once per UID and no cross-user credits");
+ await deny(()=>f.fn.completeFreeSignup(call(userCap,consent)),"resource-exhausted");
+ assert.equal((await ref(userCap).get()).exists,false);
+ const daySnaps=await db.collection("publicSignupGuards").where("count","==",2).get();
+ assert.equal(daySnaps.size,2,"Both short and daily counters count 2 successful grants");
+ console.log("PASS: atomic 15-minute/day Free grant caps deny third UID without creating credits");
 
  stage="one device, one video, retry and account isolation";
  const r=await f.fn.registerDevice(a({deviceId:deviceA,name:"Primary test device"}));
@@ -167,6 +179,13 @@ try{
  await deny(()=>f.fn.completeFreeSignup(b(consent)),"failed-precondition");
  await deny(()=>f.fn.usageStatus(b()),"failed-precondition");
  await deny(()=>f.fn.qaFreeStatus(a()),"permission-denied");
+ // New UID + SAME prior email after deletion must not receive fresh 20.
+ // This tests the HMAC email lock even when Firebase Auth has released email.
+ await auth.deleteUser(userA);
+ await auth.createUser({uid:userReuse,email:userA+"@example.test",emailVerified:true});
+ await deny(()=>f.fn.completeFreeSignup(call(userReuse,consent)),"already-exists");
+ assert.equal((await ref(userReuse).get()).exists,false);
+ console.log("PASS: deleting Firebase Auth user then re-registering same email cannot regrant 20");
  console.log("PASS: deleting Free account cannot regrant credits; QA invite remains OFF");
  console.log("RESULT: PACKTOOK V7.1 DEMO AUTH/FIRESTORE PUBLIC FREE INTEGRATION PASS");
 }catch(e){
