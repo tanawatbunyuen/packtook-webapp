@@ -72,13 +72,14 @@ const env=(more={})=>({
  PACKTOOK_PUBLIC_SIGNUP_ENABLED:"true",
  PACKTOOK_PUBLIC_ACCESS_ENABLED:"true",
  PACKTOOK_PUBLIC_POLICIES_APPROVED:"true",
+ PACKTOOK_PUBLIC_CUSTOMER_APP_ID:"1:123456789:web:approvedCustomerApp",
  ...more
 });
 const policy="2026-11-v1";
 const validData={acceptTerms:true,termsVersion:policy,privacyVersion:policy};
 const input=(id,data=validData,options={})=>({
  auth:{uid:id,token:{email_verified:true,...options.claims}},
- app:{appId:"approved-app-check-token"},
+ app:{appId:"1:123456789:web:approvedCustomerApp"},
  data
 });
 const rejected=async(call,code)=>{
@@ -96,6 +97,10 @@ const noLegal=context(env({PACKTOOK_PUBLIC_POLICIES_APPROVED:"false"}));
 assert.equal((await noLegal.fn.publicSignupStatus()).enabled,false);
 console.log("PASS: policy approval flag required");
 
+const noCustomerApp=context(env({PACKTOOK_PUBLIC_CUSTOMER_APP_ID:""}));
+assert.equal((await noCustomerApp.fn.publicSignupStatus()).enabled,false);
+noCustomerApp.users.set("noAppKey",{email:"noapp@example.test",emailVerified:true,disabled:false,customClaims:{}});
+await rejected(()=>noCustomerApp.fn.completeFreeSignup(input("noAppKey")),"failed-precondition");
 const c=context(env());
 assert.equal(c.callOptions.signup.enforceAppCheck,true);
 assert.equal((await c.fn.publicSignupStatus()).enabled,true);
@@ -103,6 +108,7 @@ assert.equal((await c.fn.publicSignupStatus()).freeVideosPerMonth,20);
 c.users.set("alice",{email:"alice@example.test",emailVerified:true,disabled:false,
  customClaims:{someOtherClaim:"preserved"}});
 await rejected(()=>c.fn.completeFreeSignup({...input("alice"),app:null}),"permission-denied");
+await rejected(()=>c.fn.completeFreeSignup({...input("alice"),app:{appId:"1:999:web:anotherApp"}}),"permission-denied");
 await rejected(()=>c.fn.completeFreeSignup(input("alice",{
  acceptTerms:false,termsVersion:policy,privacyVersion:policy
 })),"invalid-argument");
@@ -124,7 +130,7 @@ assert.equal(a.acceptedPrivacyVersion,policy);
 assert.equal(c.users.get("alice").customClaims.someOtherClaim,"preserved");
 assert.equal(c.users.get("alice").customClaims.packtookPublicCustomer,true);
 const usage=await c.fn.usageStatus({auth:{uid:"alice",
- token:{email_verified:true,packtookPublicCustomer:true}}});
+ token:{email_verified:true,packtookPublicCustomer:true}},app:{appId:"1:123456789:web:approvedCustomerApp"}});
 assert.equal(usage.remaining,20);
 console.log("PASS: verified customer + consent + App Check creates 20/month, one-device Free account");
 
@@ -141,7 +147,7 @@ console.log("PASS: repeated activation cannot reset credits, used count, or a pa
 c.records.delete("alice");
 await rejected(()=>c.fn.completeFreeSignup(input("alice")),"failed-precondition");
 await rejected(()=>c.fn.usageStatus({auth:{uid:"alice",
- token:{email_verified:true,packtookPublicCustomer:true}}}),"failed-precondition");
+ token:{email_verified:true,packtookPublicCustomer:true}},app:{appId:"1:123456789:web:approvedCustomerApp"}}),"failed-precondition");
 console.log("PASS: public account deletion cannot be exploited to replenish Free quota");
 
 c.users.set("noEmail",{email:"no@example.test",emailVerified:false,disabled:false,customClaims:{}});
