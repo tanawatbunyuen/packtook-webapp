@@ -97,7 +97,7 @@ function validPilotControl(c,now=Date.now()){
     !invites.every(id=>typeof id==="string"&&/^[A-Za-z0-9_-]{6,128}$/.test(id)))return false;
  return typeof c.sessionId==="string"&&/^v72_[A-Za-z0-9_-]{16,64}$/.test(c.sessionId);
 }
-async function requirePilotLease(req,{claimRequired=false}={}){
+async function requirePilotLease(req,{claimRequired=false,allowUnverified=false}={}){
  if(!pilotEnvironmentClosed()||req.app?.appId!==PUBLIC_CUSTOMER_APP_ID||
     !req.auth?.uid)throw new HttpsError("permission-denied","Pilot invitation is not active");
  const snap=await PILOT_V72_CONTROL.get(),c=snap.exists?snap.data():null;
@@ -106,7 +106,7 @@ async function requirePilotLease(req,{claimRequired=false}={}){
  if(claimRequired&&(!isPilotToken(req)||req.auth.token.packtookPilotV72Session!==c.sessionId))
   throw new HttpsError("permission-denied","Pilot session was revoked or expired");
  const live=await admin.auth().getUser(req.auth.uid);
- if(live.disabled||live.emailVerified!==true||!live.email||
+ if(live.disabled||(!allowUnverified&&live.emailVerified!==true)||!live.email||
     live.customClaims?.packtookProductionBeta===true||
     live.customClaims?.packtookControlledQa===true||
     live.customClaims?.packtookPublicCustomer===true)
@@ -339,10 +339,23 @@ exports.completeFreeSignup=onCall({...options,enforceAppCheck:true,secrets:[PUBL
 // V7.2: invite status reveals no UID list, session ID or owner data.
 exports.pilotInvitationStatus=onCall({...options,enforceAppCheck:true,
  secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET]},async req=>{
- const lease=await requirePilotLease(req);
+ // Invited pre-created accounts may need to verify their email first. This
+ // status checks the private server allowlist and exact App Check BEFORE
+ // disclosing only a yes/no verification state. It never grants credits.
+ const lease=await requirePilotLease(req,{allowUnverified:true});
  if(!publicAbuseReady())
   throw new HttpsError("failed-precondition","Pilot admission protections are not configured");
- return {enabled:true,verified:true,testOnly:true,policyVersion:PUBLIC_POLICY_VERSION,
+ const verified=lease.live.emailVerified===true;
+ let active=false;
+ if(verified&&isPilotToken(req)&&
+    req.auth.token.packtookPilotV72Session===lease.sessionId){
+  const snap=await own(req.auth.uid).get();
+  const a=snap.exists?snap.data():null;
+  active=a?.ownerUid===req.auth.uid&&
+   a.registrationSource==="controlled_pilot_v72"&&a.plan==="Free";
+ }
+ return {enabled:true,verified,active,testOnly:true,
+  policyVersion:PUBLIC_POLICY_VERSION,
   expiresAt:lease.expiresAt,freeVideosPerMonth:20,freeDevices:1};
 });
 // A distinct invite-only activation. All Public flags and legacy QA stay OFF.
