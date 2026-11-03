@@ -59,6 +59,7 @@ const context=(env)=>{
  const sandbox={
   exports:{},process:{env},
   require(name){
+   if(name==="firebase-functions/params")return {defineSecret:key=>({name:key,value:()=>env[key]})};
    if(name==="firebase-admin")return admin;
    if(name==="node:crypto")return crypto;
    if(name==="firebase-functions/v2/https")return {
@@ -129,6 +130,7 @@ const excessiveCap=context(env({PACKTOOK_PUBLIC_FREE_NEW_DAY_CAP:"1001"}));
 assert.equal((await excessiveCap.fn.publicSignupStatus()).enabled,false);
 const c=context(env());
 assert.equal(c.callOptions.signup.enforceAppCheck,true);
+assert.equal(c.callOptions.signup.secrets?.[0]?.name,"PACKTOOK_PUBLIC_FREE_EMAIL_HMAC_KEY_HEX");
 assert.equal((await c.fn.publicSignupStatus()).enabled,true);
 assert.equal((await c.fn.publicSignupStatus()).freeVideosPerMonth,20);
 c.users.set("alice",{email:"alice@example.test",emailVerified:true,disabled:false,
