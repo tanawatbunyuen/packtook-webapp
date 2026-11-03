@@ -21,6 +21,39 @@ const PUBLIC_CUSTOMER_APP_ID=(process.env.PACKTOOK_PUBLIC_CUSTOMER_APP_ID||"").t
 function publicCustomerAppReady(){
  return /^1:[0-9]+:web:[A-Za-z0-9]+$/.test(PUBLIC_CUSTOMER_APP_ID);
 }
+
+// V7.1 anti-abuse: owner-configured admission gate for NEW Public Free
+// grants only. No ID/email is ever sent to logs or written to counters.
+// Caps are deliberately modest for the first pilot; require explicit review
+// to scale. 0/missing secret or caps fail CLOSED, independently of Public flags.
+const PUBLIC_FREE_DAY_CAP=Number(process.env.PACKTOOK_PUBLIC_FREE_NEW_DAY_CAP||0);
+const PUBLIC_FREE_15M_CAP=Number(process.env.PACKTOOK_PUBLIC_FREE_NEW_15M_CAP||0);
+const PUBLIC_FREE_EMAIL_HMAC_KEY=(process.env.PACKTOOK_PUBLIC_FREE_EMAIL_HMAC_KEY_HEX||"").trim();
+function publicAbuseReady(){
+ return Number.isSafeInteger(PUBLIC_FREE_DAY_CAP)&&PUBLIC_FREE_DAY_CAP>=1&&
+  PUBLIC_FREE_DAY_CAP<=1000&&Number.isSafeInteger(PUBLIC_FREE_15M_CAP)&&
+  PUBLIC_FREE_15M_CAP>=1&&PUBLIC_FREE_15M_CAP<=100&&
+  PUBLIC_FREE_15M_CAP<=PUBLIC_FREE_DAY_CAP&&
+  /^[A-Fa-f0-9]{64}$/.test(PUBLIC_FREE_EMAIL_HMAC_KEY);
+}
+function publicSignupReady(){
+ return productionProjectReady()&&PUBLIC_GATE&&publicCustomerAppReady()&&
+  publicAbuseReady();
+}
+function publicEmailKey(email){
+ const normalized=String(email||"").trim().toLowerCase();
+ if(!normalized||normalized.length>320||!normalized.includes("@"))
+  throw new HttpsError("permission-denied","Verified email required");
+ // HMAC, not a plain SHA256 of a guessable email. Rotating/removing the key
+ // requires a documented migration and review of old identifier indexes.
+ return crypto.createHmac("sha256",Buffer.from(PUBLIC_FREE_EMAIL_HMAC_KEY,"hex"))
+  .update(normalized,"utf8").digest("hex");
+}
+function publicSignupBuckets(at){
+ return {day:new Date(at).toISOString().slice(0,10).replaceAll("-",""),
+  quarterHour:String(Math.floor(at/(15*60*1000)))};
+}
+
 // V7.0 controlled QA is a separate, time-limited, one-UID invite gate.
 // All public rollout flags MUST stay OFF. Default is disabled on every project.
 // Uses Production Firebase App Check AND a server-known Auth UID (never email only).
@@ -139,7 +172,7 @@ async function ensureAccount(id){
 // server-side production rollout flags are enabled after legal/App Check QA.
 // This read-only status API does not grant entitlements or create Auth users.
 exports.publicSignupStatus=onCall(options,async()=>{
- return {enabled:productionProjectReady()&&PUBLIC_GATE&&publicCustomerAppReady(),
+ return {enabled:publicSignupReady(),
   accessEnabled:productionProjectReady()&&PUBLIC_ACCESS_ENABLED&&publicCustomerAppReady(),
   policyVersion:PUBLIC_POLICY_VERSION,freeVideosPerMonth:20,freeDevices:1};
 });
@@ -148,7 +181,7 @@ exports.publicSignupStatus=onCall(options,async()=>{
 // This function never grants extra credits, never changes paid accounts,
 // and never downgrades a preexisting account.
 exports.completeFreeSignup=onCall({...options,enforceAppCheck:true},async req=>{
- if(!productionProjectReady()||!PUBLIC_GATE||!publicCustomerAppReady())
+ if(!publicSignupReady())
   throw new HttpsError("failed-precondition","Public registration is not available");
  if(req.app?.appId!==PUBLIC_CUSTOMER_APP_ID)
   throw new HttpsError("permission-denied","Approved Customer App Check required");
@@ -165,6 +198,7 @@ exports.completeFreeSignup=onCall({...options,enforceAppCheck:true},async req=>{
  if(live.customClaims?.packtookProductionBeta===true)
   throw new HttpsError("already-exists","This account already belongs to Production Beta");
  const ref=own(id);
+ const emailIndex=db.collection("publicSignupGuards").doc("email_v1_"+publicEmailKey(live.email));
  const result=await db.runTransaction(async tx=>{
   const snap=await tx.get(ref);
   if(!snap.exists&&live.customClaims?.packtookPublicCustomer===true)
@@ -176,8 +210,34 @@ exports.completeFreeSignup=onCall({...options,enforceAppCheck:true},async req=>{
     throw new HttpsError("already-exists","This account is already registered");
    return {created:false,plan:a.plan};
   }
+  // All transaction reads occur before any writes. These Firestore documents
+  // rate-limit successful NEW Free grants across many different Firebase UIDs;
+  // one high-contention bucket may intentionally reject traffic in a pilot.
+  const now=Date.now(),b=publicSignupBuckets(now);
+  const guard=db.collection("publicSignupGuards");
+  const shortRef=guard.doc("window15_"+b.quarterHour);
+  const dayRef=guard.doc("day_"+b.day);
+  const [emailSnap,shortSnap,daySnap]=await Promise.all([
+   tx.get(emailIndex),tx.get(shortRef),tx.get(dayRef)]);
+  if(emailSnap.exists&&emailSnap.data().ownerUid!==id)
+   throw new HttpsError("already-exists","Email already received Free eligibility");
+  if(emailSnap.exists)
+   throw new HttpsError("failed-precondition","Email grant record requires manual review");
+  const shortCount=shortSnap.exists?shortSnap.data().count:0;
+  const dayCount=daySnap.exists?daySnap.data().count:0;
+  if(!Number.isSafeInteger(shortCount)||shortCount<0||
+     !Number.isSafeInteger(dayCount)||dayCount<0)
+   throw new HttpsError("failed-precondition","Signup abuse counter requires review");
+  if(shortCount>=PUBLIC_FREE_15M_CAP||dayCount>=PUBLIC_FREE_DAY_CAP)
+   throw new HttpsError("resource-exhausted","Free signup capacity reached; please try later");
+  tx.create(emailIndex,{ownerUid:id,createdAt:FieldValue.serverTimestamp(),
+   kind:"public_free_email_claim_v1"});
+  if(shortSnap.exists)tx.update(shortRef,{count:shortCount+1});
+  else tx.create(shortRef,{count:1,period:b.quarterHour,createdAt:FieldValue.serverTimestamp()});
+  if(daySnap.exists)tx.update(dayRef,{count:dayCount+1});
+  else tx.create(dayRef,{count:1,period:b.day,createdAt:FieldValue.serverTimestamp()});
   tx.create(ref,{ownerUid:id,registrationSource:"self_service_v65",
-   registeredEmail:live.email,plan:"Free",period:periodId(Date.now()),
+   registeredEmail:live.email,plan:"Free",period:periodId(now),
    used:0,reserved:0,devices:[],creditWalletV1:false,
    acceptedTermsVersion:PUBLIC_POLICY_VERSION,
    acceptedPrivacyVersion:PUBLIC_POLICY_VERSION,
@@ -191,6 +251,8 @@ exports.completeFreeSignup=onCall({...options,enforceAppCheck:true},async req=>{
  await admin.auth().setCustomUserClaims(id,{
   ...(fresh.customClaims||{}),packtookPublicCustomer:true
  });
+ if(result.created)console.info("PACKTOOK_PUBLIC_FREE_GRANT",{action:"new_free",
+  policyVersion:PUBLIC_POLICY_VERSION}); // aggregate event: no UID/email/IP/secret
  return {activated:true,created:result.created,plan:result.plan,
   freeVideosPerMonth:20,freeDevices:1,refreshToken:true};
 });
