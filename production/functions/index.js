@@ -46,7 +46,7 @@ function publicEmailKey(email){
   throw new HttpsError("permission-denied","Verified email required");
  // HMAC, not a plain SHA256 of a guessable email. Rotating/removing the key
  // requires a documented migration and review of old identifier indexes.
- return crypto.createHmac("sha256",Buffer.from(PUBLIC_FREE_EMAIL_HMAC_KEY,"hex"))
+ return crypto.createHmac("sha256",PUBLIC_FREE_EMAIL_HMAC_KEY)
   .update(normalized,"utf8").digest("hex");
 }
 function publicSignupBuckets(at){
@@ -251,7 +251,7 @@ exports.completeFreeSignup=onCall({...options,enforceAppCheck:true},async req=>{
  await admin.auth().setCustomUserClaims(id,{
   ...(fresh.customClaims||{}),packtookPublicCustomer:true
  });
- if(result.created)console.info("PACKTOOK_PUBLIC_FREE_GRANT",{action:"new_free",
+ if(result.created)console.log("PACKTOOK_PUBLIC_FREE_GRANT",{action:"new_free",
   policyVersion:PUBLIC_POLICY_VERSION}); // aggregate event: no UID/email/IP/secret
  return {activated:true,created:result.created,plan:result.plan,
   freeVideosPerMonth:20,freeDevices:1,refreshToken:true};
