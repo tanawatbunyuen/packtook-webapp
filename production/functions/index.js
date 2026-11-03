@@ -15,6 +15,30 @@ const PUBLIC_ACCESS_ENABLED=process.env.PACKTOOK_PUBLIC_ACCESS_ENABLED==="true";
 const PUBLIC_POLICIES_APPROVED=process.env.PACKTOOK_PUBLIC_POLICIES_APPROVED==="true";
 const PUBLIC_POLICY_VERSION="2026-11-v1";
 const PUBLIC_GATE=PUBLIC_SIGNUP_ENABLED&&PUBLIC_ACCESS_ENABLED&&PUBLIC_POLICIES_APPROVED;
+// V7.0 controlled QA is a separate, time-limited, one-UID invite gate.
+// All public rollout flags MUST stay OFF. Default is disabled on every project.
+// Uses Production Firebase App Check AND a server-known Auth UID (never email only).
+const V7_QA_ENABLED=process.env.PACKTOOK_V7_QA_ENABLED==="true";
+const V7_QA_UID=(process.env.PACKTOOK_V7_QA_UID||"").trim();
+const V7_QA_APP_ID=(process.env.PACKTOOK_V7_QA_APP_ID||"").trim();
+const V7_QA_EXPIRY=Date.parse(process.env.PACKTOOK_V7_QA_EXPIRES_AT||"");
+function qaWindowOpen(){
+ const now=Date.now();
+ return productionProjectReady()&&V7_QA_ENABLED&&!PUBLIC_SIGNUP_ENABLED&&
+  !PUBLIC_ACCESS_ENABLED&&!PUBLIC_POLICIES_APPROVED&&
+  /^[A-Za-z0-9_-]{20,128}$/.test(V7_QA_UID)&&
+  /^1:[0-9]+:web:[A-Za-z0-9]+$/.test(V7_QA_APP_ID)&&
+  Number.isFinite(V7_QA_EXPIRY)&&V7_QA_EXPIRY>now&&
+  // QA requires an explicit short-lived expiration, max 48 hours.
+  V7_QA_EXPIRY<=now+48*60*60*1000;
+}
+function qaInviteValid(req){
+ return qaWindowOpen()&&req.auth?.uid===V7_QA_UID&&
+  req.app?.appId===V7_QA_APP_ID;
+}
+function isQaMember(req){
+ return qaInviteValid(req)&&req.auth?.token?.packtookControlledQa===true;
+}
 function isPublicMember(auth){return PUBLIC_ACCESS_ENABLED&&auth?.token?.packtookPublicCustomer===true}
 function productionProjectReady(){return process.env.PACKTOOK_PRODUCTION_PROJECT_ID==="packtook-prod-01" &&
  (!process.env.GCLOUD_PROJECT||process.env.GCLOUD_PROJECT==="packtook-prod-01") &&
@@ -24,7 +48,7 @@ function uid(req){
  if(process.env.PACKTOOK_PRODUCTION_PROJECT_ID!=="packtook-prod-01")throw new HttpsError("failed-precondition","Production project environment is not configured");
  if(!req.auth?.uid)throw new HttpsError("unauthenticated","Please sign in");
  if(req.auth.token.email_verified!==true)throw new HttpsError("permission-denied","Verify your email");
- if(req.auth.token.packtookProductionBeta!==true&&!isPublicMember(req.auth))throw new HttpsError("permission-denied","Account is not authorized for PACKTOOK");
+ if(req.auth.token.packtookProductionBeta!==true&&!isPublicMember(req.auth)&&!isQaMember(req))throw new HttpsError("permission-denied","Account is not authorized for PACKTOOK");
  return req.auth.uid;
 }
 function data(req){return req.data&&typeof req.data==="object"?req.data:{}}
@@ -159,6 +183,61 @@ exports.completeFreeSignup=onCall({...options,enforceAppCheck:true},async req=>{
  return {activated:true,created:result.created,plan:result.plan,
   freeVideosPerMonth:20,freeDevices:1,refreshToken:true};
 });
+// V7.0: this status never exposes the invited UID, email or environment values.
+// It requires an authenticated, App Check-attested EXACT invited user.
+exports.qaFreeStatus=onCall({...options,enforceAppCheck:true},async req=>{
+ if(!qaInviteValid(req))throw new HttpsError("permission-denied","Controlled QA invitation is not active");
+ const live=await admin.auth().getUser(req.auth.uid);
+ if(live.disabled||!live.email)throw new HttpsError("permission-denied","QA account disabled or missing email");
+ return {enabled:true,verified:live.emailVerified===true,
+  policyVersion:PUBLIC_POLICY_VERSION,freeVideosPerMonth:20,freeDevices:1,
+  expiresAt:new Date(V7_QA_EXPIRY).toISOString(),testOnly:true};
+});
+// QA acceptance is an explicit test-only consent record, NOT approved public Terms.
+// A single allowlisted, verified user can be provisioned once. No public claim
+// or Beta claim is created; QA access expires when the server flag/window closes.
+exports.completeQaFreeSignup=onCall({...options,enforceAppCheck:true},async req=>{
+ if(!qaInviteValid(req))throw new HttpsError("permission-denied","Controlled QA invitation is not active");
+ const d=data(req);
+ if(d.acceptTestTerms!==true||d.policyVersion!==PUBLIC_POLICY_VERSION)
+  throw new HttpsError("invalid-argument","Accept the V7 test-only consent");
+ const id=req.auth.uid;
+ const live=await admin.auth().getUser(id);
+ if(live.disabled||live.emailVerified!==true||!live.email)
+  throw new HttpsError("permission-denied","Verify QA email before activation");
+ if(live.customClaims?.packtookProductionBeta===true||
+    live.customClaims?.packtookPublicCustomer===true)
+  throw new HttpsError("already-exists","This account is already in another plan");
+ const ref=own(id);
+ const result=await db.runTransaction(async tx=>{
+  const snap=await tx.get(ref);
+  if(!snap.exists&&live.customClaims?.packtookControlledQa===true)
+   throw new HttpsError("failed-precondition","Deleted QA account requires manual review");
+  if(snap.exists){
+   const a=snap.data();
+   if(a.ownerUid!==id||a.registrationSource!=="controlled_qa_v70")
+    throw new HttpsError("already-exists","Existing account cannot be overwritten");
+   return {created:false,plan:a.plan};
+  }
+  tx.create(ref,{ownerUid:id,registrationSource:"controlled_qa_v70",
+   registeredEmail:live.email,plan:"Free",period:periodId(Date.now()),
+   used:0,reserved:0,devices:[],creditWalletV1:false,qaTestOnly:true,
+   acceptedTestPolicyVersion:PUBLIC_POLICY_VERSION,
+   acceptedTestOnly:true,consentAt:FieldValue.serverTimestamp(),
+   createdAt:FieldValue.serverTimestamp()});
+  return {created:true,plan:"Free"};
+ });
+ // Idempotent claim retry; preserve unrelated existing claims.
+ const fresh=await admin.auth().getUser(id);
+ if(fresh.disabled||!fresh.emailVerified)
+  throw new HttpsError("permission-denied","QA identity changed");
+ await admin.auth().setCustomUserClaims(id,{
+  ...(fresh.customClaims||{}),packtookControlledQa:true
+ });
+ return {activated:true,created:result.created,plan:result.plan,
+  freeVideosPerMonth:20,freeDevices:1,expiresAt:new Date(V7_QA_EXPIRY).toISOString()};
+});
+
 exports.usageStatus=onCall(options,async req=>{
  const id=uid(req),ref=await ensureAccount(id),snap=await ref.get();
  if(!snap.exists)throw new HttpsError("failed-precondition","Account not provisioned");
