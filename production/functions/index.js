@@ -331,6 +331,95 @@ exports.completeFreeSignup=onCall({...options,enforceAppCheck:true,secrets:[PUBL
  return {activated:true,created:result.created,plan:result.plan,
   freeVideosPerMonth:20,freeDevices:1,refreshToken:true};
 });
+// V7.2: invite status reveals no UID list, session ID or owner data.
+exports.pilotInvitationStatus=onCall({...options,enforceAppCheck:true},async req=>{
+ const lease=await requirePilotLease(req);
+ return {enabled:true,verified:true,testOnly:true,policyVersion:PUBLIC_POLICY_VERSION,
+  expiresAt:lease.expiresAt,freeVideosPerMonth:20,freeDevices:1};
+});
+// A distinct invite-only activation. All Public flags and legacy QA stay OFF.
+// A callable App Check token is cryptographically verified by the Firebase
+// transport (enforceAppCheck:true), then exact app ID and live UID checked.
+// The Firestore allowlist is never returned to the browser or committed to Git.
+exports.completePilotFreeSignup=onCall({...options,enforceAppCheck:true,
+ secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET]},async req=>{
+ const lease=await requirePilotLease(req);
+ const d=data(req);
+ if(d.acceptTestTerms!==true||d.acceptPrivacy!==true||
+    d.policyVersion!==PUBLIC_POLICY_VERSION)
+  throw new HttpsError("invalid-argument","Accept the approved Pilot Terms and Privacy");
+ if(!publicAbuseReady())
+  throw new HttpsError("failed-precondition","Pilot admission protections are not configured");
+ const id=req.auth.uid,live=lease.live;
+ const ref=own(id),guard=db.collection("publicSignupGuards");
+ const emailIndex=guard.doc("email_v1_"+publicEmailKey(live.email));
+ const result=await db.runTransaction(async tx=>{
+  const now=Date.now(),b=publicSignupBuckets(now);
+  const shortRef=guard.doc("window15_"+b.quarterHour),dayRef=guard.doc("day_"+b.day);
+  // Read the CURRENT kill switch and invitation membership within the grant
+  // transaction, so revocation cannot race against a new credit entitlement.
+  const [controlSnap,accSnap,emailSnap,shortSnap,daySnap]=await Promise.all([
+   tx.get(PILOT_V72_CONTROL),tx.get(ref),tx.get(emailIndex),
+   tx.get(shortRef),tx.get(dayRef)]);
+  const control=controlSnap.exists?controlSnap.data():null;
+  if(!pilotEnvironmentClosed()||!validPilotControl(control,now)||
+     control.sessionId!==lease.sessionId||!control.invitedUids.includes(id))
+   throw new HttpsError("permission-denied","Pilot invitation changed or expired");
+  if(!accSnap.exists&&live.customClaims?.packtookPilotV72===true)
+   throw new HttpsError("failed-precondition","Deleted Pilot account requires manual review");
+  if(accSnap.exists){
+   const a=accSnap.data();
+   if(a.ownerUid!==id||a.registrationSource!=="controlled_pilot_v72"||
+      a.plan!=="Free")
+    throw new HttpsError("already-exists","Existing account cannot be overwritten");
+   return {created:false,plan:"Free"};
+  }
+  if(emailSnap.exists)
+   throw new HttpsError("already-exists","Email already received Free eligibility");
+  const shortCount=shortSnap.exists?shortSnap.data().count:0;
+  const dayCount=daySnap.exists?daySnap.data().count:0;
+  if(!Number.isSafeInteger(shortCount)||shortCount<0||
+     !Number.isSafeInteger(dayCount)||dayCount<0)
+   throw new HttpsError("failed-precondition","Pilot admission counters require review");
+  if(shortCount>=PUBLIC_FREE_15M_CAP||dayCount>=PUBLIC_FREE_DAY_CAP)
+   throw new HttpsError("resource-exhausted","Pilot Free admission limit reached");
+  const expiresAt=new Date(now+35*24*60*60*1000);
+  tx.create(emailIndex,{ownerUid:id,createdAt:FieldValue.serverTimestamp(),
+   kind:"public_free_email_claim_v1"});
+  if(shortSnap.exists)tx.update(shortRef,{count:shortCount+1});
+  else tx.create(shortRef,{count:1,period:b.quarterHour,expiresAt,
+   createdAt:FieldValue.serverTimestamp()});
+  if(daySnap.exists)tx.update(dayRef,{count:dayCount+1});
+  else tx.create(dayRef,{count:1,period:b.day,expiresAt,
+   createdAt:FieldValue.serverTimestamp()});
+  tx.create(ref,{ownerUid:id,registrationSource:"controlled_pilot_v72",
+   registeredEmail:live.email,plan:"Free",period:periodId(now),
+   used:0,reserved:0,devices:[],creditWalletV1:false,
+   pilotTestOnly:true,acceptedTestPolicyVersion:PUBLIC_POLICY_VERSION,
+   acceptedTestOnly:true,acceptedPrivacy:true,
+   consentAt:FieldValue.serverTimestamp(),createdAt:FieldValue.serverTimestamp()});
+  return {created:true,plan:"Free"};
+ });
+ // A disable/revocation between Firestore grant and claim update cannot leave
+ // working access: requirePilotLease is checked after transaction as well as
+ // on every subsequent protected callable, even with a stale valid ID token.
+ const current=await requirePilotLease(req);
+ if(current.sessionId!==lease.sessionId)
+  throw new HttpsError("permission-denied","Pilot session changed during activation");
+ const fresh=await admin.auth().getUser(id);
+ if(fresh.disabled||!fresh.emailVerified||fresh.customClaims?.packtookProductionBeta||
+    fresh.customClaims?.packtookControlledQa||fresh.customClaims?.packtookPublicCustomer)
+  throw new HttpsError("permission-denied","Pilot identity eligibility changed");
+ await admin.auth().setCustomUserClaims(id,{
+  ...(fresh.customClaims||{}),
+  packtookPilotV72:true,packtookPilotV72Session:lease.sessionId
+ });
+ if(result.created)publicFreeAudit("new_free");
+ return {activated:true,created:result.created,plan:"Free",
+  freeVideosPerMonth:20,freeDevices:1,refreshToken:true,
+  expiresAt:current.expiresAt};
+});
+
 // V7.0: this status never exposes the invited UID, email or environment values.
 // It requires an authenticated, App Check-attested EXACT invited user.
 exports.qaFreeStatus=onCall({...options,enforceAppCheck:true},async req=>{
