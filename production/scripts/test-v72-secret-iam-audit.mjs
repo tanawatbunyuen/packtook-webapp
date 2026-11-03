@@ -36,7 +36,7 @@ const goodRunner=(_cmd,args)=>{
  if(args[0]==="secrets"&&args[1]==="get-iam-policy")return JSON.stringify(secretIam);
  if(args[0]==="projects"&&args[1]==="get-iam-policy")return JSON.stringify(projectIam);
  if(args[0]==="functions"&&args[1]==="describe"){
-  if(args[2].startsWith("pilot") )return absent();
+  if(["pilotInvitationStatus","completePilotFreeSignup"].includes(args[2]))return absent();
   return JSON.stringify(mockFn(args[2]));
  }
  throw Error("Unexpected command "+JSON.stringify(args));
