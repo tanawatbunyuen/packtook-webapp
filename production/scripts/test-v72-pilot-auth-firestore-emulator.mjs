@@ -61,7 +61,11 @@ function harness({enabled=false,publicSignup=false,qaEnabled=false,hmacKey="e".r
   throw Error("Unexpected dependency "+name);
  };
  const exports={};
- new Function("exports","process","require","console",source)(
+ // Deliberately inject a raw/unwrapped probe into the isolated DEMO
+ // Function VM. A pilot Auth custom claim must NOT grant access through uid()
+ // unless guardedCall has verified the live lease for that same request.
+ const fixtureSource=source+"\nexports.testOnlyUnwrappedPilotProbe=onCall(options,async req=>uid(req));";
+ new Function("exports","process","require","console",fixtureSource)(
   exports,{env},requireFake,{log(){},warn(){},error(){}});
  return {fn:exports,optionsByName};
 }
@@ -154,6 +158,7 @@ try{
  const a=(d={},extra={})=>call(A,d,{pilotClaim:true,...extra});
  const b=(d={},extra={})=>call(B,d,{pilotClaim:true,...extra});
  await deny(()=>f.usageStatus(call(A)),"permission-denied");
+ await deny(()=>f.testOnlyUnwrappedPilotProbe(a()),"permission-denied");
  assert.equal((await f.usageStatus(a())).remaining,20);
  assert.equal((await f.usageStatus(b())).remaining,20);
  await deny(()=>f.usageStatus(a({}, {sessionId:"v72_invalid_session"})),"permission-denied");
