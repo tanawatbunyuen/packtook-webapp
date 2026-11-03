@@ -10,11 +10,22 @@ assert.equal(template.billing.configured,false);
 assert.equal(template.billing.type,"alerts-only");
 assert.deepEqual(template.billing.thresholdsPercent,[50,80,100]);
 assert.equal(template.logMetrics.length,3);
+// Only these fixed event LITERALS may occur in a filter. A word such as
+// "duplicate_email" describes an event TYPE, not a logged email address.
+const allowedEvents=new Map([
+ ["packtook_free_new_grants","new_free"],
+ ["packtook_free_duplicate_email_attempts","duplicate_email"],
+ ["packtook_free_signup_capacity_denials","capacity_exhausted"]
+]);
+assert.equal(template.logMetrics.length,allowedEvents.size);
 for(const metric of template.logMetrics){
- assert(metric.filter.includes('resource.type="cloud_run_revision"'));
- assert(metric.filter.includes('jsonPayload.message="PACKTOOK_PUBLIC_FREE_AUDIT"'));
- assert(!/uid|email(?!_attempts)|secret|hmacValue/i.test(metric.filter));
+ const event=allowedEvents.get(metric.name);
+ assert(event,"Unexpected monitoring metric name");
+ assert.equal(metric.filter,
+  'resource.type="cloud_run_revision" AND jsonPayload.message="PACKTOOK_PUBLIC_FREE_AUDIT" AND jsonPayload.event="'+event+'"',
+  "Only fixed event fields are allowed in monitoring filters");
 }
+assert.equal(new Set(template.logMetrics.map(m=>m.name)).size,allowedEvents.size);
 
 const ok=assessOperations(backend);
 assert.equal(ok.sourcePass,true,JSON.stringify(ok.checks));
