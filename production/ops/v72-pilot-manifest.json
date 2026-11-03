@@ -8,7 +8,7 @@
   "readyForPilot": false,
   "readyForPublic": false,
   "pilotPlan": {
-    "admissionMode": "SERVER_SIDE_UID_ALLOWLIST_REQUIRED_NOT_IMPLEMENTED",
+    "admissionMode": "SERVER_SIDE_UID_ALLOWLIST_SOURCE_ONLY_DEMO_PENDING",
     "maxInvitedUsers": 3,
     "maxWindowHours": 4,
     "invitedUsersStoredInGit": false,
@@ -30,7 +30,7 @@
     "v71PublicFreeDemo": "OPERATOR_REPORTED_PASS_2026_11_03",
     "v71SecretBindingSource": "OPERATOR_REPORTED_PASS_2026_11_03",
     "exactCustomerAppIdLocal": "OPERATOR_REPORTED_PASS_2026_11_03",
-    "pilotServerAllowlistImplemented": "NOT_IMPLEMENTED",
+    "pilotServerAllowlistImplemented": "SOURCE_IMPLEMENTED_DEMO_PENDING",
     "realSecretManagerProvisioningAndIAM": "NOT_VERIFIED",
     "authCreationAndVerificationEmailAbuseControls": "NOT_VERIFIED",
     "cloudLoggingMetricsAndNotifications": "NOT_CONFIGURED",
@@ -54,6 +54,7 @@
     "WRITTEN_OWNER_PILOT_GO_NO_GO_APPROVAL"
   ],
   "notes": [
+    "V7.2 server-side allowlist, 4h lease and revocation checks are source-only; no Pilot control document or IAM was created in Production.",
     "Source-only V7.1 and DEMO PASS are not pilot runtime launch authority.",
     "Never turn on the three Public flags just to invite a few testers.",
     "UID/email/App Check IDs, secret material, billing account IDs and signed approvals must not be added to Git.",
