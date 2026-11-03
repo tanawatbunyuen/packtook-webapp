@@ -16,8 +16,9 @@ const baseline={
   publicSignupEnabled:false,publicAccessEnabled:false}
 };
 const operations={sourcePass:true};
-const run=(m=manifest,b=baseline,o=operations,src=backend)=>assessV72({
- manifest:m,baseline:b,operations:o,backend:src});
+const browser={sourcePass:true};
+const run=(m=manifest,b=baseline,o=operations,src=backend,web=browser)=>assessV72({
+ manifest:m,baseline:b,operations:o,backend:src,browser:web});
 const change=(key,value)=>({...manifest,
  pilotPlan:{...manifest.pilotPlan,[key]:value}});
 const good=run();
@@ -30,6 +31,11 @@ assert.equal(good.proposedPilot.maxInvitedUsers,3);
 assert.equal(good.proposedPilot.maxWindowHours,4);
 assert.equal(good.proposedPilot.serverAllowlistImplemented,false);
 assert.equal(good.sourceBaseline.pilotBackendSourcePass,true);
+assert.equal(good.sourceBaseline.pilotBrowserSourcePass,true);
+assert.equal(good.sourceBaseline.realBrowserAppCheckVerified,false);
+assert.equal(good.proposedPilot.pilotBrowserDeployedAndAttested,false);
+assert.equal(run(manifest,baseline,operations,backend,{sourcePass:false}).preparationSafetyPass,false);
+assert(run(manifest,baseline,operations,backend,{sourcePass:false}).blockers.includes("PILOT_INVITE_BROWSER_SOURCE_CONTRACT_INCOMPLETE"));
 assert.equal(good.sourceBaseline.pilotProtectedCallablesChecked,12);
 assert.equal(good.proposedPilot.pilotBackendSourcePresent,true);
 assert(!good.blockers.includes("PILOT_SOURCE_SECURITY_CONTRACT_INCOMPLETE"));
