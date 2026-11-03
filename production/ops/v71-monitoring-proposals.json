@@ -1,0 +1,83 @@
+{
+  "schemaVersion": "v7.1-draft",
+  "project": "packtook-prod-01",
+  "status": "TEMPLATE_ONLY_NOT_APPLIED",
+  "functionsInScope": [
+    "publicSignupStatus",
+    "completeFreeSignup"
+  ],
+  "eventMessage": "PACKTOOK_PUBLIC_FREE_AUDIT",
+  "logMetrics": [
+    {
+      "name": "packtook_free_new_grants",
+      "description": "Successful initial Free grants; not Auth account creations",
+      "filter": "resource.type=\"cloud_run_revision\" AND jsonPayload.message=\"PACKTOOK_PUBLIC_FREE_AUDIT\" AND jsonPayload.event=\"new_free\""
+    },
+    {
+      "name": "packtook_free_duplicate_email_attempts",
+      "description": "Verified email already received Free in another Firebase UID; pseudonymous trigger only",
+      "filter": "resource.type=\"cloud_run_revision\" AND jsonPayload.message=\"PACKTOOK_PUBLIC_FREE_AUDIT\" AND jsonPayload.event=\"duplicate_email\""
+    },
+    {
+      "name": "packtook_free_signup_capacity_denials",
+      "description": "New Free attempts denied by global 15m/daily cap, not a billing limit",
+      "filter": "resource.type=\"cloud_run_revision\" AND jsonPayload.message=\"PACKTOOK_PUBLIC_FREE_AUDIT\" AND jsonPayload.event=\"capacity_exhausted\""
+    }
+  ],
+  "proposedAlertReview": [
+    {
+      "metric": "packtook_free_signup_capacity_denials",
+      "operator": "owner-review",
+      "draftRule": "More than 2 denial events in a 10-minute window",
+      "severity": "warning",
+      "ownerApprovalRequired": true
+    },
+    {
+      "metric": "packtook_free_duplicate_email_attempts",
+      "operator": "owner-review",
+      "draftRule": "More than 5 events in a 10-minute window",
+      "severity": "warning",
+      "ownerApprovalRequired": true
+    },
+    {
+      "metric": "packtook_free_new_grants",
+      "operator": "owner-review",
+      "draftRule": "Daily total approaches the owner-configured new grant cap",
+      "severity": "info",
+      "ownerApprovalRequired": true
+    }
+  ],
+  "extraRequiredMonitors": [
+    "Firebase Auth new-account creations and email verification request volume (these are outside Free grant caps)",
+    "App Check enforcement/attestation failures for Customer and signup callable",
+    "Cloud Functions v2 5xx/error rate and transaction/contention failures",
+    "Cloud Run Functions invocation volume and spend",
+    "Cloud Firestore read/write rates, contention and spend",
+    "Secret Manager secret access/audit and permissions"
+  ],
+  "billing": {
+    "type": "alerts-only",
+    "budgetAmount": "OWNER_TO_APPROVE",
+    "currency": "BILLING_ACCOUNT_CURRENCY",
+    "thresholdsPercent": [
+      50,
+      80,
+      100
+    ],
+    "recipients": "OWNER_TO_CONFIGURE",
+    "configured": false,
+    "note": "Alerts-only is NOT a spending hard cap. Cloud spend-cap budgets exist only for eligible services and require separate review."
+  },
+  "governance": {
+    "currentProductionPublicSignupEnabled": false,
+    "currentProductionPublicAccessEnabled": false,
+    "readyForPublic": false,
+    "explicitOwnerApprovalRequired": true
+  },
+  "sources": [
+    "https://firebase.google.com/docs/functions/config-env",
+    "https://firebase.google.com/docs/functions/writing-and-viewing-logs",
+    "https://docs.cloud.google.com/billing/docs/how-to/budgets",
+    "https://docs.cloud.google.com/billing/docs/how-to/budgets-spend-caps"
+  ]
+}
