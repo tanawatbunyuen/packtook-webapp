@@ -113,12 +113,17 @@ async function requirePilotLease(req,{claimRequired=false}={}){
   throw new HttpsError("permission-denied","An eligible verified invited account is required");
  return {sessionId:c.sessionId,expiresAt:c.expiresAt,live};
 }
+// A future unwrapped callable must NEVER gain Pilot access from its claim alone.
+const PILOT_VALIDATED_REQUESTS=new WeakSet();
 // Legacy Beta callables keep their existing App Check transport settings.
 // Every V7.2 pilot-token request receives a fresh server-side lease check
 // BEFORE any account/recording/credit operation; there is no stale-claim path.
 function guardedCall(callOptions,handler){
  return onCall(callOptions,async req=>{
-  if(isPilotToken(req))await requirePilotLease(req,{claimRequired:true});
+  if(isPilotToken(req)){
+   await requirePilotLease(req,{claimRequired:true});
+   PILOT_VALIDATED_REQUESTS.add(req);
+  }
   return handler(req);
  });
 }
@@ -160,7 +165,7 @@ function uid(req){
  if(process.env.PACKTOOK_PRODUCTION_PROJECT_ID!=="packtook-prod-01")throw new HttpsError("failed-precondition","Production project environment is not configured");
  if(!req.auth?.uid)throw new HttpsError("unauthenticated","Please sign in");
  if(req.auth.token.email_verified!==true)throw new HttpsError("permission-denied","Verify your email");
- if(req.auth.token.packtookProductionBeta!==true&&!isPublicMember(req)&&!isQaMember(req)&&!isPilotToken(req))throw new HttpsError("permission-denied","Account is not authorized for PACKTOOK");
+ if(req.auth.token.packtookProductionBeta!==true&&!isPublicMember(req)&&!isQaMember(req)&&!(isPilotToken(req)&&PILOT_VALIDATED_REQUESTS.has(req)))throw new HttpsError("permission-denied","Account is not authorized for PACKTOOK");
  return req.auth.uid;
 }
 function data(req){return req.data&&typeof req.data==="object"?req.data:{}}
