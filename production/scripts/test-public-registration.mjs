@@ -14,7 +14,7 @@ const context=(env)=>{
  const store=ref=>ref.collection==="accounts"?records:guards;
  const db={
   collection(name){
-   assert(["accounts","publicSignupGuards"].includes(name),"Unexpected collection "+name);
+   assert(["accounts","publicSignupGuards","pilotControls"].includes(name),"Unexpected collection "+name);
    return {doc(id){
     const ref={id,key:id,collection:name};
     return {...ref,
