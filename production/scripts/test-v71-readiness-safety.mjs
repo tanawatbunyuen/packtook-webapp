@@ -11,7 +11,7 @@ const backend=read("functions/index.js");
 const assessment=read("scripts/v71-public-readiness.mjs");
 const record=id=>({id,state:"pass"});
 const source={checks:["F01","F02","F03","F04","F05","F06","F07"].map(record),
- counts:{pass:7,blocked:5,manual:9}};
+ counts:{pass:7,blocked:5,manual:9},backend};
 const qa={pass:true,qaEnabled:false,publicFlagsOff:true};
 const appId="1:123456:web:abcde123";
 const web='export const firebaseConfig = {"projectId":"packtook-prod-01","authDomain":"packtook-prod-01.firebaseapp.com","appId":"'+appId+'"};';
@@ -36,6 +36,11 @@ assert.equal(good.readyForPublic,false);
 assert.equal(good.decision,"NO_GO_PUBLIC");
 assert.equal(good.local.publicFlagsOff,true);
 assert.equal(good.source.criticalPass,true);
+assert.equal(good.source.antiAbuseSourcePass,true);
+const strippedAbuse=evaluateV71({localQa:qa,source:{
+ ...source,backend:backend.replace("PACKTOOK_PUBLIC_FREE_EMAIL_HMAC_KEY_HEX","REMOVED_TEST_MARKER")
+},remote:http,appEvidence});
+assert(strippedAbuse.reasons.includes("ANTI_ABUSE_SOURCE_CONTROLS_MISSING"));
 assert.equal(good.remote.httpPass,true);
 assert(good.reasons.includes("OWNER_GO_NO_GO_SIGNOFF_REQUIRED"));
 assert(good.reasons.includes("LEGAL_PDPA_TERMS_PRIVACY_APPROVAL_REQUIRED"));
