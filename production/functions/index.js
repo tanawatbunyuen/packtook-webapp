@@ -332,8 +332,11 @@ exports.completeFreeSignup=onCall({...options,enforceAppCheck:true,secrets:[PUBL
   freeVideosPerMonth:20,freeDevices:1,refreshToken:true};
 });
 // V7.2: invite status reveals no UID list, session ID or owner data.
-exports.pilotInvitationStatus=onCall({...options,enforceAppCheck:true},async req=>{
+exports.pilotInvitationStatus=onCall({...options,enforceAppCheck:true,
+ secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET]},async req=>{
  const lease=await requirePilotLease(req);
+ if(!publicAbuseReady())
+  throw new HttpsError("failed-precondition","Pilot admission protections are not configured");
  return {enabled:true,verified:true,testOnly:true,policyVersion:PUBLIC_POLICY_VERSION,
   expiresAt:lease.expiresAt,freeVideosPerMonth:20,freeDevices:1};
 });
