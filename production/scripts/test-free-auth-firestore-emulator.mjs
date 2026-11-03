@@ -55,10 +55,16 @@ function handlers(flags){
   GCLOUD_PROJECT:"packtook-prod-01",GCP_PROJECT:"packtook-prod-01",
   PACKTOOK_PUBLIC_SIGNUP_ENABLED:flags.signup?"true":"false",
   PACKTOOK_PUBLIC_ACCESS_ENABLED:flags.access?"true":"false",
-  PACKTOOK_PUBLIC_POLICIES_APPROVED:flags.policy?"true":"false"
+  PACKTOOK_PUBLIC_POLICIES_APPROVED:flags.policy?"true":"false",
+  PACKTOOK_PUBLIC_CUSTOMER_APP_ID:"1:123456789:web:approvedDemoV67",
+  PACKTOOK_PUBLIC_FREE_NEW_DAY_CAP:"25",
+  PACKTOOK_PUBLIC_FREE_NEW_15M_CAP:"5",
+  PACKTOOK_PUBLIC_FREE_EMAIL_HMAC_KEY_HEX:"d".repeat(64)
  };
  const sandbox={exports:{},process:{env},require(module){
   if(module==="firebase-functions/v2/https")return api;
+  if(module==="firebase-functions/params")return {defineSecret:key=>({name:key,value:()=>env[key]})};
+  if(module==="firebase-functions/logger")return {info(){}};
   if(module==="firebase-admin")return fakeAdmin;
   if(module==="node:crypto")return crypto;
   throw Error("Unexpected module in Backend: "+module);
@@ -81,7 +87,7 @@ const op="qa-v67-op-"+crypto.randomUUID().replaceAll("-","");
 const barcode="PACKTOOK-QA-"+crypto.randomUUID().slice(0,18);
 const ref=db.collection("accounts").doc(uid);
 const data={acceptTerms:true,termsVersion:policy,privacyVersion:policy};
-const request=(payload={},app={appId:"emulated-attestation-NOT-verified"})=>({
+const request=(payload={},app={appId:"1:123456789:web:approvedDemoV67"})=>({
  data:payload,app,auth:{uid,token:{email_verified:true,packtookPublicCustomer:true}}
 });
 const rejected=async(fn,code)=>assert.rejects(fn,e=>e?.code===code);

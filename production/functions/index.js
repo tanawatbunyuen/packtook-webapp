@@ -1,5 +1,7 @@
 "use strict";
 const {onCall,HttpsError}=require("firebase-functions/v2/https");
+const {defineSecret}=require("firebase-functions/params");
+const logger=require("firebase-functions/logger");
 const admin=require("firebase-admin");
 const crypto=require("node:crypto");
 admin.initializeApp();
@@ -15,6 +17,56 @@ const PUBLIC_ACCESS_ENABLED=process.env.PACKTOOK_PUBLIC_ACCESS_ENABLED==="true";
 const PUBLIC_POLICIES_APPROVED=process.env.PACKTOOK_PUBLIC_POLICIES_APPROVED==="true";
 const PUBLIC_POLICY_VERSION="2026-11-v1";
 const PUBLIC_GATE=PUBLIC_SIGNUP_ENABLED&&PUBLIC_ACCESS_ENABLED&&PUBLIC_POLICIES_APPROVED;
+// V7.1 Public hardening: permit only App Check attestation from the exact
+// Production Customer Web App. Missing configuration fails CLOSED.
+const PUBLIC_CUSTOMER_APP_ID=(process.env.PACKTOOK_PUBLIC_CUSTOMER_APP_ID||"").trim();
+function publicCustomerAppReady(){
+ return /^1:[0-9]+:web:[A-Za-z0-9]+$/.test(PUBLIC_CUSTOMER_APP_ID);
+}
+
+// V7.1 anti-abuse: owner-configured admission gate for NEW Public Free
+// grants only. No ID/email is ever sent to logs or written to counters.
+// Caps are deliberately modest for the first pilot; require explicit review
+// to scale. 0/missing secret or caps fail CLOSED, independently of Public flags.
+const PUBLIC_FREE_DAY_CAP=Number(process.env.PACKTOOK_PUBLIC_FREE_NEW_DAY_CAP||0);
+const PUBLIC_FREE_15M_CAP=Number(process.env.PACKTOOK_PUBLIC_FREE_NEW_15M_CAP||0);
+// Secret value is read at request time, ONLY in functions bound with secrets:[].
+// Never place this value in dotenv, GitHub, client code or deployment logs.
+const PUBLIC_FREE_EMAIL_HMAC_SECRET=defineSecret("PACKTOOK_PUBLIC_FREE_EMAIL_HMAC_KEY_HEX");
+function publicFreeHmacKey(){
+ const value=PUBLIC_FREE_EMAIL_HMAC_SECRET.value();
+ return typeof value==="string"?value.trim():"";
+}
+function publicAbuseReady(){
+ return Number.isSafeInteger(PUBLIC_FREE_DAY_CAP)&&PUBLIC_FREE_DAY_CAP>=1&&
+  PUBLIC_FREE_DAY_CAP<=1000&&Number.isSafeInteger(PUBLIC_FREE_15M_CAP)&&
+  PUBLIC_FREE_15M_CAP>=1&&PUBLIC_FREE_15M_CAP<=100&&
+  PUBLIC_FREE_15M_CAP<=PUBLIC_FREE_DAY_CAP&&
+  /^[A-Fa-f0-9]{64}$/.test(publicFreeHmacKey());
+}
+function publicSignupReady(){
+ return productionProjectReady()&&PUBLIC_GATE&&publicCustomerAppReady()&&
+  publicAbuseReady();
+}
+function publicEmailKey(email){
+ const normalized=String(email||"").trim().toLowerCase();
+ if(!normalized||normalized.length>320||!normalized.includes("@"))
+  throw new HttpsError("permission-denied","Verified email required");
+ // HMAC, not a plain SHA256 of a guessable email. Rotating/removing the key
+ // requires a documented migration and review of old identifier indexes.
+ return crypto.createHmac("sha256",publicFreeHmacKey())
+  .update(normalized,"utf8").digest("hex");
+}
+// Fixed event names only — no email, UID, IP, App ID or secret in audit logs.
+function publicFreeAudit(event){
+ if(["new_free","duplicate_email","capacity_exhausted"].includes(event))
+  logger.info("PACKTOOK_PUBLIC_FREE_AUDIT",{event,policyVersion:PUBLIC_POLICY_VERSION});
+}
+function publicSignupBuckets(at){
+ return {day:new Date(at).toISOString().slice(0,10).replaceAll("-",""),
+  quarterHour:String(Math.floor(at/(15*60*1000)))};
+}
+
 // V7.0 controlled QA is a separate, time-limited, one-UID invite gate.
 // All public rollout flags MUST stay OFF. Default is disabled on every project.
 // Uses Production Firebase App Check AND a server-known Auth UID (never email only).
@@ -39,7 +91,11 @@ function qaInviteValid(req){
 function isQaMember(req){
  return qaInviteValid(req)&&req.auth?.token?.packtookControlledQa===true;
 }
-function isPublicMember(auth){return PUBLIC_ACCESS_ENABLED&&auth?.token?.packtookPublicCustomer===true}
+function isPublicMember(req){
+ return PUBLIC_ACCESS_ENABLED&&publicCustomerAppReady()&&
+  req.app?.appId===PUBLIC_CUSTOMER_APP_ID&&
+  req.auth?.token?.packtookPublicCustomer===true;
+}
 function productionProjectReady(){return process.env.PACKTOOK_PRODUCTION_PROJECT_ID==="packtook-prod-01" &&
  (!process.env.GCLOUD_PROJECT||process.env.GCLOUD_PROJECT==="packtook-prod-01") &&
  (!process.env.GCP_PROJECT||process.env.GCP_PROJECT==="packtook-prod-01")}
@@ -48,7 +104,7 @@ function uid(req){
  if(process.env.PACKTOOK_PRODUCTION_PROJECT_ID!=="packtook-prod-01")throw new HttpsError("failed-precondition","Production project environment is not configured");
  if(!req.auth?.uid)throw new HttpsError("unauthenticated","Please sign in");
  if(req.auth.token.email_verified!==true)throw new HttpsError("permission-denied","Verify your email");
- if(req.auth.token.packtookProductionBeta!==true&&!isPublicMember(req.auth)&&!isQaMember(req))throw new HttpsError("permission-denied","Account is not authorized for PACKTOOK");
+ if(req.auth.token.packtookProductionBeta!==true&&!isPublicMember(req)&&!isQaMember(req))throw new HttpsError("permission-denied","Account is not authorized for PACKTOOK");
  return req.auth.uid;
 }
 function data(req){return req.data&&typeof req.data==="object"?req.data:{}}
@@ -128,19 +184,20 @@ async function ensureAccount(id){
 // V6.5: self-registration stays completely disabled until THREE independent
 // server-side production rollout flags are enabled after legal/App Check QA.
 // This read-only status API does not grant entitlements or create Auth users.
-exports.publicSignupStatus=onCall(options,async()=>{
- return {enabled:productionProjectReady()&&PUBLIC_GATE,
-  accessEnabled:productionProjectReady()&&PUBLIC_ACCESS_ENABLED,
+exports.publicSignupStatus=onCall({...options,secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET]},async()=>{
+ return {enabled:publicSignupReady(),
+  accessEnabled:productionProjectReady()&&PUBLIC_ACCESS_ENABLED&&publicCustomerAppReady(),
   policyVersion:PUBLIC_POLICY_VERSION,freeVideosPerMonth:20,freeDevices:1};
 });
 // Only the verified Auth user can create their own once-only Free account.
 // The callable enforces Firebase App Check before this handler runs.
 // This function never grants extra credits, never changes paid accounts,
 // and never downgrades a preexisting account.
-exports.completeFreeSignup=onCall({...options,enforceAppCheck:true},async req=>{
- if(!productionProjectReady()||!PUBLIC_GATE)
+exports.completeFreeSignup=onCall({...options,enforceAppCheck:true,secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET]},async req=>{
+ if(!publicSignupReady())
   throw new HttpsError("failed-precondition","Public registration is not available");
- if(!req.app?.appId)throw new HttpsError("permission-denied","App verification is required");
+ if(req.app?.appId!==PUBLIC_CUSTOMER_APP_ID)
+  throw new HttpsError("permission-denied","Approved Customer App Check required");
  if(!req.auth?.uid)throw new HttpsError("unauthenticated","Please sign in");
  const d=data(req);
  if(d.acceptTerms!==true||d.termsVersion!==PUBLIC_POLICY_VERSION||
@@ -154,6 +211,7 @@ exports.completeFreeSignup=onCall({...options,enforceAppCheck:true},async req=>{
  if(live.customClaims?.packtookProductionBeta===true)
   throw new HttpsError("already-exists","This account already belongs to Production Beta");
  const ref=own(id);
+ const emailIndex=db.collection("publicSignupGuards").doc("email_v1_"+publicEmailKey(live.email));
  const result=await db.runTransaction(async tx=>{
   const snap=await tx.get(ref);
   if(!snap.exists&&live.customClaims?.packtookPublicCustomer===true)
@@ -165,8 +223,41 @@ exports.completeFreeSignup=onCall({...options,enforceAppCheck:true},async req=>{
     throw new HttpsError("already-exists","This account is already registered");
    return {created:false,plan:a.plan};
   }
+  // All transaction reads occur before any writes. These Firestore documents
+  // rate-limit successful NEW Free grants across many different Firebase UIDs;
+  // one high-contention bucket may intentionally reject traffic in a pilot.
+  const now=Date.now(),b=publicSignupBuckets(now);
+  // A future owner-approved Firestore TTL policy may purge old aggregate
+  // buckets (but NEVER the email grant lock without a privacy review).
+  const expiresAt=new Date(now+35*24*60*60*1000);
+  const guard=db.collection("publicSignupGuards");
+  const shortRef=guard.doc("window15_"+b.quarterHour);
+  const dayRef=guard.doc("day_"+b.day);
+  const [emailSnap,shortSnap,daySnap]=await Promise.all([
+   tx.get(emailIndex),tx.get(shortRef),tx.get(dayRef)]);
+  if(emailSnap.exists&&emailSnap.data().ownerUid!==id){
+   publicFreeAudit("duplicate_email");
+   throw new HttpsError("already-exists","Email already received Free eligibility");
+  }
+  if(emailSnap.exists)
+   throw new HttpsError("failed-precondition","Email grant record requires manual review");
+  const shortCount=shortSnap.exists?shortSnap.data().count:0;
+  const dayCount=daySnap.exists?daySnap.data().count:0;
+  if(!Number.isSafeInteger(shortCount)||shortCount<0||
+     !Number.isSafeInteger(dayCount)||dayCount<0)
+   throw new HttpsError("failed-precondition","Signup abuse counter requires review");
+  if(shortCount>=PUBLIC_FREE_15M_CAP||dayCount>=PUBLIC_FREE_DAY_CAP){
+   publicFreeAudit("capacity_exhausted");
+   throw new HttpsError("resource-exhausted","Free signup capacity reached; please try later");
+  }
+  tx.create(emailIndex,{ownerUid:id,createdAt:FieldValue.serverTimestamp(),
+   kind:"public_free_email_claim_v1"});
+  if(shortSnap.exists)tx.update(shortRef,{count:shortCount+1});
+  else tx.create(shortRef,{count:1,period:b.quarterHour,expiresAt,createdAt:FieldValue.serverTimestamp()});
+  if(daySnap.exists)tx.update(dayRef,{count:dayCount+1});
+  else tx.create(dayRef,{count:1,period:b.day,expiresAt,createdAt:FieldValue.serverTimestamp()});
   tx.create(ref,{ownerUid:id,registrationSource:"self_service_v65",
-   registeredEmail:live.email,plan:"Free",period:periodId(Date.now()),
+   registeredEmail:live.email,plan:"Free",period:periodId(now),
    used:0,reserved:0,devices:[],creditWalletV1:false,
    acceptedTermsVersion:PUBLIC_POLICY_VERSION,
    acceptedPrivacyVersion:PUBLIC_POLICY_VERSION,
@@ -180,6 +271,7 @@ exports.completeFreeSignup=onCall({...options,enforceAppCheck:true},async req=>{
  await admin.auth().setCustomUserClaims(id,{
   ...(fresh.customClaims||{}),packtookPublicCustomer:true
  });
+ if(result.created)publicFreeAudit("new_free");
  return {activated:true,created:result.created,plan:result.plan,
   freeVideosPerMonth:20,freeDevices:1,refreshToken:true};
 });
