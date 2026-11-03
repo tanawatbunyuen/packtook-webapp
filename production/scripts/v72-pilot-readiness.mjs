@@ -45,6 +45,7 @@ export function assessV72({manifest,baseline,operations,backend=""}){
    plan.requireVerifiedFirebaseAuthEmail===true&&
    plan.requireConsentEvidence===true&&
    plan.allowPublicAuthCreation===false&&
+   plan.preCreatedInvitedAuthUsersPreferred===true&&
    plan.genericSignupCTAVisible===false;
  if(!cohortSafe)add("UNSAFE_PILOT_COHORT_OR_DISCOVERY_CONFIGURATION");
  const proposedFlagsSafe=EXPECTED_FLAGS.every(k=>plan[k]===false);
