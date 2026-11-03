@@ -8,6 +8,7 @@ import {collectLocalSource,inspectSource} from "./public-launch-preflight.mjs";
 import {loadLocalQa,loadCustomerAppEvidence,evaluateV71} from "./v71-public-readiness.mjs";
 import {assessOperations} from "./v71-ops-readiness.mjs";
 import {probe} from "./probe-free-deployment.mjs";
+import {inspectPilotSource} from "./v72-pilot-source-check.mjs";
 
 const PROJECT="packtook-prod-01";
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
@@ -39,7 +40,7 @@ export function assessV72({manifest,baseline,operations,backend=""}){
    plan.maxInvitedUsers>=1&&plan.maxInvitedUsers<=5&&
    Number.isSafeInteger(plan.maxWindowHours)&&
    plan.maxWindowHours>=1&&plan.maxWindowHours<=4&&
-   plan.admissionMode==="SERVER_SIDE_UID_ALLOWLIST_REQUIRED_NOT_IMPLEMENTED"&&
+   plan.admissionMode==="SERVER_SIDE_UID_ALLOWLIST_SOURCE_ONLY_DEMO_PENDING"&&
    plan.invitedUsersStoredInGit===false&&
    plan.customerAppCheckRequired===true&&
    plan.requireVerifiedFirebaseAuthEmail===true&&
@@ -69,9 +70,9 @@ export function assessV72({manifest,baseline,operations,backend=""}){
  // This is intentionally a *negative architecture check*, NOT proof that an
  // authorization system works: a guarded public pilot cannot reuse either
  // V7.1 generic Public signup or the V7.0 single-UID QA gate.
- const separatePilotHandlerSeen=/exports\.(?:completePilotFreeSignup|completeControlledPilotSignup)\s*=\s*onCall/.test(backend);
+ const pilotSource=inspectPilotSource(backend);
  add("PILOT_SERVER_SIDE_COHORT_GUARD_NOT_RUNTIME_VERIFIED");
- if(!separatePilotHandlerSeen)add("PILOT_ISOLATED_ADMISSION_PATH_NOT_IMPLEMENTED");
+ if(!pilotSource.sourcePass)add("PILOT_SOURCE_SECURITY_CONTRACT_INCOMPLETE");
  // Manually editable evidence cannot authorize a pilot, even if someone
  // writes "PASS" here. Proof must come from independently reviewed artifacts.
  const evidence=manifest?.evidence||{};
@@ -85,11 +86,13 @@ export function assessV72({manifest,baseline,operations,backend=""}){
  add("REAL_BROWSER_APPCHECK_AND_INVITED_UNINVITED_TEST_NOT_PROVEN");
  add("PILOT_ROLLBACK_REVOCATION_AND_BETA_SMOKE_NOT_PROVEN");
  add("OWNER_GO_NO_GO_SIGNOFF_REQUIRED");
- const safetyPass=cohortSafe&&proposedFlagsSafe&&existingSourceSafe&&localClosed&&
+ const safetyPass=cohortSafe&&proposedFlagsSafe&&existingSourceSafe&&pilotSource.sourcePass&&localClosed&&
   remoteClosed&&blockers.every(b=>!b.startsWith("INVALID_OR_UNSAFE"));
  return {
   version:"7.2",project:PROJECT,scope:"READ-ONLY / CLOSED-PILOT PREPARATION / NO DEPLOY / OMISE LIVE OFF",
-  sourceBaseline:{criticalPass:baseline?.source?.criticalPass===true,
+  sourceBaseline:{pilotBackendSourcePass:pilotSource.sourcePass,
+   pilotProtectedCallablesChecked:pilotSource.assessedProtectedCallableCount,
+   criticalPass:baseline?.source?.criticalPass===true,
    antiAbuseSourcePass:baseline?.source?.antiAbuseSourcePass===true,
    secretBindingSourcePass:baseline?.source?.secretBindingSourcePass===true,
    opsSourcePass:operations?.sourcePass===true},
@@ -99,6 +102,7 @@ export function assessV72({manifest,baseline,operations,backend=""}){
   remote:{statusChecked:remoteChecked,publicClosed:remoteClosed},
   proposedPilot:{maxInvitedUsers:plan.maxInvitedUsers??null,
    maxWindowHours:plan.maxWindowHours??null,serverAllowlistImplemented:false,
+   pilotBackendSourcePresent:pilotSource.sourcePass,
    publicSignupWillRemainOff:plan.publicSignupEnabled===false,
    genericSignupCtaWillRemainHidden:plan.genericSignupCTAVisible===false},
   evidenceStatus:"OPERATOR_LOG_BASELINE_ONLY_NOT_PILOT_APPROVAL",
