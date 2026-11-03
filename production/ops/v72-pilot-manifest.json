@@ -44,7 +44,8 @@
     "realBrowserAppCheckClientToken": "NOT_TESTED_DIAGNOSTIC_SOURCE_READY",
     "realBrowserAppCheckCallableTransport": "NOT_TESTED",
     "productionSurfacesReadOnlyPreflight": "OPERATOR_PRODUCTION_HTTP_PASS_2026_11_03_PUBLIC_OFF",
-    "secretIAMMetadataAudit": "OPERATOR_CLOUD_METADATA_AUDIT_2026_11_03_NO_GO_SECRET_NOT_FOUND"
+    "secretIAMMetadataAudit": "OPERATOR_CLOUD_METADATA_AUDIT_2026_11_03_NO_GO_SECRET_NOT_FOUND",
+    "secretChangePlan": "SOURCE_ONLY_APPROVAL_GATED_NO_WRITES_CLOUD_SHELL_RUN_PENDING"
   },
   "acceptanceGates": [
     "V72_PILOT_BACKEND_SEPARATE_FROM_PUBLIC_FLAGS_AND_SINGLE_UID_QA",
@@ -60,6 +61,7 @@
     "WRITTEN_OWNER_PILOT_GO_NO_GO_APPROVAL"
   ],
   "notes": [
+    "V7.2 HMAC Secret remediation planner added: source+cloud metadata+Public status read-only, explicit owner SECRET_ONLY approval required before any Secret creation, separate IAM/Function deploy approvals; no Production writes performed.",
     "2026-11-03 owner operator audit: HMAC secret and enabled version NOT_FOUND; publicSignupStatus deployed but not secret-bound; completeFreeSignup and both V7.2 Pilot functions NOT_FOUND. No live Secret Manager/IAM/Function changes authorized or performed.",
     "V7.2 Secret Manager/IAM metadata read-only audit script and negative fixtures added; live Cloud metadata and runtime access evidence are pending.",
     "Browser getToken diagnostic never displays token or proves Functions enforceAppCheck acceptance; live-surface tool uses fixed URL GETs and pre-existing read-only status probe.",
