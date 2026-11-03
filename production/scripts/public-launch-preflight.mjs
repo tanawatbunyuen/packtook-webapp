@@ -16,8 +16,8 @@ export function inspectSource(source){
   customerHTML,marketingHTML,marketingCSS,bridge,signupConfig,
   customerJS,backend,terms,privacy,payments,rules,deployScript
  }=source;
- const sourceReady=/exports\.publicSignupStatus=onCall/.test(backend)&&
-  /exports\.completeFreeSignup=onCall\(\{\.\.\.options,enforceAppCheck:true\}/.test(backend)&&
+ const sourceReady=/exports\.publicSignupStatus=onCall\(\{\.\.\.options,secrets:\[PUBLIC_FREE_EMAIL_HMAC_SECRET\]\}/.test(backend)&&
+  /exports\.completeFreeSignup=onCall\(\{\.\.\.options,enforceAppCheck:true,secrets:\[PUBLIC_FREE_EMAIL_HMAC_SECRET\]\}/.test(backend)&&
   /live\.emailVerified!==true/.test(backend)&&/setCustomUserClaims/.test(backend)&&
   /tx\.create\(ref,\{ownerUid:id/.test(backend);
  add("F01",sourceReady?"pass":"blocked",
