@@ -38,7 +38,8 @@
     "pdpaTermsPrivacyAndPilotConsent": "NOT_APPROVED",
     "realBrowserAppCheckAndPilotE2E": "NOT_TESTED",
     "releaseSpecificRollbackAndRevocationDrill": "NOT_TESTED",
-    "ownerPilotSignoff": "NOT_GRANTED"
+    "ownerPilotSignoff": "NOT_GRANTED",
+    "inviteOnlyBrowserFlowSource": "SOURCE_IMPLEMENTED_OFFLINE_DOM_TEST_PASS_CLOUD_SHELL_PENDING"
   },
   "acceptanceGates": [
     "V72_PILOT_BACKEND_SEPARATE_FROM_PUBLIC_FLAGS_AND_SINGLE_UID_QA",
@@ -54,6 +55,7 @@
     "WRITTEN_OWNER_PILOT_GO_NO_GO_APPROVAL"
   ],
   "notes": [
+    "V7.2 invite-only browser UI and live Pilot status check are implemented in source only; no browser URL, Auth account, hosting, signed App Check or Cloud Functions was deployed.",
     "V7.2 server-side allowlist, 4h lease and revocation checks are source-only; no Pilot control document or IAM was created in Production.",
     "Source-only V7.1 and DEMO PASS are not pilot runtime launch authority.",
     "Never turn on the three Public flags just to invite a few testers.",
