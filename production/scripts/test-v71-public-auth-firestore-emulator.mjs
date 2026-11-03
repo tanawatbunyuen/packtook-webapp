@@ -53,6 +53,7 @@ function harness({signup=false,access=false,approved=false,dayCap="2",shortCap="
  const requireFake=id=>{
   if(id==="firebase-functions/v2/https")return {onCall,HttpsError};
   if(id==="firebase-functions/params")return {defineSecret:key=>({name:key,value:()=>env[key]})};
+  if(id==="firebase-functions/logger")return {info(){}};
   if(id==="firebase-admin")return fakeAdmin;
   if(id==="node:crypto")return crypto;
   throw Error("Unexpected source import: "+id);
