@@ -7,12 +7,13 @@ import path from "node:path";
 import {fileURLToPath} from "node:url";
 import {collectLocalSource,inspectSource} from "./public-launch-preflight.mjs";
 import {checkQaEnvironment} from "./check-v70-qa-preflight.mjs";
+import {appIdEvidence} from "./v71-public-app-id-preflight.mjs";
 import {probe,decide} from "./probe-free-deployment.mjs";
 
 const PROJECT="packtook-prod-01";
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
 const REQUIRED=["F01","F02","F03","F04","F05","F06","F07"];
-export function evaluateV71({localQa,source,remote=null}){
+export function evaluateV71({localQa,source,remote=null,appEvidence=null}){
  const byId=Object.fromEntries(source.checks.map(c=>[c.id,c]));
  const sourceGatesPass=REQUIRED.every(id=>byId[id]?.state==="pass");
  const localSafe=localQa?.pass===true&&localQa?.qaEnabled===false&&
@@ -24,6 +25,7 @@ export function evaluateV71({localQa,source,remote=null}){
  const reasons=[];
  if(!localSafe)reasons.push("LOCAL_QA_OR_PUBLIC_FLAGS_NOT_OFF");
  if(!sourceGatesPass)reasons.push("SOURCE_SECURITY_GATE_INCOMPLETE");
+ if(appEvidence?.exactMatch!==true)reasons.push("CUSTOMER_APP_ID_NOT_VERIFIED");
  if(remote&&!remoteSafe)reasons.push("REMOTE_PUBLIC_GATE_OR_SITE_UNEXPECTED");
  if(!remote)reasons.push("REMOTE_STATUS_NOT_CHECKED");
  for(const mandatory of [
@@ -41,6 +43,7 @@ export function evaluateV71({localQa,source,remote=null}){
   decision:"NO_GO_PUBLIC",
   local:{qaOff:localQa?.qaEnabled===false,
    publicFlagsOff:localQa?.publicFlagsOff===true},
+  customerAppId:{configured:appEvidence?.configured===true,exactMatch:appEvidence?.exactMatch===true},
   source:{criticalPass:sourceGatesPass,pass:source.counts.pass,
    blocked:source.counts.blocked,manual:source.counts.manual},
   remote:remote?{
@@ -51,6 +54,16 @@ export function evaluateV71({localQa,source,remote=null}){
   reasons,
   note:"Existing V7.0 one-UID real QA passed, but it is NOT open-public signup evidence. This run never deploys or enables signup."
  };
+}
+export function loadCustomerAppEvidence(){
+ const file=path.join(ROOT,"functions",".env."+PROJECT);
+ const config=path.join(ROOT,"app","firebase-v4-config.js");
+ if(!fs.existsSync(file)||!fs.existsSync(config))
+  throw Error("SAFETY BLOCK: exact Production config files missing");
+ const generic=path.join(ROOT,"functions",".env");
+ return appIdEvidence({specific:fs.readFileSync(file,"utf8"),
+  generic:fs.existsSync(generic)?fs.readFileSync(generic,"utf8"):"",
+  customerConfig:fs.readFileSync(config,"utf8")});
 }
 export function loadLocalQa(){
  const file=path.join(ROOT,"functions",".env."+PROJECT);
@@ -70,8 +83,9 @@ if(isMain){
    throw Error("Usage: node scripts/v71-public-readiness.mjs packtook-prod-01 [--remote]");
   const localQa=loadLocalQa();
   const source=inspectSource(collectLocalSource());
+  const appEvidence=loadCustomerAppEvidence();
   const remote=args.includes("--remote")?await probe():null;
-  const result=evaluateV71({localQa,source,remote});
+  const result=evaluateV71({localQa,source,remote,appEvidence});
   console.log(JSON.stringify(result,null,2));
   console.log("RESULT: V7.1 READ-ONLY PUBLIC LAUNCH NO-GO (as expected; no changes made)");
   if(result.reasons.some(x=>x.startsWith("LOCAL_")||x.startsWith("SOURCE_")||
