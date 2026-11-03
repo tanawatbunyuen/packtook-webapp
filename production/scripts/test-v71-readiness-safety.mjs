@@ -74,7 +74,10 @@ assert(demo.includes("PUBLIC FREE INTEGRATION PASS"));
 assert(demo.includes("return {fn:exports,opts}"));
 assert(!/process\.env\.PACKTOOK_PUBLIC_(?:SIGNUP|ACCESS|POLICIES)/.test(demo),
  "DEMO test must never change shell Public flags");
-assert(backend.includes("exports.completeFreeSignup=onCall({...options,enforceAppCheck:true}"));
+assert(backend.includes("exports.completeFreeSignup=onCall({...options,enforceAppCheck:true,secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET]}"),
+ "Public activation must preserve App Check AND exact bound HMAC SecretParam");
+assert(backend.includes("exports.publicSignupStatus=onCall({...options,secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET]}"),
+ "Public status must use its own bound SecretParam");
 assert(backend.includes("PUBLIC_SIGNUP_ENABLED&&PUBLIC_ACCESS_ENABLED&&PUBLIC_POLICIES_APPROVED"));
 assert(backend.includes("if(req.auth.token.packtookProductionBeta!==true&&!isPublicMember(req)&&!isQaMember(req)"));
 assert(backend.includes("req.app?.appId===PUBLIC_CUSTOMER_APP_ID"));
