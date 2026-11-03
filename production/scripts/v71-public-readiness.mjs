@@ -16,6 +16,17 @@ const REQUIRED=["F01","F02","F03","F04","F05","F06","F07"];
 export function evaluateV71({localQa,source,remote=null,appEvidence=null}){
  const byId=Object.fromEntries(source.checks.map(c=>[c.id,c]));
  const sourceGatesPass=REQUIRED.every(id=>byId[id]?.state==="pass");
+ const backend=typeof source?.backend==="string"?source.backend:"";
+ // Passed-source contracts never substitute for emulator or deployed browser QA.
+ const antiAbuseSourcePass=[
+  "PACKTOOK_PUBLIC_FREE_NEW_DAY_CAP",
+  "PACKTOOK_PUBLIC_FREE_NEW_15M_CAP",
+  "PACKTOOK_PUBLIC_FREE_EMAIL_HMAC_KEY_HEX",
+  "publicAbuseReady()",
+  'db.collection("publicSignupGuards")',
+  "tx.create(emailIndex",
+  "tx.create(ref,{ownerUid:id"
+ ].every(marker=>backend.includes(marker));
  const localSafe=localQa?.pass===true&&localQa?.qaEnabled===false&&
   localQa?.publicFlagsOff===true;
  const remoteDecision=remote?decide(remote,{expectV66:true}):null;
@@ -25,6 +36,7 @@ export function evaluateV71({localQa,source,remote=null,appEvidence=null}){
  const reasons=[];
  if(!localSafe)reasons.push("LOCAL_QA_OR_PUBLIC_FLAGS_NOT_OFF");
  if(!sourceGatesPass)reasons.push("SOURCE_SECURITY_GATE_INCOMPLETE");
+ if(!antiAbuseSourcePass)reasons.push("ANTI_ABUSE_SOURCE_CONTROLS_MISSING");
  if(appEvidence?.exactMatch!==true)reasons.push("CUSTOMER_APP_ID_NOT_VERIFIED");
  if(remote&&!remoteSafe)reasons.push("REMOTE_PUBLIC_GATE_OR_SITE_UNEXPECTED");
  if(!remote)reasons.push("REMOTE_STATUS_NOT_CHECKED");
@@ -44,7 +56,7 @@ export function evaluateV71({localQa,source,remote=null,appEvidence=null}){
   local:{qaOff:localQa?.qaEnabled===false,
    publicFlagsOff:localQa?.publicFlagsOff===true},
   customerAppId:{configured:appEvidence?.configured===true,exactMatch:appEvidence?.exactMatch===true},
-  source:{criticalPass:sourceGatesPass,pass:source.counts.pass,
+  source:{criticalPass:sourceGatesPass,antiAbuseSourcePass,pass:source.counts.pass,
    blocked:source.counts.blocked,manual:source.counts.manual},
   remote:remote?{
    statusChecked:true,httpPass:remoteDecision.pass,
