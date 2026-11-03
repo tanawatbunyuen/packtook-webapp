@@ -24,6 +24,8 @@ node --check scripts/v72-live-surfaces-preflight.mjs
 node scripts/test-v72-live-surfaces-preflight.mjs
 node --check scripts/v72-secret-iam-audit.mjs
 node scripts/test-v72-secret-iam-audit.mjs
+node --check scripts/v72-secret-changeplan.mjs
+node scripts/test-v72-secret-changeplan.mjs
 node scripts/test-v70-emulator-guard.mjs
 node scripts/test-v70-demo-env-isolation.mjs
 node scripts/test-v72-pilot-source-safety.mjs
