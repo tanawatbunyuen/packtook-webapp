@@ -15,6 +15,12 @@ const PUBLIC_ACCESS_ENABLED=process.env.PACKTOOK_PUBLIC_ACCESS_ENABLED==="true";
 const PUBLIC_POLICIES_APPROVED=process.env.PACKTOOK_PUBLIC_POLICIES_APPROVED==="true";
 const PUBLIC_POLICY_VERSION="2026-11-v1";
 const PUBLIC_GATE=PUBLIC_SIGNUP_ENABLED&&PUBLIC_ACCESS_ENABLED&&PUBLIC_POLICIES_APPROVED;
+// V7.1 Public hardening: permit only App Check attestation from the exact
+// Production Customer Web App. Missing configuration fails CLOSED.
+const PUBLIC_CUSTOMER_APP_ID=(process.env.PACKTOOK_PUBLIC_CUSTOMER_APP_ID||"").trim();
+function publicCustomerAppReady(){
+ return /^1:[0-9]+:web:[A-Za-z0-9]+$/.test(PUBLIC_CUSTOMER_APP_ID);
+}
 // V7.0 controlled QA is a separate, time-limited, one-UID invite gate.
 // All public rollout flags MUST stay OFF. Default is disabled on every project.
 // Uses Production Firebase App Check AND a server-known Auth UID (never email only).
@@ -39,7 +45,11 @@ function qaInviteValid(req){
 function isQaMember(req){
  return qaInviteValid(req)&&req.auth?.token?.packtookControlledQa===true;
 }
-function isPublicMember(auth){return PUBLIC_ACCESS_ENABLED&&auth?.token?.packtookPublicCustomer===true}
+function isPublicMember(req){
+ return PUBLIC_ACCESS_ENABLED&&publicCustomerAppReady()&&
+  req.app?.appId===PUBLIC_CUSTOMER_APP_ID&&
+  req.auth?.token?.packtookPublicCustomer===true;
+}
 function productionProjectReady(){return process.env.PACKTOOK_PRODUCTION_PROJECT_ID==="packtook-prod-01" &&
  (!process.env.GCLOUD_PROJECT||process.env.GCLOUD_PROJECT==="packtook-prod-01") &&
  (!process.env.GCP_PROJECT||process.env.GCP_PROJECT==="packtook-prod-01")}
@@ -48,7 +58,7 @@ function uid(req){
  if(process.env.PACKTOOK_PRODUCTION_PROJECT_ID!=="packtook-prod-01")throw new HttpsError("failed-precondition","Production project environment is not configured");
  if(!req.auth?.uid)throw new HttpsError("unauthenticated","Please sign in");
  if(req.auth.token.email_verified!==true)throw new HttpsError("permission-denied","Verify your email");
- if(req.auth.token.packtookProductionBeta!==true&&!isPublicMember(req.auth)&&!isQaMember(req))throw new HttpsError("permission-denied","Account is not authorized for PACKTOOK");
+ if(req.auth.token.packtookProductionBeta!==true&&!isPublicMember(req)&&!isQaMember(req))throw new HttpsError("permission-denied","Account is not authorized for PACKTOOK");
  return req.auth.uid;
 }
 function data(req){return req.data&&typeof req.data==="object"?req.data:{}}
@@ -129,8 +139,8 @@ async function ensureAccount(id){
 // server-side production rollout flags are enabled after legal/App Check QA.
 // This read-only status API does not grant entitlements or create Auth users.
 exports.publicSignupStatus=onCall(options,async()=>{
- return {enabled:productionProjectReady()&&PUBLIC_GATE,
-  accessEnabled:productionProjectReady()&&PUBLIC_ACCESS_ENABLED,
+ return {enabled:productionProjectReady()&&PUBLIC_GATE&&publicCustomerAppReady(),
+  accessEnabled:productionProjectReady()&&PUBLIC_ACCESS_ENABLED&&publicCustomerAppReady(),
   policyVersion:PUBLIC_POLICY_VERSION,freeVideosPerMonth:20,freeDevices:1};
 });
 // Only the verified Auth user can create their own once-only Free account.
@@ -138,9 +148,10 @@ exports.publicSignupStatus=onCall(options,async()=>{
 // This function never grants extra credits, never changes paid accounts,
 // and never downgrades a preexisting account.
 exports.completeFreeSignup=onCall({...options,enforceAppCheck:true},async req=>{
- if(!productionProjectReady()||!PUBLIC_GATE)
+ if(!productionProjectReady()||!PUBLIC_GATE||!publicCustomerAppReady())
   throw new HttpsError("failed-precondition","Public registration is not available");
- if(!req.app?.appId)throw new HttpsError("permission-denied","App verification is required");
+ if(req.app?.appId!==PUBLIC_CUSTOMER_APP_ID)
+  throw new HttpsError("permission-denied","Approved Customer App Check required");
  if(!req.auth?.uid)throw new HttpsError("unauthenticated","Please sign in");
  const d=data(req);
  if(d.acceptTerms!==true||d.termsVersion!==PUBLIC_POLICY_VERSION||
