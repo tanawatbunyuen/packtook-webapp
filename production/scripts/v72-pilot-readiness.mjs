@@ -115,7 +115,7 @@ export function assessV72({manifest,baseline,operations,backend="",browser=null}
   evidenceStatus:"OPERATOR_LOG_BASELINE_ONLY_NOT_PILOT_APPROVAL",
   preparationSafetyPass:safetyPass,
   readyForPilot:false,readyForPublic:false,decision:"NO_GO_CONTROLLED_PILOT",
-  blockers,note:"V7.1 DEMO pass does not verify V7.2 pilot admission, Cloud billing, real App Check, policies or a deploy. No changes made."
+  blockers,note:"V7.0–V7.2 DEMO passes cannot prove deployed Pilot admission, real browser + callable App Check, Secret/IAM, Cloud Billing, legal approval or rollout. No writes made."
  };
 }
 const isMain=process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url);
