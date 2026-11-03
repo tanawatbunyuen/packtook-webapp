@@ -219,3 +219,4 @@ await rejected(()=>badProject.fn.completeFreeSignup(input("bob")),"failed-precon
 console.log("PASS: wrong Firebase project fails closed");
 
 console.log("RESULT: PACKTOOK V6.5 public signup and idempotent Free onboarding mock tests PASS.");
+console.log("RESULT: PACKTOOK V7.1 ANTI-ABUSE MOCK PASS (offline, not Firebase emulator).");
