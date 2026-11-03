@@ -18,6 +18,13 @@ export function evaluateV71({localQa,source,remote=null,appEvidence=null}){
  const sourceGatesPass=REQUIRED.every(id=>byId[id]?.state==="pass");
  const backend=typeof source?.backend==="string"?source.backend:"";
  // Passed-source contracts never substitute for emulator or deployed browser QA.
+ const secretBindingSourcePass=[
+  'defineSecret("PACKTOOK_PUBLIC_FREE_EMAIL_HMAC_KEY_HEX")',
+  'PUBLIC_FREE_EMAIL_HMAC_SECRET.value()',
+  'exports.publicSignupStatus=onCall({...options,secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET]',
+  'exports.completeFreeSignup=onCall({...options,enforceAppCheck:true,secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET]'
+ ].every(marker=>backend.includes(marker))&&
+ !backend.includes("process.env.PACKTOOK_PUBLIC_FREE_EMAIL_HMAC_KEY_HEX");
  const antiAbuseSourcePass=[
   "PACKTOOK_PUBLIC_FREE_NEW_DAY_CAP",
   "PACKTOOK_PUBLIC_FREE_NEW_15M_CAP",
@@ -37,6 +44,7 @@ export function evaluateV71({localQa,source,remote=null,appEvidence=null}){
  if(!localSafe)reasons.push("LOCAL_QA_OR_PUBLIC_FLAGS_NOT_OFF");
  if(!sourceGatesPass)reasons.push("SOURCE_SECURITY_GATE_INCOMPLETE");
  if(!antiAbuseSourcePass)reasons.push("ANTI_ABUSE_SOURCE_CONTROLS_MISSING");
+ if(!secretBindingSourcePass)reasons.push("HMAC_SECRET_BINDING_SOURCE_MISSING");
  if(appEvidence?.exactMatch!==true)reasons.push("CUSTOMER_APP_ID_NOT_VERIFIED");
  if(remote&&!remoteSafe)reasons.push("REMOTE_PUBLIC_GATE_OR_SITE_UNEXPECTED");
  if(!remote)reasons.push("REMOTE_STATUS_NOT_CHECKED");
@@ -56,7 +64,7 @@ export function evaluateV71({localQa,source,remote=null,appEvidence=null}){
   local:{qaOff:localQa?.qaEnabled===false,
    publicFlagsOff:localQa?.publicFlagsOff===true},
   customerAppId:{configured:appEvidence?.configured===true,exactMatch:appEvidence?.exactMatch===true},
-  source:{criticalPass:sourceGatesPass,antiAbuseSourcePass,pass:source.counts.pass,
+  source:{criticalPass:sourceGatesPass,antiAbuseSourcePass,secretBindingSourcePass,pass:source.counts.pass,
    blocked:source.counts.blocked,manual:source.counts.manual},
   remote:remote?{
    statusChecked:true,httpPass:remoteDecision.pass,
