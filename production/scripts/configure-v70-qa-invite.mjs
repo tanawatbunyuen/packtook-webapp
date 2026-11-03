@@ -58,9 +58,9 @@ async function main(){
   throw Error("SAFETY BLOCK: Production functions env must be a normal file");
  const old=fs.readFileSync(envFile,"utf8");
  const generic=fs.existsSync(genericFile)?fs.readFileSync(genericFile,"utf8"):"";
- const appId=readVerifiedAppId(fs.readFileSync(cfgFile,"utf8"));
  let updated,checkMode;
  if(mode==="--prepare"){
+  const appId=readVerifiedAppId(fs.readFileSync(cfgFile,"utf8"));
   // Refuse replacing an existing active invite; first revoke via --disable.
   checkQaEnvironment({specific:old,generic,mode:"--qa-off",environment:process.env});
   if(!process.stdin.isTTY)throw Error("SAFETY BLOCK: enter the one test UID from an interactive Cloud Shell terminal");
