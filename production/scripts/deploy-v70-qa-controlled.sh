@@ -20,6 +20,7 @@ node scripts/verify.mjs "$PROJECT"
 node scripts/test-v70-qa-source-safety.mjs
 node scripts/test-v70-deploy-scope.mjs
 node scripts/test-v70-qa-preflight.mjs
+node scripts/test-v70-qa-invite-preparation.mjs
 node scripts/check-v70-qa-preflight.mjs "$PROJECT" "$MODE"
 node scripts/test-public-registration.mjs
 node scripts/test-onboarding-ui.mjs
