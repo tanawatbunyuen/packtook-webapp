@@ -64,6 +64,7 @@ function handlers(flags){
  const sandbox={exports:{},process:{env},require(module){
   if(module==="firebase-functions/v2/https")return api;
   if(module==="firebase-functions/params")return {defineSecret:key=>({name:key,value:()=>env[key]})};
+  if(module==="firebase-functions/logger")return {info(){}};
   if(module==="firebase-admin")return fakeAdmin;
   if(module==="node:crypto")return crypto;
   throw Error("Unexpected module in Backend: "+module);
