@@ -45,7 +45,7 @@ assert(backend.includes('if(!snap.exists&&live.customClaims?.packtookControlledQ
  "Deleted QA account cannot claim another Free grant");
 assert(backend.includes('if(req.auth.token.packtookProductionBeta!==true&&!isPublicMember(req)&&!isQaMember(req))'),
  "Existing Production Beta, Public and QA auth boundaries missing");
-assert(backend.includes("exports.completeFreeSignup=onCall({...options,enforceAppCheck:true}")&&
+assert(backend.includes("exports.completeFreeSignup=onCall({...options,enforceAppCheck:true,secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET]}")&&
  backend.includes("PUBLIC_GATE"),
  "Unapproved Public activation must remain protected");
 console.log("PASS: transport App Check, verified email, test-only consent, idempotency and Beta isolation");
