@@ -214,6 +214,9 @@ exports.completeFreeSignup=onCall({...options,enforceAppCheck:true},async req=>{
   // rate-limit successful NEW Free grants across many different Firebase UIDs;
   // one high-contention bucket may intentionally reject traffic in a pilot.
   const now=Date.now(),b=publicSignupBuckets(now);
+  // A future owner-approved Firestore TTL policy may purge old aggregate
+  // buckets (but NEVER the email grant lock without a privacy review).
+  const expiresAt=new Date(now+35*24*60*60*1000);
   const guard=db.collection("publicSignupGuards");
   const shortRef=guard.doc("window15_"+b.quarterHour);
   const dayRef=guard.doc("day_"+b.day);
@@ -233,9 +236,9 @@ exports.completeFreeSignup=onCall({...options,enforceAppCheck:true},async req=>{
   tx.create(emailIndex,{ownerUid:id,createdAt:FieldValue.serverTimestamp(),
    kind:"public_free_email_claim_v1"});
   if(shortSnap.exists)tx.update(shortRef,{count:shortCount+1});
-  else tx.create(shortRef,{count:1,period:b.quarterHour,createdAt:FieldValue.serverTimestamp()});
+  else tx.create(shortRef,{count:1,period:b.quarterHour,expiresAt,createdAt:FieldValue.serverTimestamp()});
   if(daySnap.exists)tx.update(dayRef,{count:dayCount+1});
-  else tx.create(dayRef,{count:1,period:b.day,createdAt:FieldValue.serverTimestamp()});
+  else tx.create(dayRef,{count:1,period:b.day,expiresAt,createdAt:FieldValue.serverTimestamp()});
   tx.create(ref,{ownerUid:id,registrationSource:"self_service_v65",
    registeredEmail:live.email,plan:"Free",period:periodId(now),
    used:0,reserved:0,devices:[],creditWalletV1:false,
