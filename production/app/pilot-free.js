@@ -3,7 +3,7 @@
 // Firestore UID allowlist/lease/claims remain authoritative at EVERY step.
 import {initializeApp} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
 import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut,sendEmailVerification,reload} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
-import {initializeAppCheck,ReCaptchaEnterpriseProvider} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app-check.js";
+import {initializeAppCheck,ReCaptchaEnterpriseProvider,getToken} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app-check.js";
 import {getFunctions,httpsCallable} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-functions.js";
 import {firebaseConfig} from "./firebase-v4-config.js";
 import {signupConfig} from "./signup-config.js";
@@ -19,7 +19,7 @@ if(typeof signupConfig.appCheckSiteKey!=="string"||
    signupConfig.policyVersion!=="2026-11-v1")
  throw Error("PILOT SAFETY BLOCK: App Check / policy configuration missing");
 const app=initializeApp(firebaseConfig);
-initializeAppCheck(app,{
+const appCheck=initializeAppCheck(app,{
  provider:new ReCaptchaEnterpriseProvider(signupConfig.appCheckSiteKey.trim()),
  isTokenAutoRefreshEnabled:true
 });
@@ -108,6 +108,29 @@ onAuthStateChanged(auth,async user=>{
  }
  if(!user){checking++;eligibility=null;resetUI();report("ออกจากระบบแล้ว — Public Signup ยังปิดอยู่");return}
  try{await checkStatus()}catch{eligibility=null;resetUI();report("ไม่สามารถตรวจคำเชิญได้")}
+});
+// Operator-triggered App Check *client* attestation diagnostic.
+// Never expose tokens, expiry, Firebase credentials or error payloads.
+// Success does NOT prove the separate Function-side enforceAppCheck check.
+el("checkAppCheck").addEventListener("click",async()=>{
+ if(busy)return;
+ busy=true;
+ el("checkAppCheck").disabled=true;
+ el("appCheckStatus").textContent="กำลังตรวจ reCAPTCHA Enterprise ใน Browser";
+ try{
+  const value=await getToken(appCheck,true);
+  if(typeof value?.token!=="string"||value.token.length<32)
+   throw Error("Missing App Check token");
+  el("appCheckStatus").textContent=
+   "CLIENT APP CHECK TOKEN RECEIVED — Browser ออก Token ได้ แต่ยังไม่ยืนยันว่าฝั่ง Cloud Function ยอมรับ";
+ }catch{
+  el("appCheckStatus").textContent=
+   "CLIENT APP CHECK FAILED — โปรดตรวจ reCAPTCHA Enterprise Site Key, โดเมนที่อนุญาต และ Firebase App Check Registration";
+ }finally{
+  busy=false;
+  el("checkAppCheck").disabled=false;
+  resetUI();
+ }
 });
 el("acceptTerms").addEventListener("change",resetUI);
 el("acceptPrivacy").addEventListener("change",resetUI);
