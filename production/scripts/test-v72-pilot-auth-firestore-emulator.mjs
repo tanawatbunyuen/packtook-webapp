@@ -108,8 +108,8 @@ try{
  await deny(()=>off.completePilotFreeSignup(call(A,consent)),"permission-denied");
  await deny(()=>harness({enabled:true,publicSignup:true}).fn.pilotInvitationStatus(call(A)),"permission-denied");
  await deny(()=>harness({enabled:true,qaEnabled:true}).fn.pilotInvitationStatus(call(A)),"permission-denied");
- await deny(()=>harness({enabled:true,hmacKey:""}).fn.pilotInvitationStatus(call(A)),"failed-precondition");
- await deny(()=>harness({enabled:true,dayCap:"0"}).fn.completePilotFreeSignup(call(A,consent)),"failed-precondition");
+ await deny(()=>harness({enabled:true,hmacKey:""}).fn.pilotInvitationStatus(call(B)),"failed-precondition");
+ await deny(()=>harness({enabled:true,dayCap:"0"}).fn.completePilotFreeSignup(call(B,consent)),"failed-precondition");
  assert.equal((await off.publicSignupStatus()).enabled,false);
  assert.equal((await f.publicSignupStatus()).enabled,false);
  console.log("PASS: Pilot and all Public/QA flags default OFF; no Firestore control grants nothing");
