@@ -27,6 +27,21 @@ const noAppCheck=inspectSource({
  backend:source.backend.replace("enforceAppCheck:true","enforceAppCheck:false")
 });
 assert.equal(item(noAppCheck,"F01")?.state,"blocked");
+// A missing bound SecretParam must never appear as a deploy-ready Public path.
+const noSecretSignup=inspectSource({
+ ...source,
+ backend:source.backend.replace(
+  'exports.completeFreeSignup=onCall({...options,enforceAppCheck:true,secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET]}',
+  'exports.completeFreeSignup=onCall({...options,enforceAppCheck:true}')
+});
+assert.equal(item(noSecretSignup,"F01")?.state,"blocked");
+const noSecretStatus=inspectSource({
+ ...source,
+ backend:source.backend.replace(
+  'exports.publicSignupStatus=onCall({...options,secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET]}',
+  'exports.publicSignupStatus=onCall(options')
+});
+assert.equal(item(noSecretStatus,"F01")?.state,"blocked");
 const noConsent=inspectSource({
  ...source,
  customerHTML:source.customerHTML.replace('id="publicSignupForm"','id="badSignupForm"')
