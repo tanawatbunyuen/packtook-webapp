@@ -22,6 +22,12 @@ mut("Firebase Auth register",{
 mut("no App Check",{
  js:base.js.replace("isTokenAutoRefreshEnabled:true","isTokenAutoRefreshEnabled:false")
 },"appCheckAndProjectScope");
+mut("App Check client diagnostic removed",{
+ js:base.js.replace("getToken(appCheck,true)","null")
+},"clientAppCheckDiagnosticSafe");
+mut("App Check diagnostic button removed",{
+ html:base.html.replace('id="checkAppCheck"','id="removedAppCheckButton"')
+},"invitationOnlyNoindex");
 mut("no server invite",{
  js:base.js.replaceAll('call("pilotInvitationStatus")','call("unsafeOpenPilot")')
 },"signedInServerInvitation");
