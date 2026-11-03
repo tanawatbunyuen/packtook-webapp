@@ -32,7 +32,10 @@ export function inspectPilotSource(backend){
    has("live.customClaims?.packtookControlledQa===true")&&
    has("live.customClaims?.packtookPublicCustomer===true")&&
    has("packtookPilotV72Session:lease.sessionId"),
-  onEveryProtectedRequest:has("if(isPilotToken(req))await requirePilotLease(req,{claimRequired:true});")&&
+  onEveryProtectedRequest:has("await requirePilotLease(req,{claimRequired:true});")&&
+   has("PILOT_VALIDATED_REQUESTS.add(req)")&&
+   has("PILOT_VALIDATED_REQUESTS.has(req)")&&
+   has("const PILOT_VALIDATED_REQUESTS=new WeakSet()")&&
    PILOT_PROTECTED_CALLABLES.every(n=>has("exports."+n+"=guardedCall(options,async req=>{"))&&
    !PILOT_PROTECTED_CALLABLES.some(n=>has("exports."+n+"=onCall(options,async req=>{")),
   safeGrantTransaction:has('registrationSource:"controlled_pilot_v72"')&&
