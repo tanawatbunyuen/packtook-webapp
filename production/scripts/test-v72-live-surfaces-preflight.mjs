@@ -9,7 +9,7 @@ const good={
  ownerConfig:{http:200,body:'export const firebaseConfig={"projectId":"packtook-prod-01","authDomain":"packtook-prod-01.firebaseapp.com","apiKey":"fixture_only"};'},
  pilotPage:{http:404,body:""},
  remote:{customer:{http:200},marketing:{http:200},
-  status:{reachable:true,publicSignupEnabled:false,publicAccessEnabled:false}}
+  status:{http:200,reachable:true,publicSignupEnabled:false,publicAccessEnabled:false}}
 };
 const check=change=>assessV72LiveSurfaces({...good,...change});
 const ok=check({});
@@ -30,8 +30,8 @@ fails({ownerHome:{http:404,body:""}},"Owner missing");
 fails({ownerJS:{http:200,body:"not the owner app"}},"Owner app JS stale");
 fails({ownerConfig:{http:200,body:'"projectId":"packtook-staging"'}},"Staging mismatch");
 fails({ownerConfig:{http:200,body:'"projectId":"packtook-prod-01","authDomain":"other.firebaseapp.com"'}},"Domain mismatch");
-fails({remote:{...good.remote,status:{reachable:true,publicSignupEnabled:true,publicAccessEnabled:false}}},"Unexpected signup ON");
-fails({remote:{...good.remote,status:{reachable:true,publicSignupEnabled:false,publicAccessEnabled:true}}},"Unexpected access ON");
+fails({remote:{...good.remote,status:{http:200,reachable:true,publicSignupEnabled:true,publicAccessEnabled:false}}},"Unexpected signup ON");
+fails({remote:{...good.remote,status:{http:200,reachable:true,publicSignupEnabled:false,publicAccessEnabled:true}}},"Unexpected access ON");
 fails({remote:{...good.remote,status:{reachable:false,publicSignupEnabled:false,publicAccessEnabled:false}}},"Remote status unreachable");
 const unreachable=check({remote:{...good.remote,
  status:{http:null,reachable:false,publicSignupEnabled:null,publicAccessEnabled:null,
