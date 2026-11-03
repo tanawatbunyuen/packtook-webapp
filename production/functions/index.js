@@ -1,6 +1,7 @@
 "use strict";
 const {onCall,HttpsError}=require("firebase-functions/v2/https");
 const {defineSecret}=require("firebase-functions/params");
+const logger=require("firebase-functions/logger");
 const admin=require("firebase-admin");
 const crypto=require("node:crypto");
 admin.initializeApp();
@@ -59,7 +60,7 @@ function publicEmailKey(email){
 // Fixed event names only — no email, UID, IP, App ID or secret in audit logs.
 function publicFreeAudit(event){
  if(["new_free","duplicate_email","capacity_exhausted"].includes(event))
-  console.log("PACKTOOK_PUBLIC_FREE_AUDIT",{event,policyVersion:PUBLIC_POLICY_VERSION});
+  logger.info("PACKTOOK_PUBLIC_FREE_AUDIT",{event,policyVersion:PUBLIC_POLICY_VERSION});
 }
 function publicSignupBuckets(at){
  return {day:new Date(at).toISOString().slice(0,10).replaceAll("-",""),
