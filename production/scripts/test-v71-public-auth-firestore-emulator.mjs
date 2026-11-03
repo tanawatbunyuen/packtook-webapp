@@ -52,6 +52,7 @@ function harness({signup=false,access=false,approved=false,dayCap="2",shortCap="
  };
  const requireFake=id=>{
   if(id==="firebase-functions/v2/https")return {onCall,HttpsError};
+  if(id==="firebase-functions/params")return {defineSecret:key=>({name:key,value:()=>env[key]})};
   if(id==="firebase-admin")return fakeAdmin;
   if(id==="node:crypto")return crypto;
   throw Error("Unexpected source import: "+id);
@@ -90,6 +91,7 @@ try{
  assert.equal((await oneFlag.fn.publicSignupStatus()).enabled,false);
  assert.equal((await twoFlags.fn.publicSignupStatus()).enabled,false);
  assert.equal(f.opts.get("completeFreeSignup")?.enforceAppCheck,true);
+ assert.equal(f.opts.get("completeFreeSignup")?.secrets?.[0]?.name,"PACKTOOK_PUBLIC_FREE_EMAIL_HMAC_KEY_HEX");
  assert.equal((await harness({signup:true,access:true,approved:true,dayCap:"0"}).fn.publicSignupStatus()).enabled,false);
  assert.equal((await harness({signup:true,access:true,approved:true,hmacKey:""}).fn.publicSignupStatus()).enabled,false);
  await auth.createUser({uid:userA,email:userA+"@example.test",emailVerified:false});
