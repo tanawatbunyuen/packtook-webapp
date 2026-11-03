@@ -118,6 +118,8 @@ try{
  await deny(()=>f.pilotInvitationStatus(call(D)),"permission-denied");
  await deny(()=>f.pilotInvitationStatus(call(B,{}, {noApp:true})),"permission-denied");
  await deny(()=>f.pilotInvitationStatus(call(B,{}, {appId:"1:999:web:wrong"})),"permission-denied");
+ assert.equal((await f.pilotInvitationStatus(call(A))).verified,false,
+  "Invited but not-yet-verified user receives only non-activating status");
  await deny(()=>f.completePilotFreeSignup(call(A,consent)),"permission-denied");
  await auth.updateUser(A,{emailVerified:true});
  await deny(()=>f.completePilotFreeSignup(call(A,{...consent,acceptTestTerms:false})),"invalid-argument");
@@ -148,6 +150,8 @@ try{
  const first=await f.completePilotFreeSignup(call(A,consent));
  assert.equal(first.created,true);assert.equal(first.freeVideosPerMonth,20);
  assert.equal((await own(A).get()).data().registrationSource,"controlled_pilot_v72");
+ assert.equal((await f.pilotInvitationStatus(call(A))).active,false,
+  "Auth claim is not yet propagated in old token");
  const authA=await auth.getUser(A);
  assert.equal(authA.customClaims.packtookPilotV72,true);
  assert.equal(authA.customClaims.packtookPilotV72Session,sid);
@@ -156,6 +160,8 @@ try{
  await f.completePilotFreeSignup(call(B,consent));
  await f.completePilotFreeSignup(call(C,consent));
  const a=(d={},extra={})=>call(A,d,{pilotClaim:true,...extra});
+ assert.equal((await f.pilotInvitationStatus(a())).active,true,
+  "Fresh invite status must recognize a minted scoped claim and account");
  const b=(d={},extra={})=>call(B,d,{pilotClaim:true,...extra});
  await deny(()=>f.usageStatus(call(A)),"permission-denied");
  await deny(()=>f.testOnlyUnwrappedPilotProbe(a()),"permission-denied");
