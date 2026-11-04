@@ -38,7 +38,6 @@ function cmd(bin,args,ms=20000){
 }
 function json(bin,args,ms){const r=cmd(bin,args,ms);if(!r.ok)return {ok:false,kind:r.kind};
  try{return {ok:true,value:JSON.parse(r.text)}}catch{return {ok:false,kind:"INVALID_JSON"}}}
-}
 const isMain=process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url);
 if(isMain){
  const id=process.argv[2]||"";
