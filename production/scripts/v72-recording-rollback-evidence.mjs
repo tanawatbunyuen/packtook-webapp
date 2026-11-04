@@ -37,11 +37,24 @@ for(const name of NAMES){
  // useful rollback evidence. We do not claim any gcloud rollback command is safe.
  let details=null;
  if(service&&revision){
-  const rev=run("gcloud",["run","revisions","describe",revision,"--service="+service,
+  // gcloud run revisions describe accepts a revision name and region, NOT --service.
+  // --service is valid only for revisions list. A wrong flag previously caused
+  // every lookup to fail silently and incorrectly report 0/12 revisions readable.
+  const rev=run("gcloud",["run","revisions","describe",revision,
     "--project="+PROJECT,"--region="+REGION,"--format=json"]);
-  const containers=rev?.spec?.containers||rev?.template?.spec?.containers||[];
+  const containers=rev?.spec?.containers||rev?.template?.spec?.containers||rev?.containers||[];
   const images=containers.map(x=>x.image).filter(Boolean);
-  details={imageReferences:images,revisionReadable:Boolean(rev),imageCaptured:images.length>0};
+  const digest=rev?.status?.imageDigest||rev?.imageDigest||null;
+  const actualRev=rev?.metadata?.name||rev?.name||null;
+  const belongsToService=rev?.metadata?.labels?.["serving.knative.dev/service"]===service||
+   rev?.labels?.["serving.knative.dev/service"]===service||
+   rev?.service===service||
+   rev?.service===("projects/"+PROJECT+"/locations/"+REGION+"/services/"+service);
+  details={imageReferences:images,revisionReadable:Boolean(rev),
+   matchingRevision:actualRev===revision,
+   matchingService:belongsToService,
+   imageDigestPresent:Boolean(digest),
+   imageCaptured:images.length>0&&actualRev===revision&&belongsToService};
  }
  data.push({name,state:f.state||null,service,revision,
   runtimeServiceAccount:svc.serviceAccountEmail||null,
