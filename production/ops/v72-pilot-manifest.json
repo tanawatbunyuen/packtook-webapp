@@ -50,7 +50,12 @@
     "secretOnlyProductionCreation": "OPERATOR_CLOUD_METADATA_2026_11_04_SECRET_EXISTS_ONE_ENABLED_VERSION",
     "secretOnlyOperatorScript": "OWNER_REPORTED_DRY_RUN_PASS_2026_11_04_POST_CREATE_AUDIT_RESOURCE_PASS",
     "iamLeastPrivilegeReview": "OPERATOR_2026_11_04_SCOPED_IAM_REVIEW_CANDIDATE_NOT_AUTHORIZED",
-    "iamSecretScopedChangeRequest": "PREPARED_SOURCE_ONLY_PRINCIPAL_NOT_YET_VERIFIED_NO_IAM_APPROVAL"
+    "iamSecretScopedChangeRequest": "PREPARED_SOURCE_ONLY_PRINCIPAL_NOT_YET_VERIFIED_NO_IAM_APPROVAL",
+    "currentRuntimeSharing": "OWNER_REPORTED_2026_11_04_PUBLIC_STATUS_RUNTIME_SHARED_BY_33_FUNCTIONS",
+    "dedicatedPublicPilotServiceAccountDesign": "SOURCE_PINNED_EXACT_FOUR_CALLABLES_NOT_CREATED_NO_DEPLOY",
+    "dedicatedPublicPilotServiceAccountPreflight": "SOURCE_AND_ISOLATED_OFFLINE_FIXTURES_PASS_CLOUD_SHELL_NOT_RUN",
+    "dedicatedPublicPilotServiceAccountCreated": "NOT_VERIFIED_NOT_AUTHORIZED",
+    "dedicatedPublicPilotServiceAccountIAM": "NO_GRANTS_AUTHORIZED"
   },
   "acceptanceGates": [
     "V72_PILOT_BACKEND_SEPARATE_FROM_PUBLIC_FLAGS_AND_SINGLE_UID_QA",
@@ -66,6 +71,7 @@
     "WRITTEN_OWNER_PILOT_GO_NO_GO_APPROVAL"
   ],
   "notes": [
+    "2026-11-04 Owner selects dedicated Public/Pilot runtime identity after confirming existing publicSignupStatus SA is shared by 33 Functions. V7.2 source pins proposed SA on only four Public/Pilot onCall endpoints; Beta shared options unchanged. Proposed SA is not created, IAM roles unapproved, no deployment. Do not treat source pin as runtime identity proof.",
     "2026-11-04 Owner reports IAM review phase SCOPED_IAM_REVIEW_CANDIDATE_NOT_AUTHORIZED; Secret exists but future Function revision Service Account not yet pinned/verified. Prepared private principal verification and single-secret IAM change request; no IAM grant, Service Account creation or Functions deploy authorized.",
     "2026-11-04 operator post-create audit: named HMAC Secret EXISTS with one ENABLED version; no payload read. Both IAM policies readable, deployed publicSignupStatus remains unbound and inspected runtime has no direct Secret/Project Accessor grant; other Public/Pilot functions NOT_FOUND. Least privilege proposal source-only, no IAM grant or deployment authorized.",
     "2026-11-04 owner replied proceed to an explicit SECRET_ONLY request; scoped approval applies only to creation of new named HMAC Secret and first ENABLED version; no IAM, deployment, flags or Pilot approval. Operator Cloud Shell execution pending; assistant cannot directly access GCP.",
