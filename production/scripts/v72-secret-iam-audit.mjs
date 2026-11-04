@@ -15,16 +15,22 @@ const FUNCTIONS=["publicSignupStatus","completeFreeSignup",
 const sourceFile=new URL("../functions/index.js",import.meta.url);
 
 export function verifySourceBinding(source){
+ const serviceAccount='packtook-public-pilot-v72@packtook-prod-01.iam.gserviceaccount.com';
  const uses={
   secretDefinition:source.includes('defineSecret("'+SECRET+'")'),
+  dedicatedServiceAccount:source.includes(
+   'const PUBLIC_PILOT_RUNTIME_SA="'+serviceAccount+'"'),
+  betaSharedOptionsUnchanged:source.includes(
+   'const options={region,maxInstances:5,timeoutSeconds:30};')&&
+   !/const options=\{[^}]*serviceAccount/.test(source),
   statusBinding:source.includes(
-   "exports.publicSignupStatus=onCall({...options,secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET]}"),
+   "exports.publicSignupStatus=onCall({...options,secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET],\n serviceAccount:PUBLIC_PILOT_RUNTIME_SA}"),
   publicSignupBinding:source.includes(
-   "exports.completeFreeSignup=onCall({...options,enforceAppCheck:true,secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET]}"),
+   "exports.completeFreeSignup=onCall({...options,enforceAppCheck:true,secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET],\n serviceAccount:PUBLIC_PILOT_RUNTIME_SA}"),
   pilotStatusBinding:source.includes(
-   "exports.pilotInvitationStatus=onCall({...options,enforceAppCheck:true,\n secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET]}"),
+   "exports.pilotInvitationStatus=onCall({...options,enforceAppCheck:true,\n secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET],serviceAccount:PUBLIC_PILOT_RUNTIME_SA}"),
   pilotSignupBinding:source.includes(
-   "exports.completePilotFreeSignup=onCall({...options,enforceAppCheck:true,\n secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET]}"),
+   "exports.completePilotFreeSignup=onCall({...options,enforceAppCheck:true,\n secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET],serviceAccount:PUBLIC_PILOT_RUNTIME_SA}"),
   runtimeAccessor:source.includes("PUBLIC_FREE_EMAIL_HMAC_SECRET.value()"),
   noEnvironmentBypass:!source.includes("process.env."+SECRET)
  };
