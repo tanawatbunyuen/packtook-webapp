@@ -49,7 +49,35 @@ export function assessDedicatedSaPreflight({source,audit,publicEvidence,serviceA
  // Google service account metadata can omit disabled when its default is false.
  const accountActive=accountExists===true?metadata?.disabled!==true:null;
  const p=publicEvidence?.diagnostic||{};
- const publicClosed=p.closed===true&&p.explicitEnabledSeen===false;
+ const explicitEnabledSeen=p.explicitEnabledSeen===true||
+  p.publicSignupEnabled===true||p.publicAccessEnabled===true||
+  p.initialSignupEnabled===true||p.initialAccessEnabled===true;
+ const publicClosed=p.closed===true&&!explicitEnabledSeen;
+ // Preserve sanitized, bounded first/final HTTP evidence. An observed
+ // enabled flag can NEVER be retried away or silently reclassified as OFF.
+ const publicDiagnostic={
+  closed:publicClosed,
+  marketingHttp:p.marketingHttp??null,
+  customerHttp:p.customerHttp??null,
+  statusHttp:p.statusHttp??null,
+  statusReachable:p.statusReachable===true,
+  publicSignupEnabled:p.publicSignupEnabled===false?false:
+   p.publicSignupEnabled===true?true:null,
+  publicAccessEnabled:p.publicAccessEnabled===false?false:
+   p.publicAccessEnabled===true?true:null,
+  initialSignupEnabled:p.initialSignupEnabled===false?false:
+   p.initialSignupEnabled===true?true:null,
+  initialAccessEnabled:p.initialAccessEnabled===false?false:
+   p.initialAccessEnabled===true?true:null,
+  explicitEnabledSeen,
+  attempts:p.attempts===2?2:1,
+  initialStatusHttp:p.initialStatusHttp??null,
+  initialReasons:Array.isArray(p.initialReasons)?p.initialReasons:[],
+  reasons:Array.isArray(p.reasons)?p.reasons:[],
+  marketingError:p.marketingError??null,
+  customerError:p.customerError??null,
+  statusError:p.statusError??null
+ };
  const secretReady=audit?.secret?.resourcePresent===true&&
   audit?.secret?.versionsInspected===true&&audit?.secret?.enabledVersionCount>0;
  const fn=audit?.cloudFunctions||[];
@@ -58,7 +86,11 @@ export function assessDedicatedSaPreflight({source,audit,publicEvidence,serviceA
  const statusPresent=fn.find(x=>x.name==="publicSignupStatus")?.deployed===true;
  const errors=[];
  if(!binding.pass)errors.push("FOUR_CALLABLE_DEDICATED_SOURCE_BINDING_INVALID");
- if(!publicClosed)errors.push("PUBLIC_FLAGS_OR_HOSTING_NOT_VERIFIED_OFF");
+ if(!publicClosed){
+  errors.push("PUBLIC_FLAGS_OR_HOSTING_NOT_VERIFIED_OFF");
+  if(explicitEnabledSeen)errors.push("PUBLIC_FLAG_OBSERVED_ENABLED");
+  errors.push(...publicDiagnostic.reasons);
+ }
  if(!secretReady)errors.push("SECRET_NOT_VERIFIED_ENABLED");
  if(!statusPresent)errors.push("CURRENT_PUBLIC_STATUS_NOT_VERIFIED");
  if(!noUnexpectedPilot)errors.push("PILOT_ALREADY_DEPLOYED");
@@ -73,7 +105,7 @@ export function assessDedicatedSaPreflight({source,audit,publicEvidence,serviceA
   phase,
   source:{fourFunctionBindingVerified:binding.pass,
    betaSharedOptionsUnchanged:binding.checks.betaSharedOptionsUnchanged===true},
-  publicProbe:{closed:publicClosed,reasons:Array.isArray(p.reasons)?p.reasons:[]},
+  publicProbe:publicDiagnostic,
   secret:{resourcePresent:audit?.secret?.resourcePresent===true,
    hasEnabledVersion:audit?.secret?.enabledVersionCount>0},
   account:{metadataReadable:cloud.ok===true,resourcePresent:accountExists,
