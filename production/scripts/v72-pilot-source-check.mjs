@@ -17,7 +17,7 @@ export function inspectPilotSource(backend){
   exactSignedAppCheck:has("req.app?.appId!==PUBLIC_CUSTOMER_APP_ID")&&
    has('exports.pilotInvitationStatus=onCall({...options,enforceAppCheck:true')&&
    has('exports.completePilotFreeSignup=onCall({...options,enforceAppCheck:true'),
-  secretBoundToPilot:has('secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET]},async req=>{'),
+  secretBoundToPilot:has('secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET],serviceAccount:PUBLIC_PILOT_RUNTIME_SA},async req=>{'),
   activeServerSideUidAllowlist:has('c.invitedUids.includes(req.auth.uid)')&&
    has('control.invitedUids.includes(id)')&&
    has('c.invitedUids')&&has("invites.length>V72_PILOT_MAX_USERS"),
