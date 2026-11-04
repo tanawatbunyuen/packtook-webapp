@@ -25,8 +25,19 @@ if(process.env.FIRESTORE_EMULATOR_HOST!=="127.0.0.1:18080")
  fail("Firestore emulator loopback port required");
 if(process.env.FIREBASE_AUTH_EMULATOR_HOST!=="127.0.0.1:19099")
  fail("Auth emulator loopback port required");
-if(process.env.FIREBASE_CONFIG||process.env.GOOGLE_APPLICATION_CREDENTIALS)
- fail("unexpected Production config or credentials in emulator shell");
+// Firebase Emulator CLI normally injects FIREBASE_CONFIG (JSON) into its child.
+// Accept only the exact DEMO project; reject real project IDs or config paths.
+if(process.env.GOOGLE_APPLICATION_CREDENTIALS)
+ fail("GOOGLE_APPLICATION_CREDENTIALS must not be present in emulator shell");
+if(process.env.FIREBASE_CONFIG){
+ let emulatorConfig;
+ try{emulatorConfig=JSON.parse(process.env.FIREBASE_CONFIG)}
+ catch{fail("FIREBASE_CONFIG must be JSON for the demo emulator, never a path")}
+ if(!emulatorConfig||Array.isArray(emulatorConfig)||
+    emulatorConfig.projectId!==PROJECT)
+  fail("FIREBASE_CONFIG projectId must be exact demo project");
+}
+
 const requireFunctions=createRequire(new URL("../functions/package.json",import.meta.url));
 let admin;
 try{admin=requireFunctions("firebase-admin")}catch{
