@@ -43,9 +43,9 @@
     "ownerDashboardProductionE2E": "OWNER_REPORTED_PASS_2026_11_03_NOT_INDEPENDENTLY_RETESTED",
     "realBrowserAppCheckClientToken": "NOT_TESTED_DIAGNOSTIC_SOURCE_READY",
     "realBrowserAppCheckCallableTransport": "NOT_TESTED",
-    "productionSurfacesReadOnlyPreflight": "OPERATOR_PRODUCTION_HTTP_PASS_2026_11_03_PUBLIC_OFF",
+    "productionSurfacesReadOnlyPreflight": "OPERATOR_2026_11_04_RETRY_2_CLOSED_PUBLIC_OFF_FINAL_HTTP200_INITIAL_ALL_UNREACHABLE",
     "secretIAMMetadataAudit": "OPERATOR_CLOUD_METADATA_AUDIT_2026_11_03_NO_GO_SECRET_NOT_FOUND",
-    "secretChangePlan": "OPERATOR_PUBLIC_GATE_UNVERIFIED_2026_11_04_RETRY_DIAGNOSTIC_SOURCE_PASS_CLOUD_SHELL_RERUN_PENDING"
+    "secretChangePlan": "OPERATOR_2026_11_04_CANDIDATE_PASS_APPROVAL_REQUIRED_NO_WRITES"
   },
   "acceptanceGates": [
     "V72_PILOT_BACKEND_SEPARATE_FROM_PUBLIC_FLAGS_AND_SINGLE_UID_QA",
@@ -61,6 +61,7 @@
     "WRITTEN_OWNER_PILOT_GO_NO_GO_APPROVAL"
   ],
   "notes": [
+    "2026-11-04 operator Cloud Shell: secret changeplan candidate true, SECRET_CREATE_APPROVAL_REQUIRED, errors empty; read-only retry 1 had unavailable Marketing/Customer/status (unknown flags), retry 2 HTTP200 and Public Signup/Access both OFF. Root cause of transient failure unverified. HMAC Secret remains NOT_FOUND, deployment and IAM unchanged; SECRET_ONLY approval NOT granted.",
     "2026-11-04 operator changeplan produced PUBLIC_FLAGS_OR_HOSTING_NOT_CONFIRMED_CLOSED; root cause unknown, NOT proof of Public ON. Added per-service sanitized read-only diagnostic and one fail-closed retry. No Production permission or write granted.",
     "V7.2 HMAC Secret remediation planner added: source+cloud metadata+Public status read-only, explicit owner SECRET_ONLY approval required before any Secret creation, separate IAM/Function deploy approvals; no Production writes performed.",
     "2026-11-03 owner operator audit: HMAC secret and enabled version NOT_FOUND; publicSignupStatus deployed but not secret-bound; completeFreeSignup and both V7.2 Pilot functions NOT_FOUND. No live Secret Manager/IAM/Function changes authorized or performed.",
