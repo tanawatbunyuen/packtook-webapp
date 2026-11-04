@@ -6,17 +6,53 @@ import path from "node:path";
 import {fileURLToPath} from "node:url";
 import {auditWithRunner} from "./v72-secret-iam-audit.mjs";
 import {probe} from "./probe-free-deployment.mjs";
+import {diagnosePublicServices,shouldRetryPublicProbe}
+ from "./v72-live-surfaces-preflight.mjs";
 
 const PROJECT="packtook-prod-01";
-export function planV72SecretRemediation(audit,remote){
+// A bounded read-only repeat is allowed for UNKNOWN/HTTP failures only.
+// Never retry over an explicitly observed ON flag; never substitute old logs.
+// Returned evidence includes only generic statuses/errors and zero credentials.
+export async function readPublicSafetyEvidence(request=probe){
+ const first=await request();
+ const initial=diagnosePublicServices(first);
+ const retry=shouldRetryPublicProbe(initial);
+ const latest=retry?await request():first;
+ const result=diagnosePublicServices(latest);
+ return {remote:latest,
+  diagnostic:{...result,attempts:retry?2:1,
+   initialStatusHttp:initial.statusHttp,
+   initialReasons:initial.reasons,
+   initialSignupEnabled:initial.publicSignupEnabled,
+   initialAccessEnabled:initial.publicAccessEnabled,
+   explicitEnabledSeen:initial.publicSignupEnabled===true||
+     initial.publicAccessEnabled===true||
+     result.publicSignupEnabled===true||result.publicAccessEnabled===true}
+ };
+}
+
+export function planV72SecretRemediation(audit,remote,remoteEvidence=null){
  const errors=[],steps=[];
  const secret=audit?.secret||{};
  const checks=audit?.checks||{};
- const publicClosed=remote?.status?.http===200&&
-  remote?.status?.reachable===true&&
-  remote?.status?.publicSignupEnabled===false&&
-  remote?.status?.publicAccessEnabled===false&&
-  remote?.marketing?.http===200&&remote?.customer?.http===200;
+ const publicProbe=diagnosePublicServices(remote);
+ const explicitEnabledSeen=remoteEvidence?.explicitEnabledSeen===true||
+  publicProbe.publicSignupEnabled===true||
+  publicProbe.publicAccessEnabled===true;
+ const publicClosed=publicProbe.closed&&!explicitEnabledSeen;
+ const diagnostic=remoteEvidence?
+  {...publicProbe,attempts:remoteEvidence.attempts,
+   initialStatusHttp:remoteEvidence.initialStatusHttp,
+   initialReasons:remoteEvidence.initialReasons,
+   initialSignupEnabled:remoteEvidence.initialSignupEnabled,
+   initialAccessEnabled:remoteEvidence.initialAccessEnabled,
+   explicitEnabledSeen}:
+  {...publicProbe,attempts:1,
+   initialStatusHttp:publicProbe.statusHttp,
+   initialReasons:publicProbe.reasons,
+   initialSignupEnabled:publicProbe.publicSignupEnabled,
+   initialAccessEnabled:publicProbe.publicAccessEnabled,
+   explicitEnabledSeen};
  const sourceSafe=audit?.source?.pass===true;
  const secretAbsent=secret.resourcePresent===false&&
   secret.inspectionError==="NOT_FOUND";
@@ -28,7 +64,12 @@ export function planV72SecretRemediation(audit,remote){
  const pilotStatus=functions.find(x=>x.name==="pilotInvitationStatus");
  const pilotSignup=functions.find(x=>x.name==="completePilotFreeSignup");
  const otherPilotLive=pilotStatus?.deployed===true||pilotSignup?.deployed===true;
- if(!publicClosed)errors.push("PUBLIC_FLAGS_OR_HOSTING_NOT_CONFIRMED_CLOSED");
+ if(!publicClosed){
+  errors.push("PUBLIC_FLAGS_OR_HOSTING_NOT_CONFIRMED_CLOSED");
+  errors.push(...publicProbe.reasons);
+  if(explicitEnabledSeen&&!publicProbe.reasons.some(x=>x.includes("_ENABLED_UNEXPECTEDLY")))
+   errors.push("PUBLIC_ENABLED_ON_INITIAL_OBSERVATION");
+ }
  if(!sourceSafe)errors.push("SOURCE_SECRET_BINDING_UNVERIFIED");
  if(otherPilotLive)errors.push("UNEXPECTED_PILOT_FUNCTION_DEPLOYMENT");
  if(liveStatus?.deployed!==true)errors.push("PUBLIC_STATUS_FUNCTION_NOT_VERIFIED");
@@ -73,6 +114,7 @@ export function planV72SecretRemediation(audit,remote){
  return {
   version:"7.2",project:PROJECT,mode:"READ_ONLY_NO_WRITES",
   phase,
+  publicProbe:diagnostic,
   observed:{
    sourceBindingVerified:sourceSafe,publicAndWebClosed:publicClosed,
    secretResource:secretAbsent?"NOT_FOUND":secretPresent?"FOUND":"UNKNOWN",
@@ -106,8 +148,8 @@ if(isMain){
   process.exitCode=2;
  }else{
   const source=fs.readFileSync(new URL("../functions/index.js",import.meta.url),"utf8");
-  const [remote,audit]=await Promise.all([probe(),Promise.resolve().then(()=>auditWithRunner(source))]);
-  const report=planV72SecretRemediation(audit,remote);
+  const [publicEvidence,audit]=await Promise.all([readPublicSafetyEvidence(),Promise.resolve().then(()=>auditWithRunner(source))]);
+  const report=planV72SecretRemediation(audit,publicEvidence.remote,publicEvidence.diagnostic);
   // The output is sanitized by the underlying audit; no principals or secrets are printed.
   console.log(JSON.stringify(report,null,2));
   console.log("RESULT: PACKTOOK V7.2 SECRET REMEDIATION PLAN — NO DEPLOY / NO CLOUD WRITES / NO-GO");
