@@ -26,6 +26,8 @@ node --check scripts/v72-secret-iam-audit.mjs
 node scripts/test-v72-secret-iam-audit.mjs
 node --check scripts/v72-iam-least-privilege-review.mjs
 node scripts/test-v72-iam-least-privilege-review.mjs
+node --check scripts/v72-dedicated-sa-preflight.mjs
+node scripts/test-v72-dedicated-sa-preflight.mjs
 node --check scripts/v72-secret-changeplan.mjs
 node scripts/test-v72-secret-changeplan.mjs
 node --check scripts/v72-secret-only-gate.mjs
