@@ -68,8 +68,10 @@ if(isMain){
   const gate=assessSaOnlyGate(plan);
   console.log(JSON.stringify({...gate,
    sourcePreflightPhase:plan.phase,
+   sourcePreflightErrors:plan.errors,
    secretReady:plan.secret.resourcePresent&&plan.secret.hasEnabledVersion,
    publicClosed:plan.publicProbe.closed,
+   publicProbe:plan.publicProbe,
    accountResourcePresent:plan.account.resourcePresent,
    accountInspectionError:plan.account.inspectionError},null,2));
   if(!gate.pass)process.exitCode=2;
