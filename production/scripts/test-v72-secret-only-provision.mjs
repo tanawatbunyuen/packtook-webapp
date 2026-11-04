@@ -17,7 +17,7 @@ assert.doesNotThrow(()=>
  "The real SECRET_ONLY script must parse under Bash");
 const broken=shell.replace(
  '== "feature/v7.2-controlled-public-pilot-readiness" ]]',
- '==\\n   "feature/v7.2-controlled-public-pilot-readiness" ]]'
+ '==\n   "feature/v7.2-controlled-public-pilot-readiness" ]]'
 );
 assert.notEqual(broken,shell,"Mutation fixture must change the conditional");
 assert.throws(()=>execFileSync("bash",["-n","-c",broken],
