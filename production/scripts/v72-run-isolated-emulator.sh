@@ -39,7 +39,9 @@ echo "Project $PROJECT, services: Auth 127.0.0.1:19099 + Firestore 127.0.0.1:180
 echo "No Production writes. Emulators create temporary LOCAL test records only."
 # Remove any accidental ADC reference. Demo project id + loopback emulator endpoints
 # are checked again inside the JS runner before any test writes.
-env -u GOOGLE_APPLICATION_CREDENTIALS firebase emulators:exec \
+env -u GOOGLE_APPLICATION_CREDENTIALS -u FIREBASE_CONFIG \
+ GCLOUD_PROJECT="$PROJECT" GOOGLE_CLOUD_PROJECT="$PROJECT" \
+ firebase emulators:exec \
  --project "$PROJECT" \
  --config scripts/v72-isolated-emulators.firebase.json \
  --only auth,firestore \
