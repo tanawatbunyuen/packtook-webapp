@@ -90,7 +90,7 @@ async function denied(label,config,call,expectedCode="permission-denied"){
  console.log("PASS: "+label);
 }
 async function run(){
- await denied("App Check missing",{},f=>f.pilotInvitationStatus(req({},undefined)),"unauthenticated");
+ await denied("App Check missing",{},f=>f.pilotInvitationStatus({auth:auth(),data:{}}),"unauthenticated");
  await denied("Pilot switch OFF",{pilotEnabled:false},f=>f.pilotInvitationStatus(req()));
  await denied("Public signup ON",{publicSignup:true},f=>f.pilotInvitationStatus(req()));
  await denied("Public access ON",{publicAccess:true},f=>f.pilotInvitationStatus(req()));
