@@ -37,7 +37,7 @@ export function assessV72IamReview({audit,source,remoteEvidence}){
   secretResourceExists:secret.resourcePresent===true,
   enabledVersionPresent:secret.enabledVersionCount>0,
   secretAndProjectPolicyReadable:iam.secretPolicyReadable===true&&iam.projectPolicyReadable===true,
-  noBroadIAMGrantDetected:noBroadGrant,
+  noPublicPrincipalSecretGrantDetected:noBroadGrant,
   statusRuntimeAccountKnown:statusDeployedWithIdentity,
   statusCurrentRevisionSecretBound:status.secretBound===true,
   publicSignupFunctionDeployed:publicSignup.deployed===true,
