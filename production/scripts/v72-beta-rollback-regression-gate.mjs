@@ -28,10 +28,15 @@ export function assess({functions,publicOff,branch,clean,project,ownerApproved=f
    blocking.push("REVISION_NOT_VERIFIED_"+f.name);
   if(f.identity!==(pilot?PILOT_SA:BETA_SA))
    blocking.push("RUNTIME_IDENTITY_CHANGED_"+f.name);
-  if(!f.trafficReadable||f.servingRevision!==f.revision||
-     f.servingPercent!==100||f.totalTrafficPercent!==100||
-     f.trafficTargetsCount!==1||f.latestRevisionRouting)
-   review.push("TRAFFIC_BASELINE_NOT_SINGLE_FIXED_REVISION_"+f.name);
+  const exactSingleServingRevision=f.trafficReadable&&
+   f.servingRevision===f.revision&&f.servingPercent===100&&
+   f.totalTrafficPercent===100&&f.trafficTargetsCount===1;
+  if(!exactSingleServingRevision)
+   review.push("TRAFFIC_BASELINE_MISMATCH_"+f.name);
+  else if(f.latestRevisionRouting)
+   // 100% Latest Revision is valid routing, but a new deploy may auto-migrate
+   // traffic. Record it as an unresolved rollback/owner review, NOT a fault.
+   review.push("LATEST_REVISION_AUTO_ROUTING_ROLLBACK_REVIEW_"+f.name);
   if(!f.codebaseLabelVerified)review.push("CODEBASE_LABEL_UNVERIFIED_"+f.name);
   if(!f.runtimeConfigComparable)review.push("RUNTIME_CONFIGURATION_NOT_COMPARABLE_"+f.name);
  }
