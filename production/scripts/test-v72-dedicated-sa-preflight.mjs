@@ -39,7 +39,10 @@ const audit={
   {name:"completePilotFreeSignup",deployed:null}
  ]
 };
-const closed={diagnostic:{closed:true,explicitEnabledSeen:false,reasons:[]}};
+const closed={diagnostic:{closed:true,explicitEnabledSeen:false,reasons:[],
+ marketingHttp:200,customerHttp:200,statusHttp:200,
+ statusReachable:true,publicSignupEnabled:false,publicAccessEnabled:false,
+ attempts:1,initialStatusHttp:200,initialReasons:[]}};
 const absent={ok:false,error:"NOT_FOUND",data:null};
 const run=(sa=absent,r=closed,a=audit,s=source)=>assessDedicatedSaPreflight({
  source:s,audit:a,publicEvidence:r,serviceAccount:sa});
@@ -85,6 +88,47 @@ for(const mutation of [
  assert.equal(r.accountCreationPerformed,false);
 }
 console.log("PASS: missing Secret/version, live Pilot, Public ON and missing binding block SA creation candidate");
+const doubleNetworkFailure={diagnostic:{...closed.diagnostic,
+ closed:false,attempts:2,
+ marketingHttp:null,customerHttp:null,statusHttp:null,
+ statusReachable:false,publicSignupEnabled:null,publicAccessEnabled:null,
+ initialStatusHttp:null,
+ initialReasons:["MARKETING_HOSTING_HTTP_NOT_200",
+  "CUSTOMER_HOSTING_HTTP_NOT_200","PUBLIC_STATUS_CALLABLE_UNVERIFIED",
+  "PUBLIC_SIGNUP_FLAG_UNKNOWN","PUBLIC_ACCESS_FLAG_UNKNOWN"],
+ reasons:["MARKETING_HOSTING_HTTP_NOT_200",
+  "CUSTOMER_HOSTING_HTTP_NOT_200","PUBLIC_STATUS_CALLABLE_UNVERIFIED",
+  "PUBLIC_SIGNUP_FLAG_UNKNOWN","PUBLIC_ACCESS_FLAG_UNKNOWN"],
+ marketingError:"TimeoutError",customerError:"TimeoutError",
+ statusError:"TimeoutError"}};
+const unsafeHttp=run(absent,doubleNetworkFailure);
+assert.equal(unsafeHttp.phase,"DEDICATED_SA_REVIEW_BLOCKED");
+assert.equal(unsafeHttp.candidateForSeparateSAOnlyApproval,false);
+assert.equal(unsafeHttp.publicProbe.attempts,2);
+assert.equal(unsafeHttp.publicProbe.statusHttp,null);
+assert.equal(unsafeHttp.publicProbe.marketingHttp,null);
+assert.equal(unsafeHttp.publicProbe.marketingError,"TimeoutError");
+assert(unsafeHttp.errors.includes("PUBLIC_STATUS_CALLABLE_UNVERIFIED"));
+assert(unsafeHttp.errors.includes("PUBLIC_FLAGS_OR_HOSTING_NOT_VERIFIED_OFF"));
+const transientRecovery=run(absent,{diagnostic:{...closed.diagnostic,
+ attempts:2,initialStatusHttp:null,
+ initialReasons:["PUBLIC_STATUS_CALLABLE_UNVERIFIED"]}});
+assert.equal(transientRecovery.phase,"DEDICATED_SA_CREATION_APPROVAL_REQUIRED");
+assert.equal(transientRecovery.publicProbe.attempts,2);
+assert.equal(transientRecovery.publicProbe.initialStatusHttp,null);
+const explicitPreviouslyOn=run(absent,{diagnostic:{...closed.diagnostic,
+ initialSignupEnabled:true,explicitEnabledSeen:false}});
+assert.equal(explicitPreviouslyOn.candidateForSeparateSAOnlyApproval,false,
+ "A previous explicit Public ON must never be hidden by an apparently closed final probe");
+assert.equal(explicitPreviouslyOn.publicProbe.explicitEnabledSeen,true);
+const explicitCurrentlyOn=run(absent,{diagnostic:{...closed.diagnostic,
+ publicAccessEnabled:true,explicitEnabledSeen:false}});
+assert.equal(explicitCurrentlyOn.candidateForSeparateSAOnlyApproval,false);
+assert.equal(explicitCurrentlyOn.publicProbe.explicitEnabledSeen,true);
+const textReport=JSON.stringify(unsafeHttp);
+assert(!/iam\\.gserviceaccount\\.com|serviceAccount:/.test(textReport));
+console.log("PASS: network timeout diagnostics show individual services; two unknown probes remain BLOCKED");
+console.log("PASS: one transient read-only retry may recover; any observed ON flag blocks despite contradictory closed status");
 
 const commands=[];
 const fn=(_cmd,args)=>{commands.push(args);return JSON.stringify(actualMeta.data)};
