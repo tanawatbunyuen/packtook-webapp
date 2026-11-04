@@ -16,11 +16,15 @@ export function evaluate({projectId,projectLookup,billingAccounts,budgetAudits,c
    blockers.push("SOURCE_BRANCH_OR_WORKTREE_UNVERIFIED");
  if(!cli)blockers.push("GCLOUD_UNAVAILABLE");
  if(projectLookup==="EXISTS")blockers.push("PROJECT_ID_ALREADY_EXISTS");
+ if(projectLookup!=="NOT_FOUND_UNPROVEN"&&projectLookup!=="EXISTS")
+  blockers.push("PROJECT_LOOKUP_PERMISSION_OR_STATUS_UNVERIFIED");
  if(projectLookup!=="EXISTS")pending.push("PROJECT_ID_AVAILABILITY_NOT_PROVEN");
  const open=(billingAccounts||[]).filter(x=>x.open===true);
  if(!open.length)blockers.push("NO_READABLE_OPEN_BILLING_ACCOUNT");
- if(!budgetAudits?.length||budgetAudits.some(x=>x.status!=="READABLE"))
+ if(!budgetAudits?.length||budgetAudits.some(x=>x.status!=="READABLE")){
+  blockers.push("BILLING_BUDGET_INVENTORY_NOT_READABLE");
   pending.push("BILLING_BUDGET_PERMISSIONS_OR_INVENTORY_UNVERIFIED");
+ }
  pending.push("PROJECT_CREATOR_PERMISSION_ON_PARENT_NOT_VERIFIED");
  pending.push("BILLING_PROJECT_LINK_PERMISSION_NOT_VERIFIED");
  pending.push("SANDBOX_ONLY_BUDGET_ALERT_CONFIGURATION_NOT_CREATED");
@@ -78,6 +82,7 @@ if(isMain){
    mode:"V72_SANDBOX_PRECREATE_READ_ONLY",proposedSandboxId:id,
    productionProjectTouched:false,productionProject:PROD,
    projectLookup,billingAccountListReadable:accounts.ok,
+   projectIdAvailabilityProven:false,
    billingAccounts:available,budgetAudits:audits,
    parentOrganizationOrFolderNotSelected:true,
    // A missing project cannot have its own IAM/API/budget audit yet.
