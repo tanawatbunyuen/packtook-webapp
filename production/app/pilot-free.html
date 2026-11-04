@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta name="referrer" content="no-referrer">
+<title>PACKTOOK — V7.2 Invite-only Pilot</title>
+<link rel="stylesheet" href="./pilot-free.css?v=7.2.0">
+</head>
+<body>
+<main class="pilot-shell">
+<header class="pilot-header">
+ <div class="brand"><span class="mark">P</span><span><strong>PACKTOOK</strong><small>CONTROLLED PILOT · V7.2</small></span></div>
+ <span class="limited">INVITATION ONLY</span>
+</header>
+<section class="hero" aria-labelledby="pilotTitle">
+ <p class="eyebrow">ทดสอบระบบแพ็กสินค้าแบบจำกัดสิทธิ์</p>
+ <h1 id="pilotTitle">เริ่มใช้งาน PACKTOOK Pilot</h1>
+ <p class="intro">สำหรับผู้ทดสอบที่ได้รับเชิญและมีบัญชี Firebase Authentication อยู่แล้วเท่านั้น ไม่ใช่หน้าสมัครสมาชิกทั่วไปและไม่มีการชำระเงิน</p>
+ <div class="features" aria-label="เงื่อนไขบัญชีทดลอง"><span>สูงสุด 3 บัญชี</span><span>สิทธิ์ไม่เกิน 4 ชั่วโมง</span><span>Free 20 วิดีโอ</span><span>1 อุปกรณ์</span></div>
+</section>
+<section class="panel" aria-label="Browser App Check readiness">
+ <div class="step"><span class="step-num">✓</span><h2>ตรวจสอบ App Check บน Browser</h2></div>
+ <p class="muted">ตรวจว่า Browser ได้รับ App Check Token จาก reCAPTCHA Enterprise หรือไม่ โดยไม่เปิดเผยหรือบันทึก Token และไม่สร้างบัญชีหรือให้เครดิต</p>
+ <button id="checkAppCheck" type="button" class="secondary">ตรวจสอบ App Check ฝั่ง Browser</button>
+ <p class="feedback" id="appCheckStatus" role="status" aria-live="polite">ยังไม่ได้ตรวจ Token · ผลฝั่ง Browser ไม่ใช่การยืนยันจาก Backend</p>
+</section>
+<section class="panel" aria-label="เข้าสู่ Pilot">
+ <div class="step"><span class="step-num">01</span><h2>เข้าสู่ระบบด้วยบัญชีที่ได้รับเชิญ</h2></div>
+ <form id="loginForm" autocomplete="on">
+  <label for="email">อีเมลที่ได้รับเชิญ</label>
+  <input id="email" type="email" required autocomplete="username" inputmode="email" spellcheck="false" placeholder="อีเมลของบัญชีทดสอบ">
+  <label for="password">รหัสผ่าน</label>
+  <input id="password" type="password" required autocomplete="current-password" placeholder="รหัสผ่านของบัญชีเดิม">
+  <button id="signIn" type="submit" class="primary">เข้าสู่ระบบผู้ทดสอบ</button>
+ </form>
+ <div id="memberPanel" hidden>
+  <p class="hint" id="identity">กำลังตรวจคำเชิญกับ Backend</p>
+  <div class="lease"><span>สถานะคำเชิญ</span><strong id="inviteState">กำลังตรวจสอบ</strong><small id="expiry" aria-live="polite"></small></div>
+  <div class="step"><span class="step-num">02</span><h2>ยืนยันอีเมล</h2></div>
+  <p class="muted">กรณีอีเมลยังไม่ยืนยัน ให้ตรวจกล่องข้อความก่อนเปิดใช้เครดิต ผู้ที่ไม่ได้รับเชิญจะไม่สามารถส่งอีเมลผ่านหน้านี้ได้</p>
+  <div class="actions">
+   <button id="sendVerify" type="button" class="secondary" disabled>ส่งลิงก์ยืนยันอีเมล</button>
+   <button id="refresh" type="button" class="secondary" disabled>ตรวจสอบอีกครั้ง</button>
+  </div>
+  <div class="step"><span class="step-num">03</span><h2>ยอมรับเงื่อนไขการทดสอบ</h2></div>
+  <fieldset id="consentBox" disabled>
+   <legend>สำหรับบัญชี Pilot เท่านั้น</legend>
+   <label class="consent"><input id="acceptTerms" type="checkbox"><span>ฉันเข้าใจว่านี่เป็นการทดสอบแบบจำกัดสิทธิ์ อาจมีการสิ้นสุดหรือเพิกถอนการใช้งาน และยอมรับ <a href="./policy-terms.html" target="_blank" rel="noopener noreferrer">เงื่อนไขการใช้งาน</a> (รอการอนุมัติสำหรับ Pilot จริง)</span></label>
+   <label class="consent"><input id="acceptPrivacy" type="checkbox"><span>ฉันได้อ่านและยอมรับ <a href="./policy-privacy.html" target="_blank" rel="noopener noreferrer">นโยบายความเป็นส่วนตัว</a> และการใช้ข้อมูลเฉพาะการทดสอบตามรุ่นที่ผู้ดูแลอนุมัติ</span></label>
+  </fieldset>
+  <button id="activate" type="button" class="primary" disabled>เปิดสิทธิ์ Free Pilot — 20 วิดีโอ</button>
+  <button id="enterPacking" type="button" class="primary" hidden disabled>เข้าสู่หน้า PACKING</button>
+  <div class="account-controls"><button id="logout" type="button" class="text-button">ออกจากบัญชี</button></div>
+ </div>
+ <p class="feedback" id="status" role="status" aria-live="polite">กำลังตรวจความพร้อมของ Pilot — ระบบสมัครทั่วไปยังปิดอยู่</p>
+</section>
+<footer>
+ <p>การซ่อนหน้านี้ไม่ใช่ระบบตรวจสิทธิ์ การอนุญาตขึ้นอยู่กับ Server-side UID Allowlist, App Check, อีเมลที่ยืนยันแล้ว และ Pilot Lease ที่ยังไม่หมดอายุ</p>
+ <p>หมายเหตุ: หน้า Pilot จะยังไม่สามารถใช้งานได้จนกว่าผู้ดูแลจะผ่านขั้นอนุมัติและเปิดระบบควบคุม Pilot โดยเฉพาะ</p>
+</footer>
+</main>
+<script type="module" src="./pilot-free.js?v=7.2.0"></script>
+</body>
+</html>

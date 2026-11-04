@@ -12,6 +12,10 @@ const pricesTHB={Free:0,Starter:199,Basic:299,Growth:599,Business:1290,Pro:1990}
 const deviceLimits={Free:1,Starter:1,Basic:1,Growth:3,Business:5,Pro:10};
 const region="asia-southeast1";
 const options={region,maxInstances:5,timeoutSeconds:30}; // Existing Beta functions retain their current App Check policy.
+// V7.2 DESIGN ONLY: proposed dedicated runtime identity for the four Public/Pilot
+// callables; the account is NOT created by source changes, IAM/deploy NOT approved.
+// Never alter shared `options`: existing Beta functions retain their runtime.
+const PUBLIC_PILOT_RUNTIME_SA="packtook-public-pilot-v72@packtook-prod-01.iam.gserviceaccount.com";
 const PUBLIC_SIGNUP_ENABLED=process.env.PACKTOOK_PUBLIC_SIGNUP_ENABLED==="true";
 const PUBLIC_ACCESS_ENABLED=process.env.PACKTOOK_PUBLIC_ACCESS_ENABLED==="true";
 const PUBLIC_POLICIES_APPROVED=process.env.PACKTOOK_PUBLIC_POLICIES_APPROVED==="true";
@@ -67,6 +71,67 @@ function publicSignupBuckets(at){
   quarterHour:String(Math.floor(at/(15*60*1000)))};
 }
 
+// V7.2 invitation-only pilot. The environment switch defaults OFF, and
+// Firestore control doc is ABSENT by default. No Public or V7 QA flag can open
+// together with Pilot. No Auth/UID list or consent is embedded in source.
+const V72_PILOT_ENABLED=process.env.PACKTOOK_V72_PILOT_ENABLED==="true";
+const V72_PILOT_MAX_USERS=3,V72_PILOT_MAX_MS=4*60*60*1000;
+const PILOT_V72_CONTROL=db.collection("pilotControls").doc("v72");
+function isPilotToken(req){
+ return req.auth?.token?.packtookPilotV72===true&&
+  req.auth?.token?.packtookProductionBeta!==true;
+}
+function pilotEnvironmentClosed(){
+ return productionProjectReady()&&V72_PILOT_ENABLED&&
+  !PUBLIC_SIGNUP_ENABLED&&!PUBLIC_ACCESS_ENABLED&&!PUBLIC_POLICIES_APPROVED&&
+  !V7_QA_ENABLED&&publicCustomerAppReady();
+}
+function validPilotControl(c,now=Date.now()){
+ if(!c||c.enabled!==true||c.policyVersion!==PUBLIC_POLICY_VERSION||
+    c.legalApproved!==true||c.ownerApproved!==true)return false;
+ const start=Date.parse(c.startedAt),end=Date.parse(c.expiresAt);
+ const invites=c.invitedUids;
+ if(typeof c.startedAt!=="string"||!c.startedAt.endsWith("Z")||
+    typeof c.expiresAt!=="string"||!c.expiresAt.endsWith("Z")||
+    !Number.isFinite(start)||!Number.isFinite(end)||
+    start>now||end<=now||end<=start||end-start>V72_PILOT_MAX_MS)return false;
+ if(c.maxInvitedUsers!==V72_PILOT_MAX_USERS||!Array.isArray(invites)||
+    invites.length<1||invites.length>V72_PILOT_MAX_USERS||
+    new Set(invites).size!==invites.length||
+    !invites.every(id=>typeof id==="string"&&/^[A-Za-z0-9_-]{6,128}$/.test(id)))return false;
+ return typeof c.sessionId==="string"&&/^v72_[A-Za-z0-9_-]{16,64}$/.test(c.sessionId);
+}
+async function requirePilotLease(req,{claimRequired=false,allowUnverified=false}={}){
+ if(!pilotEnvironmentClosed()||req.app?.appId!==PUBLIC_CUSTOMER_APP_ID||
+    !req.auth?.uid)throw new HttpsError("permission-denied","Pilot invitation is not active");
+ const snap=await PILOT_V72_CONTROL.get(),c=snap.exists?snap.data():null;
+ if(!validPilotControl(c)||!c.invitedUids.includes(req.auth.uid))
+  throw new HttpsError("permission-denied","Pilot invitation is not active");
+ if(claimRequired&&(!isPilotToken(req)||req.auth.token.packtookPilotV72Session!==c.sessionId))
+  throw new HttpsError("permission-denied","Pilot session was revoked or expired");
+ const live=await admin.auth().getUser(req.auth.uid);
+ if(live.disabled||(!allowUnverified&&live.emailVerified!==true)||!live.email||
+    live.customClaims?.packtookProductionBeta===true||
+    live.customClaims?.packtookControlledQa===true||
+    live.customClaims?.packtookPublicCustomer===true)
+  throw new HttpsError("permission-denied","An eligible verified invited account is required");
+ return {sessionId:c.sessionId,expiresAt:c.expiresAt,live};
+}
+// A future unwrapped callable must NEVER gain Pilot access from its claim alone.
+const PILOT_VALIDATED_REQUESTS=new WeakSet();
+// Legacy Beta callables keep their existing App Check transport settings.
+// Every V7.2 pilot-token request receives a fresh server-side lease check
+// BEFORE any account/recording/credit operation; there is no stale-claim path.
+function guardedCall(callOptions,handler){
+ return onCall(callOptions,async req=>{
+  if(isPilotToken(req)){
+   await requirePilotLease(req,{claimRequired:true});
+   PILOT_VALIDATED_REQUESTS.add(req);
+  }
+  return handler(req);
+ });
+}
+
 // V7.0 controlled QA is a separate, time-limited, one-UID invite gate.
 // All public rollout flags MUST stay OFF. Default is disabled on every project.
 // Uses Production Firebase App Check AND a server-known Auth UID (never email only).
@@ -104,7 +169,7 @@ function uid(req){
  if(process.env.PACKTOOK_PRODUCTION_PROJECT_ID!=="packtook-prod-01")throw new HttpsError("failed-precondition","Production project environment is not configured");
  if(!req.auth?.uid)throw new HttpsError("unauthenticated","Please sign in");
  if(req.auth.token.email_verified!==true)throw new HttpsError("permission-denied","Verify your email");
- if(req.auth.token.packtookProductionBeta!==true&&!isPublicMember(req)&&!isQaMember(req))throw new HttpsError("permission-denied","Account is not authorized for PACKTOOK");
+ if(req.auth.token.packtookProductionBeta!==true&&!isPublicMember(req)&&!isQaMember(req)&&!(isPilotToken(req)&&PILOT_VALIDATED_REQUESTS.has(req)))throw new HttpsError("permission-denied","Account is not authorized for PACKTOOK");
  return req.auth.uid;
 }
 function data(req){return req.data&&typeof req.data==="object"?req.data:{}}
@@ -184,7 +249,8 @@ async function ensureAccount(id){
 // V6.5: self-registration stays completely disabled until THREE independent
 // server-side production rollout flags are enabled after legal/App Check QA.
 // This read-only status API does not grant entitlements or create Auth users.
-exports.publicSignupStatus=onCall({...options,secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET]},async()=>{
+exports.publicSignupStatus=onCall({...options,secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET],
+ serviceAccount:PUBLIC_PILOT_RUNTIME_SA},async()=>{
  return {enabled:publicSignupReady(),
   accessEnabled:productionProjectReady()&&PUBLIC_ACCESS_ENABLED&&publicCustomerAppReady(),
   policyVersion:PUBLIC_POLICY_VERSION,freeVideosPerMonth:20,freeDevices:1};
@@ -193,7 +259,8 @@ exports.publicSignupStatus=onCall({...options,secrets:[PUBLIC_FREE_EMAIL_HMAC_SE
 // The callable enforces Firebase App Check before this handler runs.
 // This function never grants extra credits, never changes paid accounts,
 // and never downgrades a preexisting account.
-exports.completeFreeSignup=onCall({...options,enforceAppCheck:true,secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET]},async req=>{
+exports.completeFreeSignup=onCall({...options,enforceAppCheck:true,secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET],
+ serviceAccount:PUBLIC_PILOT_RUNTIME_SA},async req=>{
  if(!publicSignupReady())
   throw new HttpsError("failed-precondition","Public registration is not available");
  if(req.app?.appId!==PUBLIC_CUSTOMER_APP_ID)
@@ -275,6 +342,111 @@ exports.completeFreeSignup=onCall({...options,enforceAppCheck:true,secrets:[PUBL
  return {activated:true,created:result.created,plan:result.plan,
   freeVideosPerMonth:20,freeDevices:1,refreshToken:true};
 });
+// V7.2: invite status reveals no UID list, session ID or owner data.
+exports.pilotInvitationStatus=onCall({...options,enforceAppCheck:true,
+ secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET],serviceAccount:PUBLIC_PILOT_RUNTIME_SA},async req=>{
+ // Invited pre-created accounts may need to verify their email first. This
+ // status checks the private server allowlist and exact App Check BEFORE
+ // disclosing only a yes/no verification state. It never grants credits.
+ const lease=await requirePilotLease(req,{allowUnverified:true});
+ if(!publicAbuseReady())
+  throw new HttpsError("failed-precondition","Pilot admission protections are not configured");
+ const verified=lease.live.emailVerified===true;
+ let active=false;
+ if(verified&&isPilotToken(req)&&
+    req.auth.token.packtookPilotV72Session===lease.sessionId){
+  const snap=await own(req.auth.uid).get();
+  const a=snap.exists?snap.data():null;
+  active=a?.ownerUid===req.auth.uid&&
+   a.registrationSource==="controlled_pilot_v72"&&a.plan==="Free";
+ }
+ return {enabled:true,verified,active,testOnly:true,
+  policyVersion:PUBLIC_POLICY_VERSION,
+  expiresAt:lease.expiresAt,freeVideosPerMonth:20,freeDevices:1};
+});
+// A distinct invite-only activation. All Public flags and legacy QA stay OFF.
+// A callable App Check token is cryptographically verified by the Firebase
+// transport (enforceAppCheck:true), then exact app ID and live UID checked.
+// The Firestore allowlist is never returned to the browser or committed to Git.
+exports.completePilotFreeSignup=onCall({...options,enforceAppCheck:true,
+ secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET],serviceAccount:PUBLIC_PILOT_RUNTIME_SA},async req=>{
+ const lease=await requirePilotLease(req);
+ const d=data(req);
+ if(d.acceptTestTerms!==true||d.acceptPrivacy!==true||
+    d.policyVersion!==PUBLIC_POLICY_VERSION)
+  throw new HttpsError("invalid-argument","Accept the approved Pilot Terms and Privacy");
+ if(!publicAbuseReady())
+  throw new HttpsError("failed-precondition","Pilot admission protections are not configured");
+ const id=req.auth.uid,live=lease.live;
+ const ref=own(id),guard=db.collection("publicSignupGuards");
+ const emailIndex=guard.doc("email_v1_"+publicEmailKey(live.email));
+ const result=await db.runTransaction(async tx=>{
+  const now=Date.now(),b=publicSignupBuckets(now);
+  const shortRef=guard.doc("window15_"+b.quarterHour),dayRef=guard.doc("day_"+b.day);
+  // Read the CURRENT kill switch and invitation membership within the grant
+  // transaction, so revocation cannot race against a new credit entitlement.
+  const [controlSnap,accSnap,emailSnap,shortSnap,daySnap]=await Promise.all([
+   tx.get(PILOT_V72_CONTROL),tx.get(ref),tx.get(emailIndex),
+   tx.get(shortRef),tx.get(dayRef)]);
+  const control=controlSnap.exists?controlSnap.data():null;
+  if(!pilotEnvironmentClosed()||!validPilotControl(control,now)||
+     control.sessionId!==lease.sessionId||!control.invitedUids.includes(id))
+   throw new HttpsError("permission-denied","Pilot invitation changed or expired");
+  if(!accSnap.exists&&live.customClaims?.packtookPilotV72===true)
+   throw new HttpsError("failed-precondition","Deleted Pilot account requires manual review");
+  if(accSnap.exists){
+   const a=accSnap.data();
+   if(a.ownerUid!==id||a.registrationSource!=="controlled_pilot_v72"||
+      a.plan!=="Free")
+    throw new HttpsError("already-exists","Existing account cannot be overwritten");
+   return {created:false,plan:"Free"};
+  }
+  if(emailSnap.exists)
+   throw new HttpsError("already-exists","Email already received Free eligibility");
+  const shortCount=shortSnap.exists?shortSnap.data().count:0;
+  const dayCount=daySnap.exists?daySnap.data().count:0;
+  if(!Number.isSafeInteger(shortCount)||shortCount<0||
+     !Number.isSafeInteger(dayCount)||dayCount<0)
+   throw new HttpsError("failed-precondition","Pilot admission counters require review");
+  if(shortCount>=PUBLIC_FREE_15M_CAP||dayCount>=PUBLIC_FREE_DAY_CAP)
+   throw new HttpsError("resource-exhausted","Pilot Free admission limit reached");
+  const expiresAt=new Date(now+35*24*60*60*1000);
+  tx.create(emailIndex,{ownerUid:id,createdAt:FieldValue.serverTimestamp(),
+   kind:"public_free_email_claim_v1"});
+  if(shortSnap.exists)tx.update(shortRef,{count:shortCount+1});
+  else tx.create(shortRef,{count:1,period:b.quarterHour,expiresAt,
+   createdAt:FieldValue.serverTimestamp()});
+  if(daySnap.exists)tx.update(dayRef,{count:dayCount+1});
+  else tx.create(dayRef,{count:1,period:b.day,expiresAt,
+   createdAt:FieldValue.serverTimestamp()});
+  tx.create(ref,{ownerUid:id,registrationSource:"controlled_pilot_v72",
+   registeredEmail:live.email,plan:"Free",period:periodId(now),
+   used:0,reserved:0,devices:[],creditWalletV1:false,
+   pilotTestOnly:true,acceptedTestPolicyVersion:PUBLIC_POLICY_VERSION,
+   acceptedTestOnly:true,acceptedPrivacy:true,
+   consentAt:FieldValue.serverTimestamp(),createdAt:FieldValue.serverTimestamp()});
+  return {created:true,plan:"Free"};
+ });
+ // A disable/revocation between Firestore grant and claim update cannot leave
+ // working access: requirePilotLease is checked after transaction as well as
+ // on every subsequent protected callable, even with a stale valid ID token.
+ const current=await requirePilotLease(req);
+ if(current.sessionId!==lease.sessionId)
+  throw new HttpsError("permission-denied","Pilot session changed during activation");
+ const fresh=await admin.auth().getUser(id);
+ if(fresh.disabled||!fresh.emailVerified||fresh.customClaims?.packtookProductionBeta||
+    fresh.customClaims?.packtookControlledQa||fresh.customClaims?.packtookPublicCustomer)
+  throw new HttpsError("permission-denied","Pilot identity eligibility changed");
+ await admin.auth().setCustomUserClaims(id,{
+  ...(fresh.customClaims||{}),
+  packtookPilotV72:true,packtookPilotV72Session:lease.sessionId
+ });
+ if(result.created)publicFreeAudit("new_free");
+ return {activated:true,created:result.created,plan:"Free",
+  freeVideosPerMonth:20,freeDevices:1,refreshToken:true,
+  expiresAt:current.expiresAt};
+});
+
 // V7.0: this status never exposes the invited UID, email or environment values.
 // It requires an authenticated, App Check-attested EXACT invited user.
 exports.qaFreeStatus=onCall({...options,enforceAppCheck:true},async req=>{
@@ -330,14 +502,14 @@ exports.completeQaFreeSignup=onCall({...options,enforceAppCheck:true},async req=
   freeVideosPerMonth:20,freeDevices:1,expiresAt:new Date(V7_QA_EXPIRY).toISOString()};
 });
 
-exports.usageStatus=onCall(options,async req=>{
+exports.usageStatus=guardedCall(options,async req=>{
  const id=uid(req),ref=await ensureAccount(id),snap=await ref.get();
  if(!snap.exists)throw new HttpsError("failed-precondition","Account not provisioned");
  const a=snap.data(),limit=limits[a.plan];if(limit===undefined)throw new HttpsError("failed-precondition","Invalid plan");
  const current=periodId(Date.now()),used=a.period===current?a.used||0:0,reserved=pendingReservations(a);
  return {plan:a.plan,limit,used,reserved,remaining:creditAvailable(a),walletEnabled:walletEnabled(a),walletStartingCredits:walletEnabled(a)?a.walletStartingCredits??null:null,period:current,openBillingRequestId:a.openBillingRequestId||null,canBuyMore:false,purchaseReason:null,planExpiresAt:typeof a.planExpiresAt==="string"?a.planExpiresAt:null,subscriptionStatus:subscriptionState(a)};
 });
-exports.reserveCredit=onCall(options,async req=>{
+exports.reserveCredit=guardedCall(options,async req=>{
  const id=uid(req),body=data(req),op=body.operationId,barcode=body.barcode;
  if(!validDevice(body.deviceId))throw new HttpsError("permission-denied","Device registration required");
  if(!validOp(op)||typeof barcode!=="string"||!barcode.trim()||barcode.length>160)throw new HttpsError("invalid-argument","Invalid operation or barcode");
@@ -364,7 +536,7 @@ exports.reserveCredit=onCall(options,async req=>{
   return {recordingId:op,status:"reserved",remaining:limit===null?null:Math.max(0,available-1)};
  })
 });
-exports.finalizeCredit=onCall(options,async req=>{
+exports.finalizeCredit=guardedCall(options,async req=>{
  const id=uid(req),d=data(req),op=d.operationId,success=d.success;
  if(!validOp(op)||typeof success!=="boolean")throw new HttpsError("invalid-argument","Invalid finalization");
  if(success&&(!Number.isSafeInteger(d.bytes)||d.bytes<1000||typeof d.filename!=="string"||d.filename.length>255||!d.filename.trim()))throw new HttpsError("invalid-argument","Invalid file metadata");
@@ -393,7 +565,7 @@ exports.finalizeCredit=onCall(options,async req=>{
 
 // V5.2.1: account-owned reservation review across devices (no automatic refunds).
 const STALE_RESERVATION_MS=30*60*1000;
-exports.pendingVideoReservations=onCall(options,async req=>{
+exports.pendingVideoReservations=guardedCall(options,async req=>{
  const id=uid(req),acc=await ensureAccount(id),a=(await acc.get()).data();
  const snapshot=await acc.collection("recordings").where("status","==","reserved").limit(100).get();
  const now=Date.now();
@@ -405,7 +577,7 @@ exports.pendingVideoReservations=onCall(options,async req=>{
  }).sort((x,y)=>(x.createdAt||"").localeCompare(y.createdAt||""));
  return {reservedCount:pendingReservations(a),items,minimumAgeMinutes:30,truncated:snapshot.size===100};
 });
-exports.recoverStaleVideoReservation=onCall(options,async req=>{
+exports.recoverStaleVideoReservation=guardedCall(options,async req=>{
  const user=uid(req),d=data(req),id=d.operationId;
  if(!validOp(id)||d.confirmNoVideo!==true)throw new HttpsError("invalid-argument","Confirm that no usable recording exists and that no device is actively recording.");
  const acc=await ensureAccount(user),rec=acc.collection("recordings").doc(id);
@@ -434,7 +606,7 @@ exports.recoverStaleVideoReservation=onCall(options,async req=>{
   return {status:"failed",creditReturned:counted,period:r.period};
  });
 });
-exports.recordingStatus=onCall(options,async req=>{
+exports.recordingStatus=guardedCall(options,async req=>{
  const id=uid(req),op=data(req).operationId;
  if(!validOp(op))throw new HttpsError("invalid-argument","Invalid operation ID");
  const snap=await (await ownerRef(id)).collection("recordings").doc(op).get();
@@ -444,7 +616,7 @@ exports.recordingStatus=onCall(options,async req=>{
 });
 
 function validDevice(id){return typeof id==="string"&&/^[a-zA-Z0-9_-]{16,100}$/.test(id)}
-exports.registerDevice=onCall(options,async req=>{
+exports.registerDevice=guardedCall(options,async req=>{
  const user=uid(req),d=data(req),id=d.deviceId;
  if(!validDevice(id))throw new HttpsError("invalid-argument","Invalid device identifier");
  const name=typeof d.name==="string"?d.name.trim().slice(0,60):"Browser device";
@@ -460,12 +632,12 @@ exports.registerDevice=onCall(options,async req=>{
   return {registered:true,devices:next.map(x=>({name:x.name,isCurrent:x.id===id})),limit:max};
  });
 });
-exports.deviceStatus=onCall(options,async req=>{
+exports.deviceStatus=guardedCall(options,async req=>{
  const user=uid(req),d=data(req),ref=await ensureAccount(user),snap=await ref.get(),a=snap.data();
  const devices=Array.isArray(a.devices)?a.devices:[];
  return {limit:deviceLimits[a.plan],registered:devices.some(x=>x.id===d.deviceId),devices:devices.map(x=>({id:x.id,name:x.name,isCurrent:x.id===d.deviceId,addedAt:x.addedAt}))};
 });
-exports.removeDevice=onCall(options,async req=>{
+exports.removeDevice=guardedCall(options,async req=>{
  const user=uid(req),d=data(req);if(!validDevice(d.deviceId)||!validDevice(d.targetId))throw new HttpsError("invalid-argument","Invalid device");
  const ref=await ownerRef(user);
  return db.runTransaction(async tx=>{
@@ -478,7 +650,7 @@ exports.removeDevice=onCall(options,async req=>{
  });
 });
 
-exports.authorizeDuplicate=onCall(options,async req=>{
+exports.authorizeDuplicate=guardedCall(options,async req=>{
  const accountId=uid(req),d=data(req),barcode=typeof d.barcode==="string"?d.barcode.trim():"",reason=typeof d.reason==="string"?d.reason.trim():"";
  if(!barcode||barcode.length>160||reason.length<10||reason.length>500)throw new HttpsError("invalid-argument","Barcode and reason (10-500 characters) required");
  const acc=await ensureAccount(accountId),lock=acc.collection("barcodeLocks").doc(barcodeKey(barcode));
@@ -496,7 +668,7 @@ exports.authorizeDuplicate=onCall(options,async req=>{
  });
 });
 
-exports.accountRole=onCall(options,async req=>{
+exports.accountRole=guardedCall(options,async req=>{
  const id=uid(req),ref=await ensureAccount(id),snap=await ref.get(),a=snap.data();
  const role=ref.id===id?"admin":"operator";
  return {role:"admin",accountId:id,canApproveDuplicates:true,multiUserEnabled:false};
@@ -506,7 +678,7 @@ exports.accountRole=onCall(options,async req=>{
 
 // V6.1 Beta: retain the Staging Packages & Users read-only view, without any paid billing.
 // No Omise secrets, webhook, create charge or paid subscription functions are exported.
-exports.subscriptionOverview=onCall(options,async req=>{
+exports.subscriptionOverview=guardedCall(options,async req=>{
  const id=uid(req),ref=await ensureAccount(id),input=data(req);
  if(input.historyOnly===true)return {items:[],nextCursor:null};
  const snap=await ref.get(),a=snap.data(),period=periodId(Date.now());
