@@ -10,10 +10,13 @@ const src=verifySourceBinding(source);
 assert.equal(src.pass,true,JSON.stringify(src.checks));
 assert.equal(src.checks.pilotStatusBinding,true);
 assert.equal(src.checks.pilotSignupBinding,true);
+assert.equal(src.checks.dedicatedServiceAccount,true);
+assert.equal(src.checks.betaSharedOptionsUnchanged,true);
+
 assert.equal(verifySourceBinding(source.replace(
  'defineSecret("'+SECRET+'")','defineSecret("unsafe")')).pass,false);
 assert.equal(verifySourceBinding(source.replace(
- 'exports.completePilotFreeSignup=onCall({...options,enforceAppCheck:true,\n secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET]}',
+ 'exports.completePilotFreeSignup=onCall({...options,enforceAppCheck:true,\n secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET],serviceAccount:PUBLIC_PILOT_RUNTIME_SA}',
  'exports.completePilotFreeSignup=onCall({...options,enforceAppCheck:true}')).pass,false);
 
 const runtime="serviceAccount:read-only-runtime@packtook-prod-01.iam.gserviceaccount.com";
