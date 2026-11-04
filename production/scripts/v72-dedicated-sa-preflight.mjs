@@ -129,11 +129,11 @@ if(isMain){
   process.exitCode=2;
  }else{
   const source=fs.readFileSync(new URL("../functions/index.js",import.meta.url),"utf8");
-  const [publicEvidence,audit,serviceAccount]=await Promise.all([
-   readPublicSafetyEvidence(),
-   Promise.resolve().then(()=>auditWithRunner(source)),
-   Promise.resolve().then(()=>readServiceAccountMetadata("gcloud",exactCommand))
-  ]);
+  // Complete HTTP safety checks before synchronous gcloud metadata queries.
+  // Keep fresh fail-closed evidence and all existing security requirements.
+  const publicEvidence=await readPublicSafetyEvidence();
+  const audit=auditWithRunner(source);
+  const serviceAccount=readServiceAccountMetadata("gcloud",exactCommand);
   const report=assessDedicatedSaPreflight({source,audit,publicEvidence,serviceAccount});
   console.log(JSON.stringify(report,null,2));
   console.log("RESULT: V7.2 DEDICATED SA READ-ONLY — NO IAM/SA/DEPLOY WRITES / NO-GO");
