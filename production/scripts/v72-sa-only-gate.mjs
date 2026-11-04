@@ -65,11 +65,12 @@ if(isMain){
   process.exitCode=2;
  }else{
   const source=fs.readFileSync(new URL("../functions/index.js",import.meta.url),"utf8");
-  const [publicEvidence,audit,serviceAccount]=await Promise.all([
-   readPublicSafetyEvidence(),
-   Promise.resolve().then(()=>auditWithRunner(source)),
-   Promise.resolve().then(()=>readServiceAccountMetadata("gcloud",describe))
-  ]);
+  // Finish the live HTTP probe before running synchronous gcloud commands.
+  // execFileSync blocks the event loop and can starve concurrent fetch timers.
+  // Keep fresh, fail-closed evidence; no cached probe or safety bypass.
+  const publicEvidence=await readPublicSafetyEvidence();
+  const audit=auditWithRunner(source);
+  const serviceAccount=readServiceAccountMetadata("gcloud",describe);
   const plan=assessDedicatedSaPreflight({source,audit,publicEvidence,serviceAccount});
   const gate=assessSaOnlyGate(plan);
   console.log(JSON.stringify({...gate,
