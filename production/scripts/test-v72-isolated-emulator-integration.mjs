@@ -61,9 +61,20 @@ const metrics={handlersLoaded:false,admissionWrites:0,passes:0};
 class HttpsError extends Error{
  constructor(code,message){super(message);this.code=code}
 }
+// Google Cloud Firestore checks the Promise returned by a transaction
+// callback using the host JavaScript realm. Async functions defined inside
+// vm.runInNewContext produce a different realm's Promise, which can trigger:
+// "You must return a Promise in your transaction()-callback."
+// Wrap the callback in an OUTER-realm async function while keeping the SDK
+// and all Firestore data operations pinned to the DEMO emulator.
+const emulatorDbBridge={
+ collection:(...args)=>db.collection(...args),
+ runTransaction:(callback,...args)=>db.runTransaction(
+  async transaction=>await callback(transaction),...args)
+};
 const realAdmin={
  initializeApp(){return admin.app()},
- firestore:Object.assign(()=>db,{FieldValue:admin.firestore.FieldValue}),
+ firestore:Object.assign(()=>emulatorDbBridge,{FieldValue:admin.firestore.FieldValue}),
  auth:()=>authService
 };
 const mocks={
