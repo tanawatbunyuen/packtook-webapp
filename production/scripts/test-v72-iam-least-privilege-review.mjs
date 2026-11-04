@@ -30,7 +30,7 @@ assert.equal(ok.statuses.enabledVersionPresent,true);
 assert.equal(ok.statuses.statusRuntimeAccountKnown,true);
 assert.equal(ok.statuses.statusCurrentRevisionSecretBound,false);
 assert.equal(ok.statuses.futureRuntimeIdentityVerified,false);
-assert.equal(ok.statuses.futureFunctionRuntimeServiceAccountPinnedInSource,false);
+assert.equal(ok.statuses.futureFunctionRuntimeServiceAccountPinnedInSource,true);
 assert.equal(ok.canGrantIAMNow,false);
 assert.equal(ok.iamChangeAuthorized,false);
 assert.equal(ok.performedIAMWrites,false);
@@ -38,9 +38,14 @@ assert.equal(ok.deployedFunctionChangesAuthorized,false);
 assert.equal(ok.readSecretPayload,false);
 assert.equal(ok.readyForPilot,false);
 assert.equal(ok.decision,"NO_GO_CONTROLLED_PILOT");
-assert(ok.blockers.includes("FUTURE_RUNTIME_SERVICE_ACCOUNT_NOT_PINNED_IN_SOURCE"));
+assert(ok.blockers.includes("PROPOSED_DEDICATED_RUNTIME_ACCOUNT_EXISTENCE_AND_PERMISSIONS_NOT_VERIFIED"));
 assert(ok.blockers.includes("EXACT_SECRET_SCOPED_IAM_GRANT_OWNER_APPROVAL_REQUIRED"));
 assert(ok.blockers.includes("CURRENT_STATUS_REVISION_HAS_NO_SECRET_BINDING"));
+assert.equal(run(audit,remoteEvidence,
+ src.replace('serviceAccount:PUBLIC_PILOT_RUNTIME_SA','serviceAccount:UNSAFE_DEFAULT')
+ ).statuses.futureFunctionRuntimeServiceAccountPinnedInSource,false,
+ "One modified Public/Pilot source must invalidate the dedicated account contract");
+
 console.log("PASS: HMAC Secret present, current status Function account observed, future revision IAM NOT authorized");
 
 const unsafe=[
