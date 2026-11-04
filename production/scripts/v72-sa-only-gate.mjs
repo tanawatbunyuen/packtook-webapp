@@ -22,7 +22,13 @@ export function assessSaOnlyGate(report){
  if(report?.account?.resourcePresent!==false||
     report?.account?.inspectionError!=="NOT_FOUND")
   reasons.push("EXACT_SERVICE_ACCOUNT_ABSENCE_NOT_VERIFIED");
- if(report?.publicProbe?.closed!==true)
+ if(report?.publicProbe?.closed!==true||
+    report?.publicProbe?.explicitEnabledSeen!==false||
+    report?.publicProbe?.marketingHttp!==200||
+    report?.publicProbe?.customerHttp!==200||
+    report?.publicProbe?.statusHttp!==200||
+    report?.publicProbe?.publicSignupEnabled!==false||
+    report?.publicProbe?.publicAccessEnabled!==false)
   reasons.push("PUBLIC_FLAGS_OR_HOSTING_NOT_VERIFIED_OFF");
  if(report?.source?.fourFunctionBindingVerified!==true||
     report?.source?.betaSharedOptionsUnchanged!==true)
