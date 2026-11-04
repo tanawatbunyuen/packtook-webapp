@@ -12,6 +12,10 @@ const pricesTHB={Free:0,Starter:199,Basic:299,Growth:599,Business:1290,Pro:1990}
 const deviceLimits={Free:1,Starter:1,Basic:1,Growth:3,Business:5,Pro:10};
 const region="asia-southeast1";
 const options={region,maxInstances:5,timeoutSeconds:30}; // Existing Beta functions retain their current App Check policy.
+// V7.2 DESIGN ONLY: proposed dedicated runtime identity for the four Public/Pilot
+// callables; the account is NOT created by source changes, IAM/deploy NOT approved.
+// Never alter shared `options`: existing Beta functions retain their runtime.
+const PUBLIC_PILOT_RUNTIME_SA="packtook-public-pilot-v72@packtook-prod-01.iam.gserviceaccount.com";
 const PUBLIC_SIGNUP_ENABLED=process.env.PACKTOOK_PUBLIC_SIGNUP_ENABLED==="true";
 const PUBLIC_ACCESS_ENABLED=process.env.PACKTOOK_PUBLIC_ACCESS_ENABLED==="true";
 const PUBLIC_POLICIES_APPROVED=process.env.PACKTOOK_PUBLIC_POLICIES_APPROVED==="true";
@@ -245,7 +249,8 @@ async function ensureAccount(id){
 // V6.5: self-registration stays completely disabled until THREE independent
 // server-side production rollout flags are enabled after legal/App Check QA.
 // This read-only status API does not grant entitlements or create Auth users.
-exports.publicSignupStatus=onCall({...options,secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET]},async()=>{
+exports.publicSignupStatus=onCall({...options,secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET],
+ serviceAccount:PUBLIC_PILOT_RUNTIME_SA},async()=>{
  return {enabled:publicSignupReady(),
   accessEnabled:productionProjectReady()&&PUBLIC_ACCESS_ENABLED&&publicCustomerAppReady(),
   policyVersion:PUBLIC_POLICY_VERSION,freeVideosPerMonth:20,freeDevices:1};
@@ -254,7 +259,8 @@ exports.publicSignupStatus=onCall({...options,secrets:[PUBLIC_FREE_EMAIL_HMAC_SE
 // The callable enforces Firebase App Check before this handler runs.
 // This function never grants extra credits, never changes paid accounts,
 // and never downgrades a preexisting account.
-exports.completeFreeSignup=onCall({...options,enforceAppCheck:true,secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET]},async req=>{
+exports.completeFreeSignup=onCall({...options,enforceAppCheck:true,secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET],
+ serviceAccount:PUBLIC_PILOT_RUNTIME_SA},async req=>{
  if(!publicSignupReady())
   throw new HttpsError("failed-precondition","Public registration is not available");
  if(req.app?.appId!==PUBLIC_CUSTOMER_APP_ID)
@@ -338,7 +344,7 @@ exports.completeFreeSignup=onCall({...options,enforceAppCheck:true,secrets:[PUBL
 });
 // V7.2: invite status reveals no UID list, session ID or owner data.
 exports.pilotInvitationStatus=onCall({...options,enforceAppCheck:true,
- secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET]},async req=>{
+ secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET],serviceAccount:PUBLIC_PILOT_RUNTIME_SA},async req=>{
  // Invited pre-created accounts may need to verify their email first. This
  // status checks the private server allowlist and exact App Check BEFORE
  // disclosing only a yes/no verification state. It never grants credits.
@@ -363,7 +369,7 @@ exports.pilotInvitationStatus=onCall({...options,enforceAppCheck:true,
 // transport (enforceAppCheck:true), then exact app ID and live UID checked.
 // The Firestore allowlist is never returned to the browser or committed to Git.
 exports.completePilotFreeSignup=onCall({...options,enforceAppCheck:true,
- secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET]},async req=>{
+ secrets:[PUBLIC_FREE_EMAIL_HMAC_SECRET],serviceAccount:PUBLIC_PILOT_RUNTIME_SA},async req=>{
  const lease=await requirePilotLease(req);
  const d=data(req);
  if(d.acceptTestTerms!==true||d.acceptPrivacy!==true||
