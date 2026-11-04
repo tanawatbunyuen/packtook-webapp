@@ -23,8 +23,7 @@ for cmd in gcloud node python3 git grep; do
   command -v "$cmd" >/dev/null 2>&1 ||
     { echo "SAFETY BLOCK: required command unavailable: $cmd" >&2; exit 2; }
 done
-[[ "$(git rev-parse --abbrev-ref HEAD 2>/dev/null)" ==
-   "feature/v7.2-controlled-public-pilot-readiness" ]] ||
+[[ "$(git rev-parse --abbrev-ref HEAD 2>/dev/null)" == "feature/v7.2-controlled-public-pilot-readiness" ]] ||
   { echo "SAFETY BLOCK: expected reviewed V7.2 feature branch" >&2; exit 2; }
 [[ "$(gcloud config get-value project 2>/dev/null)" == "$PROD" ]] ||
   { echo "SAFETY BLOCK: Cloud Shell active project must be $PROD" >&2; exit 2; }
