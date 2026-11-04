@@ -56,8 +56,10 @@
     "dedicatedPublicPilotServiceAccountPreflight": "OWNER_REPORTED_2026_11_04_PASS_EXACT_PHASE_NOT_SUPPLIED",
     "dedicatedPublicPilotServiceAccountCreated": "NOT_VERIFIED_NOT_AUTHORIZED",
     "dedicatedPublicPilotServiceAccountIAM": "NO_GRANTS_AUTHORIZED",
-    "dedicatedSaOnlyChangePlan": "SOURCE_PREPARED_READ_ONLY_GATE_AND_INTERACTIVE_OPERATOR_SCRIPT_NEEDS_CLOUD_SHELL_BASH_N",
-    "dedicatedSaOnlyApproval": "NOT_GRANTED_SEPARATE_FROM_SECRET_ONLY_AND_DESIGN_SELECTION"
+    "dedicatedSaOnlyChangePlan": "OPERATOR_2026_11_04_DRY_RUN_BLOCKED_PUBLIC_HTTP_NOT_VERIFIED_DETAILS_SOURCE_FIXED",
+    "dedicatedSaOnlyApproval": "NOT_GRANTED_SEPARATE_FROM_SECRET_ONLY_AND_DESIGN_SELECTION",
+    "dedicatedSaOnlyBashOffline": "OWNER_CLOUD_SHELL_BASH_N_AND_OFFLINE_FIXTURES_PASS_2026_11_04",
+    "dedicatedSaOnlyPublicProbe": "PUBLIC_CLOSED_UNVERIFIED_2026_11_04_NO_PROOF_FLAG_ON"
   },
   "acceptanceGates": [
     "V72_PILOT_BACKEND_SEPARATE_FROM_PUBLIC_FLAGS_AND_SINGLE_UID_QA",
@@ -73,6 +75,7 @@
     "WRITTEN_OWNER_PILOT_GO_NO_GO_APPROVAL"
   ],
   "notes": [
+    "2026-11-04 owner SA_ONLY --dry-run: Bash syntax and offline regressions PASS; secretReady:true, exact proposed SA NOT_FOUND; runtime gate BLOCKED because Public/Hosting could not be verified closed. No evidence Public flags actually ON. Added sanitized per-endpoint HTTP, initial/final diagnostics, fail-closed strict gate, no SA creation/IAM/deploy and no SA_ONLY approval.",
     "2026-11-04 Owner reported Dedicated SA preflight PASS, but did not paste exact phase/details. Prepared SA_ONLY read-only gate, Bash dry-run/execute script, offline negative tests and runbook; no Cloud writes. Design choice and earlier SECRET_ONLY grant do not authorize SA_ONLY; separate Owner approval required.",
     "2026-11-04 Owner selects dedicated Public/Pilot runtime identity after confirming existing publicSignupStatus SA is shared by 33 Functions. V7.2 source pins proposed SA on only four Public/Pilot onCall endpoints; Beta shared options unchanged. Proposed SA is not created, IAM roles unapproved, no deployment. Do not treat source pin as runtime identity proof.",
     "2026-11-04 Owner reports IAM review phase SCOPED_IAM_REVIEW_CANDIDATE_NOT_AUTHORIZED; Secret exists but future Function revision Service Account not yet pinned/verified. Prepared private principal verification and single-secret IAM change request; no IAM grant, Service Account creation or Functions deploy authorized.",
