@@ -20,8 +20,21 @@ export function assessV72IamReview({audit,source,remoteEvidence}){
  const publicSignup=get("completeFreeSignup");
  const pilotStatus=get("pilotInvitationStatus");
  const pilotSignup=get("completePilotFreeSignup");
- const match=source.match(/const options\s*=\s*\{([^}]+)\}/);
- const runtimeServiceAccountPinned=!!match&&/\bserviceAccount\s*:/.test(match[1]);
+ // The planned account is pinned to exactly four callables, not shared Beta options.
+ // A literal source declaration does NOT create a GCP service account.
+ const intended='packtook-public-pilot-v72@packtook-prod-01.iam.gserviceaccount.com';
+ const runtimeServiceAccountPinned=source.includes(
+  'const PUBLIC_PILOT_RUNTIME_SA="'+intended+'"')&&
+  source.includes('const options={region,maxInstances:5,timeoutSeconds:30};')&&
+  !/const options=\{[^}]*serviceAccount/.test(source)&&
+  ['publicSignupStatus','completeFreeSignup','pilotInvitationStatus',
+   'completePilotFreeSignup'].every(name=>{
+    const declaration=source.indexOf('exports.'+name+'=onCall(');
+    if(declaration<0)return false;
+    const closing=source.indexOf('},async',declaration);
+    const text=source.slice(declaration,closing>=0?closing+1:declaration);
+    return text.includes('serviceAccount:PUBLIC_PILOT_RUNTIME_SA');
+   });
  const statusDeployedWithIdentity=status.deployed===true&&status.runtimeServiceAccountKnown===true;
  const unknownFunctionMetadata=[publicSignup,pilotStatus,pilotSignup].some(f=>
   f.metadataReadable!==true&&f.inspectionError!=="NOT_FOUND");
@@ -58,6 +71,7 @@ export function assessV72IamReview({audit,source,remoteEvidence}){
  if(!noUnexpectedPilot)blockers.push("UNEXPECTED_PILOT_DEPLOYMENT");
  if(!runtimeServiceAccountPinned)
   blockers.push("FUTURE_RUNTIME_SERVICE_ACCOUNT_NOT_PINNED_IN_SOURCE");
+ blockers.push("PROPOSED_DEDICATED_RUNTIME_ACCOUNT_EXISTENCE_AND_PERMISSIONS_NOT_VERIFIED");
  blockers.push("FUTURE_FUNCTION_REVISION_AND_RUNTIME_IDENTITY_REVIEW_REQUIRED");
  blockers.push("EXACT_SECRET_SCOPED_IAM_GRANT_OWNER_APPROVAL_REQUIRED");
  blockers.push("EFFECTIVE_RUNTIME_SECRET_ACCESS_NOT_PROVEN");
@@ -85,7 +99,7 @@ export function assessV72IamReview({audit,source,remoteEvidence}){
   readyForPilot:false,readyForPublic:false,
   decision:"NO_GO_CONTROLLED_PILOT",blockers,
   nextAction:"Privately compare exact intended per-Function revision serviceAccountEmail with current deployed status account; record immutable revision and rollback scope. Request separate owner approval for one secret-scoped grant only after runtime identity verified.",
-  note:"Current deployed publicSignupStatus account does NOT establish the future Public/Pilot revision runtime identities. Never grant to a guessed default or the entire project. Metadata cannot prove effective secret access."
+  note:"Proposed source-pinned dedicated runtime Service Account is NOT proof that the account exists or has permissions. Current deployed publicSignupStatus account is shared with 33 functions; do not grant it the HMAC Secret. Metadata cannot prove effective access."
  };
 }
 const isMain=process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url);
