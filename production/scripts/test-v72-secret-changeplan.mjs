@@ -2,7 +2,7 @@
 // Never invokes GCP or HTTP, and never supplies real identities/secret bytes.
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import {planV72SecretRemediation} from "./v72-secret-changeplan.mjs";
+import {planV72SecretRemediation,readPublicSafetyEvidence} from "./v72-secret-changeplan.mjs";
 const source=fs.readFileSync(new URL("./v72-secret-changeplan.mjs",import.meta.url),"utf8");
 const base={
  source:{pass:true},
@@ -23,6 +23,10 @@ const remote={
 };
 const evaluate=(a=base,r=remote)=>planV72SecretRemediation(a,r);
 const expected=evaluate();
+assert.equal(expected.publicProbe.closed,true);
+assert.equal(expected.publicProbe.statusHttp,200);
+assert.deepEqual(expected.publicProbe.reasons,[]);
+
 assert.equal(expected.phase,"SECRET_CREATE_APPROVAL_REQUIRED");
 assert.equal(expected.candidateForOwnerApprovedSecretProvision,true);
 assert.equal(expected.productionChangesPerformed,false);
@@ -85,7 +89,43 @@ for(const forbidden of [
  "writeFileSync","execFileSync","spawnSync","getAuth"
 ])assert(!source.includes(forbidden),"Planner must never contain executable write method: "+forbidden);
 assert(source.includes("auditWithRunner(source)"));
-assert(source.includes("probe()"));
+assert(source.includes("readPublicSafetyEvidence()"));
 assert(!source.includes("secretPayload"));
+let numberOfReads=0;
+const transient=await readPublicSafetyEvidence(async()=>{
+ numberOfReads++;
+ return numberOfReads===1?
+  {...remote,status:{http:null,reachable:false,publicSignupEnabled:null,publicAccessEnabled:null,error:"TimeoutError"}}:
+  remote;
+});
+assert.equal(numberOfReads,2);
+assert.equal(transient.diagnostic.closed,true);
+assert.equal(transient.diagnostic.attempts,2);
+assert(transient.diagnostic.initialReasons.includes("PUBLIC_STATUS_CALLABLE_UNVERIFIED"));
+assert.equal(transient.diagnostic.initialStatusHttp,null);
+assert.equal(planV72SecretRemediation(base,transient.remote,transient.diagnostic).phase,
+ "SECRET_CREATE_APPROVAL_REQUIRED");
+numberOfReads=0;
+const firstEnabled=await readPublicSafetyEvidence(async()=>{
+ numberOfReads++;
+ return numberOfReads===1?
+  {...remote,status:{...remote.status,publicSignupEnabled:true}}:remote;
+});
+assert.equal(numberOfReads,1,"Never retry over observed Public ON");
+assert.equal(firstEnabled.diagnostic.explicitEnabledSeen,true);
+assert.equal(planV72SecretRemediation(base,firstEnabled.remote,firstEnabled.diagnostic).candidateForOwnerApprovedSecretProvision,false);
+numberOfReads=0;
+const twoFailures=await readPublicSafetyEvidence(async()=>{
+ numberOfReads++;
+ return {...remote,customer:{http:null,error:"TimeoutError"}};
+});
+assert.equal(numberOfReads,2,"At most one retry");
+const unrecoverable=planV72SecretRemediation(base,twoFailures.remote,twoFailures.diagnostic);
+assert.equal(unrecoverable.candidateForOwnerApprovedSecretProvision,false);
+assert(unrecoverable.errors.includes("CUSTOMER_HOSTING_HTTP_NOT_200"));
+assert.equal(unrecoverable.publicProbe.attempts,2);
+console.log("PASS: transient Public status can recover via one read-only retry; Public ON never retried or hidden");
+console.log("PASS: remaining HTTP failures show precise sanitized reasons and block provisioning");
+
 console.log("PASS: planner only imports read-only audit and HTTP preflight; no writes or secret payload");
 console.log("RESULT: PACKTOOK V7.2 SECRET CHANGEPLAN OFFLINE REGRESSION PASS (NOT Production approval)");
