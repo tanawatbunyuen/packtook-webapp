@@ -49,7 +49,8 @@
     "secretOnlyOwnerApproval": "OWNER_APPROVED_SECRET_ONLY_2026_11_04_OPERATOR_EXECUTION_PENDING",
     "secretOnlyProductionCreation": "OPERATOR_CLOUD_METADATA_2026_11_04_SECRET_EXISTS_ONE_ENABLED_VERSION",
     "secretOnlyOperatorScript": "OWNER_REPORTED_DRY_RUN_PASS_2026_11_04_POST_CREATE_AUDIT_RESOURCE_PASS",
-    "iamLeastPrivilegeReview": "SOURCE_AND_OFFLINE_FIXTURES_PASS_CLOUD_SHELL_READ_ONLY_RERUN_PENDING"
+    "iamLeastPrivilegeReview": "OPERATOR_2026_11_04_SCOPED_IAM_REVIEW_CANDIDATE_NOT_AUTHORIZED",
+    "iamSecretScopedChangeRequest": "PREPARED_SOURCE_ONLY_PRINCIPAL_NOT_YET_VERIFIED_NO_IAM_APPROVAL"
   },
   "acceptanceGates": [
     "V72_PILOT_BACKEND_SEPARATE_FROM_PUBLIC_FLAGS_AND_SINGLE_UID_QA",
@@ -65,6 +66,7 @@
     "WRITTEN_OWNER_PILOT_GO_NO_GO_APPROVAL"
   ],
   "notes": [
+    "2026-11-04 Owner reports IAM review phase SCOPED_IAM_REVIEW_CANDIDATE_NOT_AUTHORIZED; Secret exists but future Function revision Service Account not yet pinned/verified. Prepared private principal verification and single-secret IAM change request; no IAM grant, Service Account creation or Functions deploy authorized.",
     "2026-11-04 operator post-create audit: named HMAC Secret EXISTS with one ENABLED version; no payload read. Both IAM policies readable, deployed publicSignupStatus remains unbound and inspected runtime has no direct Secret/Project Accessor grant; other Public/Pilot functions NOT_FOUND. Least privilege proposal source-only, no IAM grant or deployment authorized.",
     "2026-11-04 owner replied proceed to an explicit SECRET_ONLY request; scoped approval applies only to creation of new named HMAC Secret and first ENABLED version; no IAM, deployment, flags or Pilot approval. Operator Cloud Shell execution pending; assistant cannot directly access GCP.",
     "2026-11-04 operator Cloud Shell: secret changeplan candidate true, SECRET_CREATE_APPROVAL_REQUIRED, errors empty; read-only retry 1 had unavailable Marketing/Customer/status (unknown flags), retry 2 HTTP200 and Public Signup/Access both OFF. Root cause of transient failure unverified. HMAC Secret remains NOT_FOUND, deployment and IAM unchanged; SECRET_ONLY approval NOT granted.",
