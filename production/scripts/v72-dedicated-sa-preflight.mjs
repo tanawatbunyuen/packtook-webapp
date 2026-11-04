@@ -45,9 +45,9 @@ export function assessDedicatedSaPreflight({source,audit,publicEvidence,serviceA
  const expectedResource="projects/"+PROJECT+"/serviceAccounts/"+ACCOUNT;
  const idValid=cloud.ok===true&&metadata?.email===ACCOUNT&&
   (metadata?.name===expectedResource||metadata?.name===undefined);
- const exists=idValid||cloud.ok===false&&cloud.error!=="NOT_FOUND"?null:false;
  const accountExists=idValid?true:cloud.ok===false&&cloud.error==="NOT_FOUND"?false:null;
- const accountActive=accountExists===true?metadata?.disabled===false:null;
+ // Google service account metadata can omit disabled when its default is false.
+ const accountActive=accountExists===true?metadata?.disabled!==true:null;
  const p=publicEvidence?.diagnostic||{};
  const publicClosed=p.closed===true&&p.explicitEnabledSeen===false;
  const secretReady=audit?.secret?.resourcePresent===true&&
