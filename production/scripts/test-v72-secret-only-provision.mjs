@@ -2,10 +2,29 @@
 // No gcloud, no real Secret, no deployments. Validate conservative gating only.
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import {execFileSync} from "node:child_process";
+import {fileURLToPath} from "node:url";
 import {assessSecretOnlyGate} from "./v72-secret-only-gate.mjs";
 
 const shell=fs.readFileSync(new URL("./v72-provision-secret-only.sh",import.meta.url),"utf8");
 const gate=fs.readFileSync(new URL("./v72-secret-only-gate.mjs",import.meta.url),"utf8");
+const scriptPath=fileURLToPath(new URL("./v72-provision-secret-only.sh",import.meta.url));
+// CRITICAL: static string checks alone previously missed an invalid Bash
+// multiline [[ ... == newline ... ]] comparison. Parse the REAL file here.
+// Bash -n performs syntax validation only; it never executes Cloud commands.
+assert.doesNotThrow(()=>
+ execFileSync("bash",["-n",scriptPath],{stdio:"pipe",timeout:5000}),
+ "The real SECRET_ONLY script must parse under Bash");
+const broken=shell.replace(
+ '== "feature/v7.2-controlled-public-pilot-readiness" ]]',
+ '==\\n   "feature/v7.2-controlled-public-pilot-readiness" ]]'
+);
+assert.notEqual(broken,shell,"Mutation fixture must change the conditional");
+assert.throws(()=>execFileSync("bash",["-n","-c",broken],
+ {stdio:"pipe",timeout:5000}),
+ "Bash parser must reject the previously broken multiline == expression");
+console.log("PASS: real SECRET_ONLY Bash syntax valid; regression rejects broken multiline comparison");
+
 const base={
  project:"packtook-prod-01",phase:"SECRET_CREATE_APPROVAL_REQUIRED",
  candidateForOwnerApprovedSecretProvision:true,
