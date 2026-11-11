@@ -1,0 +1,113 @@
+name: PACKTOOK V7.3 Safe CI (no deploy)
+
+on:
+  pull_request:
+    branches:
+      - feature/v7.2-controlled-public-pilot-readiness
+    paths:
+      - 'production/**'
+      - '.github/workflows/packtook-v73-safe-ci.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: packtook-v73-safe-ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  regression:
+    name: Mock, Owner, and Isolated Emulator Regression
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      CI: 'true'
+      GCLOUD_PROJECT: demo-packtook-v72
+      GOOGLE_CLOUD_PROJECT: demo-packtook-v72
+      GCP_PROJECT: demo-packtook-v72
+      FIREBASE_CONFIG: '{"projectId":"demo-packtook-v72"}'
+      FIRESTORE_EMULATOR_HOST: '127.0.0.1:18080'
+      FIREBASE_AUTH_EMULATOR_HOST: '127.0.0.1:19099'
+      FIREBASE_CLI_DISABLE_UPDATE_CHECK: 'true'
+    steps:
+      - name: Checkout PR code (no persisted credentials)
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          package-manager-cache: false
+
+      - name: Set up Java 21 for Firestore emulator
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Enforce isolated CI environment and source syntax
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$GCLOUD_PROJECT" = 'demo-packtook-v72'
+          test "$GOOGLE_CLOUD_PROJECT" = 'demo-packtook-v72'
+          test "$GCP_PROJECT" = 'demo-packtook-v72'
+          test -z "${GOOGLE_APPLICATION_CREDENTIALS:-}"
+          test -z "${FIREBASE_TOKEN:-}"
+          test -z "${CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE:-}"
+          if git ls-files | grep -Ei '(^|/)(\.firebaserc|\.env($|\.)|[^/]*serviceaccount[^/]*\.json$|[^/]*\.pem$)'; then
+            echo 'BLOCKED: TRACKED CREDENTIAL OR SECRET FILE'
+            exit 1
+          fi
+          for f in \
+            production/functions/index.js \
+            production/payment-functions/index.js \
+            production/owner-functions/index.js \
+            production/scripts/packtook_v73_p1b_stress.mjs \
+            production/scripts/test-promptpay.mjs \
+            production/scripts/test-owner.mjs \
+            production/scripts/test-owner-management.mjs; do
+            node --check "$f"
+          done
+          node -e 'const fs=require("fs");const c=JSON.parse(fs.readFileSync("production/scripts/v72-isolated-emulators.firebase.json","utf8"));const e=c.emulators;if(Object.keys(c).join(",")!=="emulators"||e.auth.host!=="127.0.0.1"||e.auth.port!==19099||e.firestore.host!=="127.0.0.1"||e.firestore.port!==18080||e.ui.enabled!==false||e.functions||e.storage||e.database)process.exit(2);'
+          echo 'P24_SOURCE_AND_SAFETY: PASS'
+
+      - name: Install locked Functions dependencies
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          npm ci --prefix production/functions --ignore-scripts --no-audit --no-fund
+          npm ci --prefix production/payment-functions --ignore-scripts --no-audit --no-fund
+
+      - name: Payment and verified-paid recovery mock regression
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          node production/scripts/test-promptpay.mjs | tee /tmp/packtook-payment-ci.log
+          grep -Fq 'P18_PAID_RECOVERY_CASES: 4/4 PASS' /tmp/packtook-payment-ci.log
+
+      - name: Owner and management regressions (in memory)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          node production/scripts/test-owner.mjs
+          node production/scripts/test-owner-management.mjs
+
+      - name: Recording transaction stress (demo emulators only)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$GCLOUD_PROJECT" = 'demo-packtook-v72'
+          test -z "${GOOGLE_APPLICATION_CREDENTIALS:-}"
+          test -z "${FIREBASE_TOKEN:-}"
+          npm exec --yes --package=firebase-tools@15.22.1 -- firebase emulators:exec \
+            --project demo-packtook-v72 \
+            --only auth,firestore \
+            --config production/scripts/v72-isolated-emulators.firebase.json \
+            'node production/scripts/packtook_v73_p1b_stress.mjs' | tee /tmp/packtook-recording-ci.log
+          grep -Fq 'P10E_RECORDING_BOUNDARY_CASES: 8/8 PASS' /tmp/packtook-recording-ci.log
+          node -e 'const f=require("fs").readFileSync("/tmp/packtook-recording-ci.log","utf8");if(!/"passed"\s*:\s*16\b/.test(f)||!/"productionWrites"\s*:\s*0\b/.test(f))process.exit(2);'
+          echo 'P24_RECORDING_EMULATOR: 16/16 PASS'
