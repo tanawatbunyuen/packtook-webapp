@@ -49,7 +49,16 @@ function hasActivePaidPlan(a){return a.plan!=="Free"&&subscriptionState(a)==="ac
 // V5.1 credit wallet: balance represents credits immediately available for new reservations.
 // Reservations debit the wallet and failures credit it back. No calendar-month reset.
 function walletEnabled(a){return a.creditWalletV1===true}
-function pendingReservations(a,now=Date.now()){return walletEnabled(a)?Math.max(0,a.reserved||0):a.period===periodId(now)?Math.max(0,a.reserved||0):0}
+function validCounter(a,name){
+ const value=a[name]===undefined?0:a[name];
+ if(!Number.isSafeInteger(value)||value<0)
+  throw new HttpsError("failed-precondition","Credit counters need review");
+ return value;
+}
+function pendingReservations(a,now=Date.now()){
+ const reserved=validCounter(a,"reserved");
+ return walletEnabled(a)||a.period===periodId(now)?reserved:0;
+}
 function creditAvailable(a,now=Date.now()){
  const limit=limits[a.plan];
  if(limit===null)return null;
@@ -59,7 +68,12 @@ function creditAvailable(a,now=Date.now()){
   return a.creditWalletRemaining;
  }
  const same=a.period===periodId(now);
- return Math.max(0,limit-(same?(a.used||0)+(a.reserved||0):0));
+ const used=validCounter(a,"used");
+ const reserved=validCounter(a,"reserved");
+ const committed=used+reserved;
+ if(!Number.isSafeInteger(committed))
+  throw new HttpsError("failed-precondition","Credit counters exceed supported range");
+ return Math.max(0,limit-(same?committed:0));
 }
 // PACKTOOK V6.4.1 — account wallet credit retention policy
 // Paid expiry blocks recording immediately (enforced in the unchanged Recording Function).
@@ -124,6 +138,7 @@ function purchaseDecision(a,target,now=Date.now()){
   return {allowed:false,reason:"Subscription data needs review before any new payment"};
  if(pendingReservations(a,now)>0)
   return {allowed:false,reason:"Finish outstanding recordings before purchasing or renewing"};
+ creditAvailable(a,now);
  if(a.plan==="Free")return {allowed:true,kind:"new",resetQuota:false};
  if(next>current)return {allowed:true,kind:"upgrade",resetQuota:false};
  if(!active)return {allowed:true,kind:"renewal",resetQuota:false};
@@ -508,7 +523,7 @@ exports.promptpayExpireUnusedCredits=onSchedule({
     if(a.plan==="Free"||limits[a.plan]===null||!walletEnabled(a)||
        subscriptionState(a)!=="expired"||deadline===null||deadline>=Date.now()||
        !Number.isSafeInteger(a.creditWalletRemaining)||a.creditWalletRemaining<=0||
-       (a.reserved||0)>0)return false;
+       (!Number.isSafeInteger(a.reserved)||a.reserved!==0))return false;
     const lost=a.creditWalletRemaining;
     // A paid renewal after expiry changes planExpiresAt atomically; this check
     // prevents a stale scheduled sweep from overwriting the renewed wallet.
