@@ -305,10 +305,38 @@ async function reconcileCharge(accountId,requestId,chargeId){
   }
   if(item.status==="payment_review")return {status:"payment_review",requiresSupport:true};
   if(charge.status==="successful"&&charge.paid===true){
+   // Provider-paid but unsafe credit state must be held for support.
+   // Never grant credits or clear the billing lock in this path.
+   const markPaidCreditReview=(reason)=>{
+    tx.update(ref,{
+     status:"payment_review",
+     reviewReason:reason,
+     reviewRequiredAt:FieldValue.serverTimestamp(),
+     reviewProviderVerifiedPaid:true,
+     reviewProviderChargeId:charge.id,
+     reviewProviderVerifiedAt:FieldValue.serverTimestamp()
+    });
+    tx.create(acc.collection("audit").doc(),{
+     action:"payment_requires_manual_review",
+     billingRequestId:requestId,
+     omiseChargeId:chargeId,
+     reviewReason:reason,
+     createdAt:FieldValue.serverTimestamp()
+    });
+    return {status:"payment_review",requiresSupport:true};
+   };
    const legacy=!item.purchaseKind;
    const sameRevision=(a.billingVersion||0)===(item.baseBillingVersion||0);
    const lockOk=a.openBillingRequestId===requestId;
-   const decision=purchaseDecision(a,item.plan);
+   let decision;
+   try{
+    validCounter(a,"used");
+    validCounter(a,"reserved");
+    decision=purchaseDecision(a,item.plan);
+   }catch(e){
+    if(e?.code!=="failed-precondition")throw e;
+    return markPaidCreditReview("invalid_credit_state");
+   }
    const upgradeStillValid=item.purchaseKind==="upgrade"&&decision.kind==="upgrade"&&a.plan===item.basePlan&&a.planExpiresAt===item.baseExpiresAt;
    const authorized=legacy?(!hasActivePaidPlan(a)&&!billingOpen(a)):lockOk&&sameRevision&&(item.purchaseKind==="upgrade"?upgradeStillValid:(decision.allowed||item.purchaseKind==="renewal"&&a.plan===item.plan));
    if(!authorized){
@@ -327,7 +355,13 @@ async function reconcileCharge(accountId,requestId,chargeId){
     tx.create(acc.collection("audit").doc(),{action:"payment_requires_manual_review",billingRequestId:requestId,omiseChargeId:chargeId,createdAt:FieldValue.serverTimestamp()});
     return {status:"payment_review",requiresSupport:true};
    }
-   const credits=purchasedCreditBalance(a,item.plan);
+   let credits;
+   try{
+    credits=purchasedCreditBalance(a,item.plan);
+   }catch(e){
+    if(e?.code!=="failed-precondition")throw e;
+    return markPaidCreditReview("invalid_credit_transfer");
+   }
    tx.update(acc,{plan:item.plan,planExpiresAt:expiresAt,lastPaidAt:FieldValue.serverTimestamp(),billingVersion:FieldValue.increment(1),
     creditWalletV1:true,creditWalletRemaining:credits.total,walletStartingCredits:credits.total,period:periodId(Date.now()),used:0,reserved:0,
     ...(lockOk?{openBillingRequestId:FieldValue.delete()}:{}),updatedAt:FieldValue.serverTimestamp()});

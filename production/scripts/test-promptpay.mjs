@@ -334,3 +334,191 @@ await api.promptpayExpireUnusedCredits();
 assert([...documents.keys()].filter(k=>k.startsWith("accounts/expiredWalletForfeit/audit/")).length===1,
  "Repeated daily expiry job must not reset or audit twice");
 console.log("PASS: V6.4.2 same-plan early renewals 120+50, pre-expiry notice window, grace carryover, no downgrades, QR idempotency");
+
+
+for(const scenario of [
+ {name:"invalid_reserved",account:{
+  plan:"Free",
+  period:new Date().toISOString().slice(0,7),
+  used:0,reserved:"invalid",billingVersion:0
+ },target:"Starter"},
+ {name:"invalid_used",account:{
+  plan:"Free",
+  period:new Date().toISOString().slice(0,7),
+  used:"invalid",reserved:0,billingVersion:0
+ },target:"Starter"},
+ {name:"invalid_wallet",account:{
+  plan:"Starter",
+  planExpiresAt:new Date(Date.now()+5*86400000).toISOString(),
+  creditWalletV1:true,
+  creditWalletRemaining:"invalid",
+  used:0,reserved:0,billingVersion:0
+ },target:"Basic"}
+]){
+ userId="p10e_"+scenario.name;
+ ticketId="req_p10e_"+scenario.name+"_123456789";
+ documents.set("accounts/"+userId,scenario.account);
+
+ await rejects(
+  api.promptpayRequestPlanChange(
+   request({plan:scenario.target})
+  ),
+  "failed-precondition"
+ );
+
+ assert(
+  ![...documents.keys()].some(k=>
+   k.startsWith("accounts/"+userId+"/billingRequests/")),
+  "Invalid account created billing request"
+ );
+
+ console.log("PASS P10E PAYMENT",scenario.name);
+}
+
+const badId="p10e_invalid_expiry_wallet";
+
+documents.set("accounts/"+badId,{
+ plan:"Starter",
+ planExpiresAt:
+  new Date(Date.now()-11*86400000).toISOString(),
+ creditWalletV1:true,
+ creditWalletRemaining:23,
+ used:0,
+ reserved:"invalid"
+});
+
+await api.promptpayExpireUnusedCredits();
+
+assert(
+ documents.get("accounts/"+badId).creditWalletRemaining===23,
+ "Invalid reserved value caused credit forfeiture"
+);
+
+assert(
+ ![...documents.keys()].some(k=>
+  k.startsWith("accounts/"+badId+"/audit/")),
+ "Invalid reserved value caused expiry audit"
+);
+
+console.log("P10E_PAYMENT_NEGATIVE_CASES: 4/4 PASS");
+
+
+// P18: Payment was verified by Omise, but account credits
+// became invalid before settlement.
+const p18RecoveryScenarios=[
+ {name:"bad_reserved",
+  change:{reserved:"invalid"},
+  reason:"invalid_credit_state"},
+ {name:"bad_used",
+  change:{used:"invalid"},
+  reason:"invalid_credit_state"},
+ {name:"bad_wallet",
+  change:{creditWalletRemaining:"invalid"},
+  reason:"invalid_credit_state"},
+ {name:"transfer_overflow",
+  change:{creditWalletRemaining:Number.MAX_SAFE_INTEGER},
+  reason:"invalid_credit_transfer"}
+];
+
+for(const scenario of p18RecoveryScenarios){
+ userId="p18_recovery_"+scenario.name;
+ ticketId="p18_ticket_"+scenario.name+"_123456789012";
+
+ const accountPath="accounts/"+userId;
+
+ documents.set(accountPath,{
+  plan:"Starter",
+  planExpiresAt:
+   new Date(Date.now()+15*86400000).toISOString(),
+  creditWalletV1:true,
+  creditWalletRemaining:120,
+  used:0,
+  reserved:0,
+  billingVersion:0
+ });
+
+ chargeStatus="pending";
+ paid=false;
+ currentMode="promptpay";
+ currentLive=false;
+
+ const billing=await api.promptpayRequestPlanChange(
+  request({plan:"Basic"})
+ );
+
+ const qr=await api.promptpayCreateCharge(
+  request({
+   requestId:billing.requestId,
+   method:"promptpay"
+  })
+ );
+
+ assert(qr.status==="pending",
+  "P18 payment setup failed: "+scenario.name);
+
+ const altered={
+  ...documents.get(accountPath),
+  ...scenario.change
+ };
+
+ documents.set(accountPath,altered);
+
+ chargeStatus="successful";
+ paid=true;
+
+ const result=await api.promptpayChargeStatus(
+  request({requestId:billing.requestId})
+ );
+
+ const account=documents.get(accountPath);
+ const bill=documents.get(
+  accountPath+"/billingRequests/"+billing.requestId
+ );
+
+ assert(
+  result.status==="payment_review" &&
+  result.requiresSupport===true,
+  "P18 paid transaction not held: "+scenario.name
+ );
+
+ assert(
+  bill.status==="payment_review" &&
+  bill.reviewReason===scenario.reason &&
+  bill.reviewProviderVerifiedPaid===true &&
+  bill.reviewProviderChargeId===charge.id,
+  "P18 payment review evidence missing: "+scenario.name
+ );
+
+ assert(
+  account.plan==="Starter" &&
+  account.creditWalletRemaining===
+   altered.creditWalletRemaining &&
+  account.billingVersion===0 &&
+  account.openBillingRequestId===billing.requestId,
+  "P18 invalid account was modified: "+scenario.name
+ );
+
+ const audits=()=>[...documents.keys()].filter(k=>
+  k.startsWith(accountPath+"/audit/") &&
+  documents.get(k)?.action===
+   "payment_requires_manual_review"
+ );
+
+ assert(audits().length===1,
+  "P18 review audit missing or duplicated");
+
+ const retry=await api.promptpayChargeStatus(
+  request({requestId:billing.requestId})
+ );
+
+ assert(
+  retry.status==="payment_review" &&
+  audits().length===1 &&
+  documents.get(accountPath).plan==="Starter",
+  "P18 retry was not idempotent: "+scenario.name
+ );
+
+ console.log("PASS P18 VERIFIED-PAID REVIEW:",scenario.name);
+}
+
+console.log("P18_PAID_RECOVERY_CASES: 4/4 PASS");
