@@ -47,23 +47,36 @@ function merge(path,patch){
  documents.set(path,next);
 }
 function collection(path){
- const q={_limit:100,_filter:null,_sort:null,_after:null,
+ const q={_limit:100,_filter:null,_sort:[],_after:null,
   doc(id){return ref(path+"/"+(id||ticketId))},
   where(field,op,value){this._filter={field,op,value};return this},
-  orderBy(field,direction="asc"){this._sort={field,direction};return this},
+   orderBy(field,direction="asc"){this._sort.push({field,direction});return this},
   limit(n){this._limit=n;return this},
-  startAfter(doc){this._after=doc;return this},
+   startAfter(...values){this._after=values;return this},
   async get(){
    let rows=[...documents.keys()].filter(k=>k.startsWith(path+"/")&&k.split("/").length===path.split("/").length+1).map(snapshot);
    if(this._filter)rows=rows.filter(d=>this._filter.op==="<="&&
      typeof d.data()?.[this._filter.field]==="string"&&d.data()[this._filter.field]<=this._filter.value);
-   if(this._sort)rows.sort((a,b)=>{
-    const x=a.data()?.[this._sort.field]||"",y=b.data()?.[this._sort.field]||"";
-    const cmp=x.localeCompare(y)||a.id.localeCompare(b.id);
-    return this._sort.direction==="desc"?-cmp:cmp;
-   });
-   else rows.sort((a,b)=>b.id.localeCompare(a.id));
-   if(this._after){const pos=rows.findIndex(d=>d.id===this._after.id);rows=pos<0?[]:rows.slice(pos+1)}
+    if(this._sort.length)rows.sort((a,b)=>{
+     for(const {field,direction} of this._sort){
+      const x=field==="__name__"?a.id:(a.data()?.[field]??"");
+      const y=field==="__name__"?b.id:(b.data()?.[field]??"");
+      const cmp=String(x).localeCompare(String(y));
+      if(cmp)return direction==="desc"?-cmp:cmp;
+     }
+     return a.id.localeCompare(b.id);
+    });
+    else rows.sort((a,b)=>b.id.localeCompare(a.id));
+    if(this._after){
+     if(this._after.length===1&&this._after[0]?.id){
+      const pos=rows.findIndex(d=>d.id===this._after[0].id);
+      rows=pos<0?[]:rows.slice(pos+1);
+     }else{
+      const [expiry,id]=this._after;
+      rows=rows.filter(d=>d.data()?.planExpiresAt>expiry||
+       (d.data()?.planExpiresAt===expiry&&d.id>id));
+     }
+    }
    rows=rows.slice(0,this._limit);
    return {docs:rows,size:rows.length,empty:rows.length===0};
   }
@@ -79,7 +92,8 @@ const db={collection,async runTransaction(fn){
  for(const [kind,path,data] of pending){if(kind==="create")documents.set(path,{...data});else merge(path,data)}
  return result;
 }};
-const firestore=Object.assign(()=>db,{FieldValue:server});
+const firestore=Object.assign(()=>db,{FieldValue:server,
+ FieldPath:{documentId:()=>"__name__"}});
 const admin={initializeApp(){},firestore};
 class HttpsError extends Error{constructor(code,message,details){super(message);this.code=code;this.details=details}}
 const secretValue=new Map([["PACKTOOK_OMISE_TEST_SECRET_KEY","skey_test_mock_only"],["PACKTOOK_OMISE_TEST_WEBHOOK_SECRET",Buffer.from("webhook-mock-secret").toString("base64")]]);
@@ -485,8 +499,16 @@ for(const scenario of p18RecoveryScenarios){
   bill.status==="payment_review" &&
   bill.reviewReason===scenario.reason &&
   bill.reviewProviderVerifiedPaid===true &&
-  bill.reviewProviderChargeId===charge.id,
-  "P18 payment review evidence missing: "+scenario.name
+   bill.reviewProviderChargeId===charge.id &&
+   bill.paymentEvidenceVersion===1 &&
+   bill.providerVerifiedChargeId===charge.id &&
+   bill.providerVerifiedAmountSatang===charge.amount &&
+   bill.providerVerifiedCurrency==="thb" &&
+   bill.providerVerifiedSource==="promptpay" &&
+   bill.providerVerifiedLivemode===false &&
+   bill.providerVerifiedStatus==="successful" &&
+   bill.providerVerifiedPaid===true,
+   "P18/P30 payment review evidence missing: "+scenario.name
  );
 
  assert(
@@ -522,3 +544,95 @@ for(const scenario of p18RecoveryScenarios){
 }
 
 console.log("P18_PAID_RECOVERY_CASES: 4/4 PASS");
+
+// P30: Keyset pagination must work when there are more than 800 accounts,
+// including mutable or deleted cursor documents between scheduled invocations.
+const p30SourceDate="2020-01-01T00:00:00.000Z";
+const p30DeleteDate="2019-01-01T00:00:00.000Z";
+function p30Seed(prefix,count,date){
+ for(let i=0;i<count;i++){
+  const id=prefix+String(i).padStart(4,"0");
+  documents.set("accounts/"+id,{plan:"Starter",planExpiresAt:date,
+   creditWalletV1:true,creditWalletRemaining:5,used:0,reserved:0});
+ }
+}
+function p30Remaining(prefix,count){
+ let n=0;
+ for(let i=0;i<count;i++){
+  const account=documents.get("accounts/"+prefix+String(i).padStart(4,"0"));
+  if(account&&account.creditWalletRemaining!==0)n++;
+ }
+ return n;
+}
+const p30Progress="packtookSystem/expiredCreditGraceSweepV641";
+p30Seed("p30_mutable_",825,p30SourceDate);
+await api.promptpayExpireUnusedCredits();
+let p30Cursor=documents.get(p30Progress);
+assert(p30Cursor&&p30Cursor.cursorVersion===2&&
+ p30Cursor.lastPlanExpiresAt===p30SourceDate&&
+ p30Cursor.lastAccountId==="p30_mutable_0799"&&
+ p30Remaining("p30_mutable_",825)===25,
+ "P30 first 800-account sweep or saved composite cursor invalid");
+const changedCursorPath="accounts/"+p30Cursor.lastAccountId;
+documents.set(changedCursorPath,{
+ ...documents.get(changedCursorPath),
+ planExpiresAt:new Date(Date.now()+60*86400000).toISOString()
+});
+await api.promptpayExpireUnusedCredits();
+assert(p30Remaining("p30_mutable_",825)===0&&
+ !documents.has(p30Progress),
+ "P30 changed cursor caused unprocessed expired accounts to be skipped");
+console.log("PASS P30 PAGINATION: modified cursor keyset resume");
+
+p30Seed("p30_deleted_",805,p30DeleteDate);
+await api.promptpayExpireUnusedCredits();
+p30Cursor=documents.get(p30Progress);
+assert(p30Cursor&&p30Cursor.cursorVersion===2&&
+ p30Cursor.lastPlanExpiresAt===p30DeleteDate&&
+ p30Cursor.lastAccountId==="p30_deleted_0799"&&
+ p30Remaining("p30_deleted_",805)===5,
+ "P30 deleted cursor first sweep invalid");
+documents.delete("accounts/"+p30Cursor.lastAccountId);
+await api.promptpayExpireUnusedCredits();
+assert(p30Remaining("p30_deleted_",805)===0,
+ "P30 deleted cursor caused unprocessed expired accounts to be skipped");
+// Earlier completed accounts can still occupy query pages with zero balance.
+// Drain the remaining idempotent pages before testing a fresh sweep alert.
+for(let i=0;i<4&&documents.has(p30Progress);i++)
+ await api.promptpayExpireUnusedCredits();
+assert(!documents.has(p30Progress),
+ "P30 keyset cursor did not clear after draining completed pages");
+console.log("PASS P30 PAGINATION: deleted cursor keyset resume");
+console.log("P30_EXPIRY_PAGINATION: 2/2 PASS");
+
+// Use an earliest-expiring invalid account so the bounded 800-account
+// sweep visits it even when previous pagination test records remain.
+documents.set("accounts/p30_invalid_alert",{
+ plan:"Starter",planExpiresAt:"2018-01-01T00:00:00.000Z",
+ creditWalletV1:true,creditWalletRemaining:23,used:0,reserved:"invalid"
+});
+documents.set("accounts/p30_invalid_wallet_alert",{
+ plan:"Starter",planExpiresAt:"2018-01-02T00:00:00.000Z",
+ creditWalletV1:true,creditWalletRemaining:"invalid",used:0,reserved:0
+});
+const originalWarn=console.warn;
+const p30Warnings=[];
+console.warn=(...args)=>{p30Warnings.push(args)};
+try{await api.promptpayExpireUnusedCredits()}
+finally{console.warn=originalWarn}
+assert(p30Warnings.some(([message,details])=>
+ message==="PACKTOOK expired credit grace sweep needs manual review"&&
+ details?.accountId==="p30_invalid_alert"&&
+ details?.reason==="invalid_reserved"),
+ "P30 invalid reservation reason was not emitted for monitoring");
+assert(documents.get("accounts/p30_invalid_alert").creditWalletRemaining===23,
+ "P30 invalid reservation balance modified by sweep");
+assert(p30Warnings.some(([message,details])=>
+ message==="PACKTOOK expired credit grace sweep needs manual review"&&
+ details?.accountId==="p30_invalid_wallet_alert"&&
+ details?.reason==="invalid_wallet"),
+ "P30 invalid wallet reason was not emitted for monitoring");
+assert(documents.get("accounts/p30_invalid_wallet_alert").creditWalletRemaining==="invalid",
+ "P30 invalid wallet was modified by sweep");
+console.log("P30_INVALID_EXPIRY_ALERT: PASS");
+console.log("P30_PAYMENT_REVIEW_EVIDENCE: 4/4 PASS");
