@@ -540,10 +540,44 @@ for(const scenario of p18RecoveryScenarios){
   "P18 retry was not idempotent: "+scenario.name
  );
 
+ // P50: Even if an operator later repairs unsafe counters in this mock,
+ // reconciling a provider-paid review must NOT silently settle a payment.
+ // A separately designed, authorized manual recovery path is required.
+ documents.set(accountPath,{
+  ...documents.get(accountPath),
+  used:0,reserved:0,creditWalletRemaining:120
+ });
+ const preRecoveryAuditCount=audits().length;
+ const preRecoveryChargeCount=chargeCreateCount;
+ const retryAfterCounterRepair=await api.promptpayChargeStatus(
+  request({requestId:billing.requestId})
+ );
+ const afterRepair=documents.get(accountPath);
+ const afterRepairBill=documents.get(
+  accountPath+"/billingRequests/"+billing.requestId
+ );
+ assert(
+  retryAfterCounterRepair.status==="payment_review" &&
+  afterRepairBill.status==="payment_review" &&
+  afterRepair.plan==="Starter" &&
+  afterRepair.creditWalletRemaining===120 &&
+  afterRepair.billingVersion===0 &&
+  afterRepair.openBillingRequestId===billing.requestId &&
+  audits().length===preRecoveryAuditCount &&
+  chargeCreateCount===preRecoveryChargeCount,
+  "P50 provider-paid review auto-settled after counters were repaired: "+scenario.name
+ );
+ await rejects(
+  api.promptpayRequestPlanChange(request({plan:"Basic"})),
+  "failed-precondition"
+ );
+ console.log("PASS P50 PAID REVIEW RETRY LOCK:",scenario.name);
+
  console.log("PASS P18 VERIFIED-PAID REVIEW:",scenario.name);
 }
 
 console.log("P18_PAID_RECOVERY_CASES: 4/4 PASS");
+console.log("P50_PAID_REVIEW_RETRY_LOCK: 4/4 PASS");
 
 // P30: Keyset pagination must work when there are more than 800 accounts,
 // including mutable or deleted cursor documents between scheduled invocations.
