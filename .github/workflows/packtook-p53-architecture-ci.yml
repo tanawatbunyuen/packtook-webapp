@@ -1,0 +1,58 @@
+name: PACKTOOK P53 Architecture Contract (no deploy)
+
+on:
+  pull_request:
+    branches:
+      - review/p52-payment-review-dual-control-demo
+    paths:
+      - 'production/docs/P53_PRODUCTION_RECOVERY_ARCHITECTURE.md'
+      - 'production/docs/p53-recovery-contract.json'
+      - 'production/scripts/p53-recovery-policy.cjs'
+      - 'production/scripts/test-p53-recovery-architecture.mjs'
+      - '.github/workflows/packtook-p53-architecture-ci.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: packtook-p53-architecture-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  design-only:
+    name: Validate proposed recovery policy and forbid deployment
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Checkout candidate without persisted credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Node.js 22
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - name: No production creds; strict syntax and manifest safety
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -z "${GOOGLE_APPLICATION_CREDENTIALS:-}"
+          test -z "${FIREBASE_TOKEN:-}"
+          test -z "${CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE:-}"
+          test -z "${PACKTOOK_PRODUCTION_PROJECT_ID:-}"
+          node --check production/scripts/p53-recovery-policy.cjs
+          node --check production/scripts/test-p53-recovery-architecture.mjs
+          node -e "const x=require('./production/docs/p53-recovery-contract.json');if(x.designStatus!=='PROPOSAL_ONLY'||Object.values(x.controls).slice(0,7).some(v=>v!==false))process.exit(2)"
+          if grep -Eq 'p53-recovery-policy|p53-recovery-contract' production/payment-functions/index.js; then
+            echo 'UNSAFE: Production runtime imports review-only P53 policy'
+            exit 3
+          fi
+      - name: Pure Node architecture regression (no network/emulator required)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          node --test production/scripts/test-p53-recovery-architecture.mjs | tee /tmp/p53-architecture-test.log
+          grep -Fq '# fail 0' /tmp/p53-architecture-test.log
+          echo 'P53_ARCHITECTURE_CI: PASS; NO PRODUCTION ENDPOINT, NO CLOUD WRITES'
