@@ -64,7 +64,7 @@ try{
  await assert.rejects(()=>invalid.decision({accountId:subject,actorId:actor,role:'superadmin',
  requestId:'p57_invalid_001'}),/invalid_scope/);
  pass('unknown policy role rejected');
- console.log('P57_POLICY_EPOCH_EMULATOR: '+count+'/8 PASS');
+ console.log('P57_POLICY_EPOCH_EMULATOR: '+count+'/9 PASS');
  console.log('P57_REAL_OMISE_REQUESTS: 0');
  console.log('P57_REAL_APPCHECK_ATTESTATIONS: 0');
  console.log('P57_PRODUCTION_WRITES: 0');
