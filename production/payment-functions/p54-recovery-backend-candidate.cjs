@@ -201,7 +201,20 @@ function buildDemoRecoveryBackend({db,auth,appCheck,provider,env=process.env,now
     const actorId=await authenticate(input,'owner'),{accountId,requestId,resolutionType}=input;
     if(!knownResolution.has(resolutionType))deny('resolution_not_supported');
     const refs=docs(accountId,requestId),observed=await currentEvidence(accountId,requestId,refs);
-    // Refresh other reviewers' live role grants (no role claim from request body).
+    // Read prior reviewers outside transaction; fresh Admin Auth roles are mandatory.
+    // Firestore case is re-read within transaction so altered reviewer IDs cannot be used.
+    const preCase=await refs.recovery.get();
+    if(!preCase.exists||!preCase.data().finance||!preCase.data().technical)
+      deny('dual_review_not_complete');
+    const expectedReviewers=[
+      {uid:preCase.data().finance.actorId,role:'finance'},
+      {uid:preCase.data().technical.actorId,role:'technical'}];
+    for(const reviewer of expectedReviewers){
+      const live=await auth.getUser(reviewer.uid);
+      if(live.disabled||live.emailVerified!==true||
+        live.customClaims?.[ROLE_CLAIMS[reviewer.role]]!==true)
+        deny('reviewer_role_revoked');
+    }
     return db.runTransaction(async tx=>{
       const [a,b,c,g]=await Promise.all([
         tx.get(refs.account),tx.get(refs.bill),tx.get(refs.recovery),tx.get(refs.grant)]);
@@ -209,6 +222,9 @@ function buildDemoRecoveryBackend({db,auth,appCheck,provider,env=process.env,now
       const rec=c.data(),ts=now();
       if(rec.state!=='AWAITING_OWNER'||!rec.finance||!rec.technical)
         deny('dual_review_not_complete');
+      if(rec.finance.actorId!==expectedReviewers[0].uid||
+        rec.technical.actorId!==expectedReviewers[1].uid)
+        deny('reviewers_changed_since_role_check');
       if(ts<rec.verifiedAtMs||ts-rec.verifiedAtMs>TTL)deny('owner_evidence_expired');
       const people=new Set([accountId,rec.makerId,rec.finance.actorId,rec.technical.actorId]);
       if(people.has(actorId)||rec.finance.actorId===rec.technical.actorId)
