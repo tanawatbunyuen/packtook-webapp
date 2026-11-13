@@ -112,7 +112,7 @@ try{
  pass('account, bill, grant untouched by candidate backend');
  assert.ok(providerCalls>0);
  pass('all provider reads came from synthetic Test provider');
- console.log('P56_RACE_EMULATOR: '+count+'/8 PASS');
+ console.log('P56_RACE_EMULATOR: '+count+'/10 PASS');
  console.log('P56_ACTUAL_OMISE_REQUESTS: 0');
  console.log('P56_REAL_APP_CHECK_ATTESTATIONS: 0');
  console.log('P56_ACCOUNT_BILLING_GRANT_WRITES_BY_BACKEND: 0');
