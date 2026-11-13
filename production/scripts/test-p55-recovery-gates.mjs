@@ -12,7 +12,7 @@ function fixture({appResult={alreadyConsumed:false},decoded={uid:'reviewer_123',
    auth:{async verifyIdToken(token,checkRevoked){calls.push(['id',checkRevoked]);if(authError)throw authError;return decoded;},
      async getUser(uid){calls.push(['user',uid]);if(userError)throw userError;return live;}},
    provider:{async getCharge(){calls.push(['provider']);throw Error('PROVIDER_CALLED');}},
-   db:{async runTransaction(){throw Error('TX_CALLED')},collection(){calls.push(['db']);throw Error('DB_CALLED');}}
+   db:{async runTransaction(){throw Error('TX_CALLED')},collection(){return {doc(){calls.push(['db']);throw Error('DB_CALLED');}};}}
  });
  return {api,calls};
 }
