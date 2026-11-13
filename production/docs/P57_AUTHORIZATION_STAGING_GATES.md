@@ -28,5 +28,5 @@ This is a narrowly scoped policy-epoch prototype, **not** a production authoriza
     npm ci --prefix production/payment-functions --ignore-scripts --no-audit --no-fund
     npm exec --yes --package=firebase-tools@15.22.1 -- firebase emulators:exec --project demo-packtook-v72 --only auth,firestore --config production/scripts/v72-isolated-emulators.firebase.json 'node production/scripts/p57-policy-epoch-race-emulator.mjs'
 
-Expected marker: P57_POLICY_EPOCH_EMULATOR: 8/8 PASS.
+Expected marker: P57_POLICY_EPOCH_EMULATOR: 9/9 PASS.
 F0 HOLD / F1-F3 NOT AUTHORIZED / PUBLIC CLOSED / MIGRATION HOLD / NO_GO_RELEASE.
