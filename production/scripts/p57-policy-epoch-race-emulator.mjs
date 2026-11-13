@@ -29,6 +29,8 @@ try{
  await entered;
  const pendingDecision=api.decision({accountId:subject,actorId:actor,role,
   requestId:'p57_racing_001'});
+ // Allow competing request to reach the locked policy doc before revocation commits.
+ await new Promise(resolve=>setTimeout(resolve,250));
  proceedResolve();
  const newEpoch=await pendingRevoke;
  assert.equal(newEpoch,2);
