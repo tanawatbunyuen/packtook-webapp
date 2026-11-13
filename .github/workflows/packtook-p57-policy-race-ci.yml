@@ -63,7 +63,7 @@ jobs:
             --only auth,firestore \
             --config production/scripts/v72-isolated-emulators.firebase.json \
             'node production/scripts/p57-policy-epoch-race-emulator.mjs' | tee /tmp/p57.log
-          grep -Fq 'P57_POLICY_EPOCH_EMULATOR: 8/8 PASS' /tmp/p57.log
+          grep -Fq 'P57_POLICY_EPOCH_EMULATOR: 9/9 PASS' /tmp/p57.log
           grep -Fq 'P57_PRODUCTION_WRITES: 0' /tmp/p57.log
           grep -Fq 'P57_PRODUCTION_RUNTIME_WIRED: false' /tmp/p57.log
           grep -Fq 'P57_RELEASE: NO_GO_RELEASE' /tmp/p57.log
