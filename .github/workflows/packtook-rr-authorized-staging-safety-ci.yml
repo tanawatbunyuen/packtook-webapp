@@ -1,0 +1,33 @@
+name: PACKTOOK Authorized Staging Probe SAFETY CI (no external requests)
+on:
+  pull_request:
+    branches: [review/rr-staging-rollback-drill-20261113]
+permissions:
+  contents: read
+jobs:
+  offline-authorization-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: Assert no credential access or staged execution from CI
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -z "${GOOGLE_APPLICATION_CREDENTIALS:-}"
+          test -z "${OMISE_SECRET_KEY:-}"
+          test -z "${RR_ENABLE_REAL_STAGING_PROBES:-}"
+          ! grep -Eq 'rr-execute-authorized-isolated-staging|rr-authorized-staging-gate' production/payment-functions/index.js
+          node --check production/scripts/rr-execute-authorized-isolated-staging.mjs
+          node --test production/scripts/test-rr-authorized-staging-gate.mjs
+          set +e
+          node production/scripts/rr-execute-authorized-isolated-staging.mjs > /tmp/no-staging.txt 2>&1
+          status=$?
+          set -e
+          test "${status}" -eq 2
+          grep -Fq 'STAGING_PROBE_NOT_EXECUTED:' /tmp/no-staging.txt
