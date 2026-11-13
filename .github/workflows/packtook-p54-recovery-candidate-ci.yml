@@ -1,0 +1,91 @@
+name: PACKTOOK P54 Recovery Candidate CI (demo only, no deploy)
+
+on:
+  pull_request:
+    branches:
+      - review/p53-production-recovery-architecture
+    paths:
+      - 'production/payment-functions/p54-recovery-backend-candidate.cjs'
+      - 'production/scripts/p54-recovery-backend-emulator.mjs'
+      - 'production/scripts/test-p54-recovery-security.mjs'
+      - 'production/docs/P54_RECOVERY_BACKEND_CANDIDATE.md'
+      - '.github/workflows/packtook-p54-recovery-candidate-ci.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: packtook-p54-demo-only-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  candidate:
+    name: Firebase Auth + Firestore Emulator only; mocked App Check and Omise
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      GCLOUD_PROJECT: demo-packtook-v72
+      GOOGLE_CLOUD_PROJECT: demo-packtook-v72
+      GCP_PROJECT: demo-packtook-v72
+      FIRESTORE_EMULATOR_HOST: '127.0.0.1:18080'
+      FIREBASE_AUTH_EMULATOR_HOST: '127.0.0.1:19099'
+      FIREBASE_CLI_DISABLE_UPDATE_CHECK: 'true'
+    steps:
+      - name: Checkout without persisted credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Node.js 22
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - name: Java 21 for Firestore Emulator
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Enforce demo-only and disabled runtime guard
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "${GCLOUD_PROJECT}" = demo-packtook-v72
+          test "${GOOGLE_CLOUD_PROJECT}" = demo-packtook-v72
+          test "${GCP_PROJECT}" = demo-packtook-v72
+          test "${FIRESTORE_EMULATOR_HOST}" = 127.0.0.1:18080
+          test "${FIREBASE_AUTH_EMULATOR_HOST}" = 127.0.0.1:19099
+          test -z "${GOOGLE_APPLICATION_CREDENTIALS:-}"
+          test -z "${FIREBASE_TOKEN:-}"
+          test -z "${CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE:-}"
+          test -z "${PACKTOOK_PRODUCTION_PROJECT_ID:-}"
+          if grep -Eq 'p54-recovery-backend-candidate|p54-recovery-backend-emulator' production/payment-functions/index.js; then
+            echo 'UNSAFE: production index wired to P54 candidate'
+            exit 3
+          fi
+          node --check production/payment-functions/p54-recovery-backend-candidate.cjs
+          node --check production/scripts/p54-recovery-backend-emulator.mjs
+          node --check production/scripts/test-p54-recovery-security.mjs
+      - name: Pure no-network security regression
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          node --test production/scripts/test-p54-recovery-security.mjs | tee /tmp/p54-unit.log
+          grep -Fq '# fail 0' /tmp/p54-unit.log
+      - name: Install locked Firebase Admin SDK dependencies
+        shell: bash
+        run: npm ci --prefix production/payment-functions --ignore-scripts --no-audit --no-fund
+      - name: Auth + Firestore transactions in local demo emulators
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          npm exec --yes --package=firebase-tools@15.22.1 -- firebase emulators:exec \
+            --project demo-packtook-v72 \
+            --only auth,firestore \
+            --config production/scripts/v72-isolated-emulators.firebase.json \
+            'node production/scripts/p54-recovery-backend-emulator.mjs' | tee /tmp/p54-demo.log
+          grep -Fq 'P54_BACKEND_EMULATOR: 16/16 PASS' /tmp/p54-demo.log
+          grep -Fq 'P54_ACCOUNT_BILLING_WRITES_BY_BACKEND: 0' /tmp/p54-demo.log
+          grep -Fq 'P54_ACTUAL_OMISE_REQUESTS: 0' /tmp/p54-demo.log
+          grep -Fq 'P54_CLOUD_ENDPOINTS_EXPORTED: 0' /tmp/p54-demo.log
+          echo 'P54_CI: PASS; NO DEPLOY, NO PAYMENT OR WALLET WRITES'
