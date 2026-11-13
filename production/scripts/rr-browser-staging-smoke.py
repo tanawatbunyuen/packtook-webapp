@@ -34,6 +34,21 @@ with sync_playwright() as p:
     print("LIVE_BRIDGE_FIREBASE_AUTH_AND_FUNCTIONS_IMPORTS: PASS")
     has_appcheck=bool(re.search(r'initializeAppCheck\s*\(|getToken\s*\(|firebase-app-check',source,re.I))
     print("LIVE_BRIDGE_APPCHECK_INTEGRATION:", "PRESENT_SOURCE_HINT" if has_appcheck else "NOT_FOUND_IN_BRIDGE")
+    import hashlib
+    from pathlib import Path
+    local=Path("firebase-staging/firebase-packing-bridge.js").read_bytes()
+    live=source.encode("utf-8")
+    print("LIVE_BRIDGE_SHA256:", hashlib.sha256(live).hexdigest())
+    print("REPO_BRIDGE_SHA256:", hashlib.sha256(local).hexdigest())
+    print("LIVE_BRIDGE_EQUALS_REPO:", "YES" if local==live else "NO")
+    indicators={
+      "FIREBASE_APPCHECK_IMPORT": "firebase-app-check" in source,
+      "INITIALIZE_APPCHECK": bool(re.search(r'initializeAppCheck\\s*\\(',source)),
+      "RECAPTCHA_PROVIDER": bool(re.search(r'ReCaptcha(?:Enterprise)?Provider',source)),
+      "APPCHECK_TOKEN_GET": bool(re.search(r'getToken\\s*\\(',source)),
+      "FIREBASE_BRIDGE_READY": "PACKTOOK_FIREBASE" in source
+    }
+    for k,v in indicators.items(): print("LIVE_"+k+":", "YES" if v else "NO")
     print("OWNER_AUTHENTICATED_LOGIN: NOT_EXECUTED")
     print("APPCHECK_ATTESTATION_AND_REPLAY: NOT_EXECUTED")
     print("OMISE_TEST_MODE_READ: NOT_EXECUTED")
