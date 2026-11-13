@@ -17,7 +17,7 @@ function buildDemoPolicyEpoch({db,env=process.env}={}){
   await ref.create({accountId,actorId,role,active,epoch:1});
   return ref;
  }
- async function revoke({accountId,actorId,role}){
+ async function revoke({accountId,actorId,role,beforeCommit}){
   const ref=policyRef(accountId,actorId,role);
   return db.runTransaction(async tx=>{
    const snap=await tx.get(ref);
@@ -25,6 +25,7 @@ function buildDemoPolicyEpoch({db,env=process.env}={}){
    const p=snap.data();
    if(p.accountId!==accountId||p.actorId!==actorId||p.role!==role||
       !Number.isSafeInteger(p.epoch)||p.epoch<1)deny('policy_corrupt');
+   if(beforeCommit)await beforeCommit();
    tx.update(ref,{active:false,epoch:p.epoch+1});
    return p.epoch+1;
   });
