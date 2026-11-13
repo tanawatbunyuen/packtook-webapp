@@ -62,7 +62,7 @@ jobs:
             --only auth,firestore \
             --config production/scripts/v72-isolated-emulators.firebase.json \
             'node production/scripts/p56-recovery-race-emulator.mjs' | tee /tmp/p56.log
-          grep -Fq 'P56_RACE_EMULATOR: 8/8 PASS' /tmp/p56.log
+          grep -Fq 'P56_RACE_EMULATOR: 10/10 PASS' /tmp/p56.log
           grep -Fq 'P56_ACTUAL_OMISE_REQUESTS: 0' /tmp/p56.log
           grep -Fq 'P56_PRODUCTION_WRITES: 0' /tmp/p56.log
           grep -Fq 'P56_NO_GO_RELEASE: true' /tmp/p56.log
