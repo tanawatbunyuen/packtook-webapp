@@ -1,0 +1,22 @@
+name: PACKTOOK P59 mock-proof safety CI
+on:
+  pull_request:
+    branches: [review/p58-recovery-policy-integration]
+permissions:
+  contents: read
+jobs:
+  proof-contract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - run: |
+          set -Eeuo pipefail
+          test -z "${GOOGLE_APPLICATION_CREDENTIALS:-}"
+          test -z "${OMISE_SECRET_KEY:-}"
+          ! grep -Eq 'p59-staging-proof-gates' production/payment-functions/index.js
+          node --test production/scripts/test-p59-staging-proof-gates.mjs
