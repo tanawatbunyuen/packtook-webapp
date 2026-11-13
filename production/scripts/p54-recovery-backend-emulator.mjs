@@ -120,12 +120,12 @@ try {
  await accountRef.update({creditWalletRemaining:120});
  pass('account change invalidates Owner decision, without wallet adjustment by P54');
  const decision=await api.ownerDecision(input('owner',{
-  resolutionType:'MANUAL_PROMPTPAY_REFUND_ESCALATION'});
+  resolutionType:'MANUAL_PROMPTPAY_REFUND_ESCALATION'}));
  assert.equal(decision.status,'OWNER_DECISION_RECORDED');
  assert.equal(decision.action,'NONE');assert.equal(decision.ownerDecided,true);
  pass('independent Owner records escalation decision only');
  await rejected(()=>api.ownerDecision(input('owner',{
-  resolutionType:'ENTITLEMENT_RECONCILIATION_PROPOSAL'}),/dual_review_not_complete/);
+  resolutionType:'ENTITLEMENT_RECONCILIATION_PROPOSAL'})),/dual_review_not_complete/);
  pass('cannot record second Owner resolution or double-execute');
  const status=await api.status(input('owner'));
  assert.equal(status.status,'OWNER_DECISION_RECORDED');assert.equal(status.financeApproved,true);
