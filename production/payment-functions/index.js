@@ -49,7 +49,16 @@ function hasActivePaidPlan(a){return a.plan!=="Free"&&subscriptionState(a)==="ac
 // V5.1 credit wallet: balance represents credits immediately available for new reservations.
 // Reservations debit the wallet and failures credit it back. No calendar-month reset.
 function walletEnabled(a){return a.creditWalletV1===true}
-function pendingReservations(a,now=Date.now()){return walletEnabled(a)?Math.max(0,a.reserved||0):a.period===periodId(now)?Math.max(0,a.reserved||0):0}
+function validCounter(a,name){
+ const value=a[name]===undefined?0:a[name];
+ if(!Number.isSafeInteger(value)||value<0)
+  throw new HttpsError("failed-precondition","Credit counters need review");
+ return value;
+}
+function pendingReservations(a,now=Date.now()){
+ const reserved=validCounter(a,"reserved");
+ return walletEnabled(a)||a.period===periodId(now)?reserved:0;
+}
 function creditAvailable(a,now=Date.now()){
  const limit=limits[a.plan];
  if(limit===null)return null;
@@ -59,7 +68,12 @@ function creditAvailable(a,now=Date.now()){
   return a.creditWalletRemaining;
  }
  const same=a.period===periodId(now);
- return Math.max(0,limit-(same?(a.used||0)+(a.reserved||0):0));
+ const used=validCounter(a,"used");
+ const reserved=validCounter(a,"reserved");
+ const committed=used+reserved;
+ if(!Number.isSafeInteger(committed))
+  throw new HttpsError("failed-precondition","Credit counters exceed supported range");
+ return Math.max(0,limit-(same?committed:0));
 }
 // PACKTOOK V6.4.1 — account wallet credit retention policy
 // Paid expiry blocks recording immediately (enforced in the unchanged Recording Function).
@@ -124,6 +138,7 @@ function purchaseDecision(a,target,now=Date.now()){
   return {allowed:false,reason:"Subscription data needs review before any new payment"};
  if(pendingReservations(a,now)>0)
   return {allowed:false,reason:"Finish outstanding recordings before purchasing or renewing"};
+ creditAvailable(a,now);
  if(a.plan==="Free")return {allowed:true,kind:"new",resetQuota:false};
  if(next>current)return {allowed:true,kind:"upgrade",resetQuota:false};
  if(!active)return {allowed:true,kind:"renewal",resetQuota:false};
@@ -290,15 +305,44 @@ async function reconcileCharge(accountId,requestId,chargeId){
   }
   if(item.status==="payment_review")return {status:"payment_review",requiresSupport:true};
   if(charge.status==="successful"&&charge.paid===true){
+   // Provider-paid but unsafe credit state must be held for support.
+   // Never grant credits or clear the billing lock in this path.
+   const markPaidCreditReview=(reason)=>{
+    tx.update(ref,{
+     status:"payment_review",
+     reviewReason:reason,
+     reviewRequiredAt:FieldValue.serverTimestamp(),
+     reviewProviderVerifiedPaid:true,
+     reviewProviderChargeId:charge.id,
+     reviewProviderVerifiedAt:FieldValue.serverTimestamp(),
+     ...paidEvidence(charge)
+    });
+    tx.create(acc.collection("audit").doc(),{
+     action:"payment_requires_manual_review",
+     billingRequestId:requestId,
+     omiseChargeId:chargeId,
+     reviewReason:reason,
+     createdAt:FieldValue.serverTimestamp()
+    });
+    return {status:"payment_review",requiresSupport:true};
+   };
    const legacy=!item.purchaseKind;
    const sameRevision=(a.billingVersion||0)===(item.baseBillingVersion||0);
    const lockOk=a.openBillingRequestId===requestId;
-   const decision=purchaseDecision(a,item.plan);
+   let decision;
+   try{
+    validCounter(a,"used");
+    validCounter(a,"reserved");
+    decision=purchaseDecision(a,item.plan);
+   }catch(e){
+    if(e?.code!=="failed-precondition")throw e;
+    return markPaidCreditReview("invalid_credit_state");
+   }
    const upgradeStillValid=item.purchaseKind==="upgrade"&&decision.kind==="upgrade"&&a.plan===item.basePlan&&a.planExpiresAt===item.baseExpiresAt;
    const authorized=legacy?(!hasActivePaidPlan(a)&&!billingOpen(a)):lockOk&&sameRevision&&(item.purchaseKind==="upgrade"?upgradeStillValid:(decision.allowed||item.purchaseKind==="renewal"&&a.plan===item.plan));
    if(!authorized){
     if(item.status!=="payment_review"){
-     tx.update(ref,{status:"payment_review",reviewReason:"active_or_changed_subscription",reviewedAgainstPlan:a.plan,reviewedAgainstExpiresAt:a.planExpiresAt||null,reviewRequiredAt:FieldValue.serverTimestamp()});
+     tx.update(ref,{status:"payment_review",reviewReason:"active_or_changed_subscription",reviewedAgainstPlan:a.plan,reviewedAgainstExpiresAt:a.planExpiresAt||null,reviewRequiredAt:FieldValue.serverTimestamp(),...paidEvidence(charge)});
      tx.create(acc.collection("audit").doc(),{action:"payment_requires_manual_review",billingRequestId:requestId,omiseChargeId:chargeId,createdAt:FieldValue.serverTimestamp()});
     }
     return {status:"payment_review",requiresSupport:true,plan:a.plan,expiresAt:a.planExpiresAt||null};
@@ -308,11 +352,17 @@ async function reconcileCharge(accountId,requestId,chargeId){
    const expiresAt=new Date(base+30*86400000).toISOString();
    // Reserve before settling must be zero, otherwise an in-flight recording may be lost.
    if(pendingReservations(a)>0){
-    tx.update(ref,{status:"payment_review",reviewReason:"pending_recordings_prevent_credit_transfer",reviewRequiredAt:FieldValue.serverTimestamp()});
+    tx.update(ref,{status:"payment_review",reviewReason:"pending_recordings_prevent_credit_transfer",reviewRequiredAt:FieldValue.serverTimestamp(),...paidEvidence(charge)});
     tx.create(acc.collection("audit").doc(),{action:"payment_requires_manual_review",billingRequestId:requestId,omiseChargeId:chargeId,createdAt:FieldValue.serverTimestamp()});
     return {status:"payment_review",requiresSupport:true};
    }
-   const credits=purchasedCreditBalance(a,item.plan);
+   let credits;
+   try{
+    credits=purchasedCreditBalance(a,item.plan);
+   }catch(e){
+    if(e?.code!=="failed-precondition")throw e;
+    return markPaidCreditReview("invalid_credit_transfer");
+   }
    tx.update(acc,{plan:item.plan,planExpiresAt:expiresAt,lastPaidAt:FieldValue.serverTimestamp(),billingVersion:FieldValue.increment(1),
     creditWalletV1:true,creditWalletRemaining:credits.total,walletStartingCredits:credits.total,period:periodId(Date.now()),used:0,reserved:0,
     ...(lockOk?{openBillingRequestId:FieldValue.delete()}:{}),updatedAt:FieldValue.serverTimestamp()});
@@ -488,28 +538,46 @@ exports.promptpayExpireUnusedCredits=onSchedule({
  // Resume after the last visited account on the previous run, so accounts
  // beyond a bounded 800-account sweep are not permanently starved.
  const progress=db.collection("packtookSystem").doc("expiredCreditGraceSweepV641");
- const prior=await progress.get(),lastId=prior.exists?prior.data().lastAccountId:null;
- let visited=0,forfeited=0,skipped=0,cursor=null,endOfResults=false;
- if(typeof lastId==="string"&&/^[A-Za-z0-9_-]{1,128}$/.test(lastId)){
-  const previous=await db.collection("accounts").doc(lastId).get();
-  if(previous.exists)cursor=previous;
- }
+  const prior=await progress.get(),checkpoint=prior.exists?prior.data():{};
+  const lastId=checkpoint.lastAccountId,lastExpiry=checkpoint.lastPlanExpiresAt;
+  let visited=0,forfeited=0,skipped=0,cursor=null,endOfResults=false;
+  const skippedReasons={};
+  if(typeof lastId==="string"&&/^[A-Za-z0-9_-]{1,128}$/.test(lastId)&&
+     typeof lastExpiry==="string"&&Number.isFinite(Date.parse(lastExpiry))){
+   cursor={expiry:lastExpiry,id:lastId};
+  }else if(prior.exists){
+   // The old single-ID cursor cannot safely resume an expiry-ordered query.
+   // Restarting is idempotent: already-forfeited balances are zero.
+   console.warn("PACKTOOK expired credit grace sweep legacy cursor reset",{
+    reason:"missing_or_invalid_keyset_cursor"
+   });
+  }
  while(visited<MAX_SCAN){
-  let query=db.collection("accounts").where("planExpiresAt","<=",cutoff)
-   .orderBy("planExpiresAt","asc").limit(Math.min(PAGE_SIZE,MAX_SCAN-visited));
-  if(cursor)query=query.startAfter(cursor);
+   let query=db.collection("accounts").where("planExpiresAt","<=",cutoff)
+    .orderBy("planExpiresAt","asc")
+    .orderBy(admin.firestore.FieldPath.documentId(),"asc")
+    .limit(Math.min(PAGE_SIZE,MAX_SCAN-visited));
+   if(cursor)query=query.startAfter(cursor.expiry,cursor.id);
   const snap=await query.get();
   if(snap.empty){endOfResults=true;break}
   for(const doc of snap.docs){
    const result=await db.runTransaction(async tx=>{
     const current=await tx.get(doc.ref);
-    if(!current.exists)return false;
-    const a=current.data(),deadline=carryoverDeadline(a);
-    if(a.plan==="Free"||limits[a.plan]===null||!walletEnabled(a)||
-       subscriptionState(a)!=="expired"||deadline===null||deadline>=Date.now()||
-       !Number.isSafeInteger(a.creditWalletRemaining)||a.creditWalletRemaining<=0||
-       (a.reserved||0)>0)return false;
-    const lost=a.creditWalletRemaining;
+     if(!current.exists)return "missing_account";
+     const a=current.data(),deadline=carryoverDeadline(a);
+     // Unknown plan names fail closed; undefined is not the same as Pro's null limit.
+     if(!Object.hasOwn(limits,a.plan))return "unknown_plan";
+     if(a.plan==="Free"||limits[a.plan]===null||!walletEnabled(a)||
+        subscriptionState(a)!=="expired"||deadline===null||deadline>=Date.now())
+      return "ineligible";
+     // Never silently forfeit a corrupt wallet or a corrupt reservation counter.
+     if(!Number.isSafeInteger(a.creditWalletRemaining)||a.creditWalletRemaining<0)
+      return "invalid_wallet";
+     if(!Number.isSafeInteger(a.reserved)||a.reserved<0)
+      return "invalid_reserved";
+     if(a.creditWalletRemaining===0)return "zero_balance";
+     if(a.reserved!==0)return "outstanding_reservations";
+     const lost=a.creditWalletRemaining;
     // A paid renewal after expiry changes planExpiresAt atomically; this check
     // prevents a stale scheduled sweep from overwriting the renewed wallet.
     const audit=doc.ref.collection("audit").doc();
@@ -523,18 +591,33 @@ exports.promptpayExpireUnusedCredits=onSchedule({
     tx.create(audit,{action:"expired_wallet_10_day_forfeiture",
      expiredPlan:a.plan,planExpiresAt:a.planExpiresAt,
      forfeitedCredits:lost,createdAt:FieldValue.serverTimestamp()});
-    return true;
-   });
-   if(result)forfeited++;else skipped++;
-  }
-  visited+=snap.size;
-  cursor=snap.docs[snap.docs.length-1];
+     return "forfeited";
+    });
+    if(result==="forfeited")forfeited++;
+    else{
+     skipped++;
+     skippedReasons[result]=(skippedReasons[result]||0)+1;
+     if(result==="invalid_wallet"||result==="invalid_reserved"){
+      // Structured logs are audit evidence for configuring an alert rule;
+      // this candidate does NOT create Cloud Monitoring alert policies.
+      console.warn("PACKTOOK expired credit grace sweep needs manual review",{
+       accountId:doc.id,reason:result,source:"promptpayExpireUnusedCredits"
+      });
+     }
+    }
+   }
+   visited+=snap.size;
+   const finalDoc=snap.docs[snap.docs.length-1];
+   cursor={expiry:finalDoc.data().planExpiresAt,id:finalDoc.id};
   if(snap.size<PAGE_SIZE){endOfResults=true;break}
  }
  if(endOfResults||!cursor)await progress.delete();
- else await progress.set({lastAccountId:cursor.id,lastScannedAt:FieldValue.serverTimestamp()});
- console.info("PACKTOOK expired credit grace sweep",{
-  visited,forfeitedAccounts:forfeited,skipped,scanLimit:MAX_SCAN,
+  else await progress.set({lastAccountId:cursor.id,lastPlanExpiresAt:cursor.expiry,
+   cursorVersion:2,lastScannedAt:FieldValue.serverTimestamp()});
+  console.info("PACKTOOK expired credit grace sweep",{
+   visited,forfeitedAccounts:forfeited,skipped,skippedReasons,
+   reviewRequired:(skippedReasons.invalid_wallet||0)+(skippedReasons.invalid_reserved||0)+(skippedReasons.unknown_plan||0),
+   scanLimit:MAX_SCAN,
   possiblyTruncated:visited===MAX_SCAN&&!endOfResults,
   cursorSaved:!endOfResults&&!!cursor,
   mode:"Production wallet expiry only"

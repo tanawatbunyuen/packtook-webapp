@@ -47,23 +47,36 @@ function merge(path,patch){
  documents.set(path,next);
 }
 function collection(path){
- const q={_limit:100,_filter:null,_sort:null,_after:null,
+ const q={_limit:100,_filter:null,_sort:[],_after:null,
   doc(id){return ref(path+"/"+(id||ticketId))},
   where(field,op,value){this._filter={field,op,value};return this},
-  orderBy(field,direction="asc"){this._sort={field,direction};return this},
+   orderBy(field,direction="asc"){this._sort.push({field,direction});return this},
   limit(n){this._limit=n;return this},
-  startAfter(doc){this._after=doc;return this},
+   startAfter(...values){this._after=values;return this},
   async get(){
    let rows=[...documents.keys()].filter(k=>k.startsWith(path+"/")&&k.split("/").length===path.split("/").length+1).map(snapshot);
    if(this._filter)rows=rows.filter(d=>this._filter.op==="<="&&
      typeof d.data()?.[this._filter.field]==="string"&&d.data()[this._filter.field]<=this._filter.value);
-   if(this._sort)rows.sort((a,b)=>{
-    const x=a.data()?.[this._sort.field]||"",y=b.data()?.[this._sort.field]||"";
-    const cmp=x.localeCompare(y)||a.id.localeCompare(b.id);
-    return this._sort.direction==="desc"?-cmp:cmp;
-   });
-   else rows.sort((a,b)=>b.id.localeCompare(a.id));
-   if(this._after){const pos=rows.findIndex(d=>d.id===this._after.id);rows=pos<0?[]:rows.slice(pos+1)}
+    if(this._sort.length)rows.sort((a,b)=>{
+     for(const {field,direction} of this._sort){
+      const x=field==="__name__"?a.id:(a.data()?.[field]??"");
+      const y=field==="__name__"?b.id:(b.data()?.[field]??"");
+      const cmp=String(x).localeCompare(String(y));
+      if(cmp)return direction==="desc"?-cmp:cmp;
+     }
+     return a.id.localeCompare(b.id);
+    });
+    else rows.sort((a,b)=>b.id.localeCompare(a.id));
+    if(this._after){
+     if(this._after.length===1&&this._after[0]?.id){
+      const pos=rows.findIndex(d=>d.id===this._after[0].id);
+      rows=pos<0?[]:rows.slice(pos+1);
+     }else{
+      const [expiry,id]=this._after;
+      rows=rows.filter(d=>d.data()?.planExpiresAt>expiry||
+       (d.data()?.planExpiresAt===expiry&&d.id>id));
+     }
+    }
    rows=rows.slice(0,this._limit);
    return {docs:rows,size:rows.length,empty:rows.length===0};
   }
@@ -79,7 +92,8 @@ const db={collection,async runTransaction(fn){
  for(const [kind,path,data] of pending){if(kind==="create")documents.set(path,{...data});else merge(path,data)}
  return result;
 }};
-const firestore=Object.assign(()=>db,{FieldValue:server});
+const firestore=Object.assign(()=>db,{FieldValue:server,
+ FieldPath:{documentId:()=>"__name__"}});
 const admin={initializeApp(){},firestore};
 class HttpsError extends Error{constructor(code,message,details){super(message);this.code=code;this.details=details}}
 const secretValue=new Map([["PACKTOOK_OMISE_TEST_SECRET_KEY","skey_test_mock_only"],["PACKTOOK_OMISE_TEST_WEBHOOK_SECRET",Buffer.from("webhook-mock-secret").toString("base64")]]);
@@ -334,3 +348,340 @@ await api.promptpayExpireUnusedCredits();
 assert([...documents.keys()].filter(k=>k.startsWith("accounts/expiredWalletForfeit/audit/")).length===1,
  "Repeated daily expiry job must not reset or audit twice");
 console.log("PASS: V6.4.2 same-plan early renewals 120+50, pre-expiry notice window, grace carryover, no downgrades, QR idempotency");
+
+
+for(const scenario of [
+ {name:"invalid_reserved",account:{
+  plan:"Free",
+  period:new Date().toISOString().slice(0,7),
+  used:0,reserved:"invalid",billingVersion:0
+ },target:"Starter"},
+ {name:"invalid_used",account:{
+  plan:"Free",
+  period:new Date().toISOString().slice(0,7),
+  used:"invalid",reserved:0,billingVersion:0
+ },target:"Starter"},
+ {name:"invalid_wallet",account:{
+  plan:"Starter",
+  planExpiresAt:new Date(Date.now()+5*86400000).toISOString(),
+  creditWalletV1:true,
+  creditWalletRemaining:"invalid",
+  used:0,reserved:0,billingVersion:0
+ },target:"Basic"}
+]){
+ userId="p10e_"+scenario.name;
+ ticketId="req_p10e_"+scenario.name+"_123456789";
+ documents.set("accounts/"+userId,scenario.account);
+
+ await rejects(
+  api.promptpayRequestPlanChange(
+   request({plan:scenario.target})
+  ),
+  "failed-precondition"
+ );
+
+ assert(
+  ![...documents.keys()].some(k=>
+   k.startsWith("accounts/"+userId+"/billingRequests/")),
+  "Invalid account created billing request"
+ );
+
+ console.log("PASS P10E PAYMENT",scenario.name);
+}
+
+const badId="p10e_invalid_expiry_wallet";
+
+documents.set("accounts/"+badId,{
+ plan:"Starter",
+ planExpiresAt:
+  new Date(Date.now()-11*86400000).toISOString(),
+ creditWalletV1:true,
+ creditWalletRemaining:23,
+ used:0,
+ reserved:"invalid"
+});
+
+await api.promptpayExpireUnusedCredits();
+
+assert(
+ documents.get("accounts/"+badId).creditWalletRemaining===23,
+ "Invalid reserved value caused credit forfeiture"
+);
+
+assert(
+ ![...documents.keys()].some(k=>
+  k.startsWith("accounts/"+badId+"/audit/")),
+ "Invalid reserved value caused expiry audit"
+);
+
+console.log("P10E_PAYMENT_NEGATIVE_CASES: 4/4 PASS");
+
+
+// P18: Payment was verified by Omise, but account credits
+// became invalid before settlement.
+const p18RecoveryScenarios=[
+ {name:"bad_reserved",
+  change:{reserved:"invalid"},
+  reason:"invalid_credit_state"},
+ {name:"bad_used",
+  change:{used:"invalid"},
+  reason:"invalid_credit_state"},
+ {name:"bad_wallet",
+  change:{creditWalletRemaining:"invalid"},
+  reason:"invalid_credit_state"},
+ {name:"transfer_overflow",
+  change:{creditWalletRemaining:Number.MAX_SAFE_INTEGER},
+  reason:"invalid_credit_transfer"}
+];
+
+for(const scenario of p18RecoveryScenarios){
+ userId="p18_recovery_"+scenario.name;
+ ticketId="p18_ticket_"+scenario.name+"_123456789012";
+
+ const accountPath="accounts/"+userId;
+
+ documents.set(accountPath,{
+  plan:"Starter",
+  planExpiresAt:
+   new Date(Date.now()+15*86400000).toISOString(),
+  creditWalletV1:true,
+  creditWalletRemaining:120,
+  used:0,
+  reserved:0,
+  billingVersion:0
+ });
+
+ chargeStatus="pending";
+ paid=false;
+ currentMode="promptpay";
+ currentLive=false;
+
+ const billing=await api.promptpayRequestPlanChange(
+  request({plan:"Basic"})
+ );
+
+ const qr=await api.promptpayCreateCharge(
+  request({
+   requestId:billing.requestId,
+   method:"promptpay"
+  })
+ );
+
+ assert(qr.status==="pending",
+  "P18 payment setup failed: "+scenario.name);
+
+ const altered={
+  ...documents.get(accountPath),
+  ...scenario.change
+ };
+
+ documents.set(accountPath,altered);
+
+ chargeStatus="successful";
+ paid=true;
+
+ const result=await api.promptpayChargeStatus(
+  request({requestId:billing.requestId})
+ );
+
+ const account=documents.get(accountPath);
+ const bill=documents.get(
+  accountPath+"/billingRequests/"+billing.requestId
+ );
+
+ assert(
+  result.status==="payment_review" &&
+  result.requiresSupport===true,
+  "P18 paid transaction not held: "+scenario.name
+ );
+
+ assert(
+  bill.status==="payment_review" &&
+  bill.reviewReason===scenario.reason &&
+  bill.reviewProviderVerifiedPaid===true &&
+   bill.reviewProviderChargeId===charge.id &&
+   bill.paymentEvidenceVersion===1 &&
+   bill.providerVerifiedChargeId===charge.id &&
+   bill.providerVerifiedAmountSatang===charge.amount &&
+   bill.providerVerifiedCurrency==="thb" &&
+   bill.providerVerifiedSource==="promptpay" &&
+   bill.providerVerifiedLivemode===false &&
+   bill.providerVerifiedStatus==="successful" &&
+   bill.providerVerifiedPaid===true,
+   "P18/P30 payment review evidence missing: "+scenario.name
+ );
+
+ assert(
+  account.plan==="Starter" &&
+  account.creditWalletRemaining===
+   altered.creditWalletRemaining &&
+  account.billingVersion===0 &&
+  account.openBillingRequestId===billing.requestId,
+  "P18 invalid account was modified: "+scenario.name
+ );
+
+ const audits=()=>[...documents.keys()].filter(k=>
+  k.startsWith(accountPath+"/audit/") &&
+  documents.get(k)?.action===
+   "payment_requires_manual_review"
+ );
+
+ assert(audits().length===1,
+  "P18 review audit missing or duplicated");
+
+ const retry=await api.promptpayChargeStatus(
+  request({requestId:billing.requestId})
+ );
+
+ assert(
+  retry.status==="payment_review" &&
+  audits().length===1 &&
+  documents.get(accountPath).plan==="Starter",
+  "P18 retry was not idempotent: "+scenario.name
+ );
+
+ // P50: Even if an operator later repairs unsafe counters in this mock,
+ // reconciling a provider-paid review must NOT silently settle a payment.
+ // A separately designed, authorized manual recovery path is required.
+ documents.set(accountPath,{
+  ...documents.get(accountPath),
+  used:0,reserved:0,creditWalletRemaining:120
+ });
+ const preRecoveryAuditCount=audits().length;
+ const preRecoveryChargeCount=chargeCreateCount;
+ const retryAfterCounterRepair=await api.promptpayChargeStatus(
+  request({requestId:billing.requestId})
+ );
+ const afterRepair=documents.get(accountPath);
+ const afterRepairBill=documents.get(
+  accountPath+"/billingRequests/"+billing.requestId
+ );
+ assert(
+  retryAfterCounterRepair.status==="payment_review" &&
+  afterRepairBill.status==="payment_review" &&
+  afterRepair.plan==="Starter" &&
+  afterRepair.creditWalletRemaining===120 &&
+  afterRepair.billingVersion===0 &&
+  afterRepair.openBillingRequestId===billing.requestId &&
+  audits().length===preRecoveryAuditCount &&
+  chargeCreateCount===preRecoveryChargeCount,
+  "P50 provider-paid review auto-settled after counters were repaired: "+scenario.name
+ );
+ await rejects(
+  api.promptpayRequestPlanChange(request({plan:"Basic"})),
+  "failed-precondition"
+ );
+ console.log("PASS P50 PAID REVIEW RETRY LOCK:",scenario.name);
+
+ console.log("PASS P18 VERIFIED-PAID REVIEW:",scenario.name);
+}
+
+console.log("P18_PAID_RECOVERY_CASES: 4/4 PASS");
+console.log("P50_PAID_REVIEW_RETRY_LOCK: 4/4 PASS");
+
+// P30: Keyset pagination must work when there are more than 800 accounts,
+// including mutable or deleted cursor documents between scheduled invocations.
+const p30SourceDate="2020-01-01T00:00:00.000Z";
+const p30DeleteDate="2019-01-01T00:00:00.000Z";
+function p30Seed(prefix,count,date){
+ for(let i=0;i<count;i++){
+  const id=prefix+String(i).padStart(4,"0");
+  documents.set("accounts/"+id,{plan:"Starter",planExpiresAt:date,
+   creditWalletV1:true,creditWalletRemaining:5,used:0,reserved:0});
+ }
+}
+function p30Remaining(prefix,count){
+ let n=0;
+ for(let i=0;i<count;i++){
+  const account=documents.get("accounts/"+prefix+String(i).padStart(4,"0"));
+  if(account&&account.creditWalletRemaining!==0)n++;
+ }
+ return n;
+}
+const p30Progress="packtookSystem/expiredCreditGraceSweepV641";
+p30Seed("p30_mutable_",825,p30SourceDate);
+await api.promptpayExpireUnusedCredits();
+let p30Cursor=documents.get(p30Progress);
+assert(p30Cursor&&p30Cursor.cursorVersion===2&&
+ p30Cursor.lastPlanExpiresAt===p30SourceDate&&
+ p30Cursor.lastAccountId==="p30_mutable_0799"&&
+ p30Remaining("p30_mutable_",825)===25,
+ "P30 first 800-account sweep or saved composite cursor invalid");
+const changedCursorPath="accounts/"+p30Cursor.lastAccountId;
+documents.set(changedCursorPath,{
+ ...documents.get(changedCursorPath),
+ planExpiresAt:new Date(Date.now()+60*86400000).toISOString()
+});
+await api.promptpayExpireUnusedCredits();
+assert(p30Remaining("p30_mutable_",825)===0&&
+ !documents.has(p30Progress),
+ "P30 changed cursor caused unprocessed expired accounts to be skipped");
+console.log("PASS P30 PAGINATION: modified cursor keyset resume");
+
+p30Seed("p30_deleted_",805,p30DeleteDate);
+await api.promptpayExpireUnusedCredits();
+p30Cursor=documents.get(p30Progress);
+assert(p30Cursor&&p30Cursor.cursorVersion===2&&
+ p30Cursor.lastPlanExpiresAt===p30DeleteDate&&
+ p30Cursor.lastAccountId==="p30_deleted_0799"&&
+ p30Remaining("p30_deleted_",805)===5,
+ "P30 deleted cursor first sweep invalid");
+documents.delete("accounts/"+p30Cursor.lastAccountId);
+await api.promptpayExpireUnusedCredits();
+assert(p30Remaining("p30_deleted_",805)===0,
+ "P30 deleted cursor caused unprocessed expired accounts to be skipped");
+// Earlier completed accounts can still occupy query pages with zero balance.
+// Drain the remaining idempotent pages before testing a fresh sweep alert.
+for(let i=0;i<4&&documents.has(p30Progress);i++)
+ await api.promptpayExpireUnusedCredits();
+assert(!documents.has(p30Progress),
+ "P30 keyset cursor did not clear after draining completed pages");
+console.log("PASS P30 PAGINATION: deleted cursor keyset resume");
+console.log("P30_EXPIRY_PAGINATION: 2/2 PASS");
+
+// Use an earliest-expiring invalid account so the bounded 800-account
+// sweep visits it even when previous pagination test records remain.
+documents.set("accounts/p30_invalid_alert",{
+ plan:"Starter",planExpiresAt:"2018-01-01T00:00:00.000Z",
+ creditWalletV1:true,creditWalletRemaining:23,used:0,reserved:"invalid"
+});
+documents.set("accounts/p30_invalid_wallet_alert",{
+ plan:"Starter",planExpiresAt:"2018-01-02T00:00:00.000Z",
+ creditWalletV1:true,creditWalletRemaining:"invalid",used:0,reserved:0
+});
+// P49 regression: unknown plan must never forfeit a paid wallet.
+// Give the candidate the earliest expiry so it is inside the first bounded page.
+documents.set("accounts/p49_unknown_plan",{
+  plan:"UnknownTier",planExpiresAt:"2017-01-01T00:00:00.000Z",
+  creditWalletV1:true,creditWalletRemaining:41,used:0,reserved:0
+});
+const originalInfo=console.info,p49Summaries=[];
+console.info=(...args)=>{p49Summaries.push(args);originalInfo(...args)};
+const originalWarn=console.warn;
+const p30Warnings=[];
+console.warn=(...args)=>{p30Warnings.push(args)};
+try{await api.promptpayExpireUnusedCredits()}
+finally{console.warn=originalWarn;console.info=originalInfo}
+assert(p30Warnings.some(([message,details])=>
+ message==="PACKTOOK expired credit grace sweep needs manual review"&&
+ details?.accountId==="p30_invalid_alert"&&
+ details?.reason==="invalid_reserved"),
+ "P30 invalid reservation reason was not emitted for monitoring");
+assert(documents.get("accounts/p30_invalid_alert").creditWalletRemaining===23,
+ "P30 invalid reservation balance modified by sweep");
+assert(p30Warnings.some(([message,details])=>
+ message==="PACKTOOK expired credit grace sweep needs manual review"&&
+ details?.accountId==="p30_invalid_wallet_alert"&&
+ details?.reason==="invalid_wallet"),
+ "P30 invalid wallet reason was not emitted for monitoring");
+assert(documents.get("accounts/p30_invalid_wallet_alert").creditWalletRemaining==="invalid",
+ "P30 invalid wallet was modified by sweep");
+assert(documents.get("accounts/p49_unknown_plan").creditWalletRemaining===41,
+  "P49 unknown-plan wallet must remain unchanged");
+assert(p49Summaries.some(([message,details])=>
+  message==="PACKTOOK expired credit grace sweep"&&
+  details?.skippedReasons?.unknown_plan>=1&&details?.reviewRequired>=3),
+  "P49 unknown plan must appear in aggregate manual-review summary");
+console.log("P49_UNKNOWN_PLAN_PROTECTION: PASS");
+console.log("P30_INVALID_EXPIRY_ALERT: PASS");
+console.log("P30_PAYMENT_REVIEW_EVIDENCE: 4/4 PASS");

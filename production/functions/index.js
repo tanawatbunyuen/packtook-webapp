@@ -189,7 +189,25 @@ function hasActivePaidPlan(a){return a.plan!=="Free"&&subscriptionState(a)==="ac
 // V5.1 credit wallet: balance represents credits immediately available for new reservations.
 // Reservations debit the wallet and failures credit it back. No calendar-month reset.
 function walletEnabled(a){return a.creditWalletV1===true}
-function pendingReservations(a,now=Date.now()){return walletEnabled(a)?Math.max(0,a.reserved||0):a.period===periodId(now)?Math.max(0,a.reserved||0):0}
+function validCounter(a,name){
+ const value=a[name]===undefined?0:a[name];
+ if(!Number.isSafeInteger(value)||value<0)
+  throw new HttpsError("failed-precondition","Credit counters need review");
+ return value;
+}
+function assertCounterCanIncrement(a,name){
+ const value=a[name]===undefined&&name==="used"?0:a[name];
+ if(!Number.isSafeInteger(value)||value<0||
+    value>=Number.MAX_SAFE_INTEGER)
+  throw new HttpsError(
+   "failed-precondition",
+   "Credit counter increment needs review"
+  );
+}
+function pendingReservations(a,now=Date.now()){
+ const reserved=validCounter(a,"reserved");
+ return walletEnabled(a)||a.period===periodId(now)?reserved:0;
+}
 function creditAvailable(a,now=Date.now()){
  const limit=limits[a.plan];
  if(limit===null)return null;
@@ -199,7 +217,12 @@ function creditAvailable(a,now=Date.now()){
   return a.creditWalletRemaining;
  }
  const same=a.period===periodId(now);
- return Math.max(0,limit-(same?(a.used||0)+(a.reserved||0):0));
+ const used=validCounter(a,"used");
+ const reserved=validCounter(a,"reserved");
+ const committed=used+reserved;
+ if(!Number.isSafeInteger(committed))
+  throw new HttpsError("failed-precondition","Credit counters exceed supported range");
+ return Math.max(0,limit-(same?committed:0));
 }
 function purchasedCreditBalance(a,nextPlan,now=Date.now()){
  const purchased=limits[nextPlan],current=creditAvailable(a,now);
@@ -526,7 +549,16 @@ exports.reserveCredit=guardedCall(options,async req=>{
   const override=kSnap.exists&&kSnap.data().operationId!==op;
   if(override){const approved=approvalSnap?.exists?approvalSnap.data():null;if(!approved||approved.barcode!==code||approved.status!=="approved"||approved.expiresAtMs<=Date.now()||(approved.requestedBy&&approved.requestedBy!==id))throw new HttpsError("already-exists","Barcode already scanned or recorded");if(kSnap.data().status!=="completed")throw new HttpsError("failed-precondition","Previous recording is not completed")}
   if(!override&&approvalId)throw new HttpsError("failed-precondition","Override is not required");
-  const samePeriod=a.period===period,used=samePeriod?(a.used||0):0,reserved=pendingReservations(a),available=creditAvailable(a);
+  const samePeriod=a.period===period,
+   used=samePeriod?validCounter(a,"used"):0,
+   reserved=pendingReservations(a),
+   available=creditAvailable(a);
+  if(reserved===Number.MAX_SAFE_INTEGER||
+     (samePeriod&&used===Number.MAX_SAFE_INTEGER))
+   throw new HttpsError(
+    "failed-precondition",
+    "Credit counters exceed supported range"
+   );
   if(limit!==null&&available<=0)throw new HttpsError("resource-exhausted","Video credit balance exhausted");
   tx.set(rec,{barcode:code,status:"reserved",period,createdAt:FieldValue.serverTimestamp(),file:null,overrideOf:override?kSnap.data().operationId:null,approvalId:override?approvalId:null});
   if(override){tx.update(approvalRef,{status:"consumed",consumedBy:op,consumedAt:FieldValue.serverTimestamp()});if(approvalSnap.data().requestId)tx.update(ref.collection("duplicateRequests").doc(approvalSnap.data().requestId),{status:"consumed",consumedBy:op})}
@@ -555,9 +587,30 @@ exports.finalizeCredit=guardedCall(options,async req=>{
   if(kSnap.exists&&kSnap.data().operationId===op){if(success)tx.update(key,{status:"completed",finalizedAt:FieldValue.serverTimestamp()});else if(r.overrideOf)tx.set(key,{operationId:r.overrideOf,barcode:r.barcode,status:"completed",restoredAt:FieldValue.serverTimestamp()});else tx.delete(key)}
   // Wallet reservations span month boundaries; a failed recording always returns its reserved credit.
   if(walletEnabled(a)){
-   if(!Number.isSafeInteger(a.reserved)||a.reserved<1)throw new HttpsError("failed-precondition","Wallet reservation count mismatch");
+   if(!Number.isSafeInteger(a.reserved)||a.reserved<1)
+    throw new HttpsError(
+     "failed-precondition",
+     "Wallet reservation count mismatch"
+    );
+   if(success&&a.period===r.period)
+    assertCounterCanIncrement(a,"used");
+   if(!success&&limits[a.plan]!==null)
+    assertCounterCanIncrement(a,"creditWalletRemaining");
    tx.update(acc,{reserved:FieldValue.increment(-1),...(success&&a.period===r.period?{used:FieldValue.increment(1)}:{}),...(!success&&limits[a.plan]!==null?{creditWalletRemaining:FieldValue.increment(1)}:{}),updatedAt:FieldValue.serverTimestamp()});
-  }else if(a.period===r.period)tx.update(acc,{reserved:FieldValue.increment(-1),...(success?{used:FieldValue.increment(1)}:{}),updatedAt:FieldValue.serverTimestamp()});
+  }else if(a.period===r.period){
+   if(validCounter(a,"reserved")<1)
+    throw new HttpsError(
+     "failed-precondition",
+     "Legacy reservation count mismatch"
+    );
+   if(success)
+    assertCounterCanIncrement(a,"used");
+   tx.update(acc,{
+    reserved:FieldValue.increment(-1),
+    ...(success?{used:FieldValue.increment(1)}:{}),
+    updatedAt:FieldValue.serverTimestamp()
+   });
+  }
   tx.create(acc.collection("audit").doc(),{action:next,recordingId:op,createdAt:FieldValue.serverTimestamp()});
   return {status:next};
  })
@@ -599,7 +652,10 @@ exports.recoverStaleVideoReservation=guardedCall(options,async req=>{
   if(counted){
    if(!Number.isSafeInteger(a.reserved)||a.reserved<1)throw new HttpsError("failed-precondition","Reserved credit count is inconsistent; contact support.");
    const patch={reserved:a.reserved-1,updatedAt:FieldValue.serverTimestamp()};
-   if(walletEnabled(a)&&limits[a.plan]!==null)patch.creditWalletRemaining=FieldValue.increment(1);
+   if(walletEnabled(a)&&limits[a.plan]!==null){
+    assertCounterCanIncrement(a,"creditWalletRemaining");
+    patch.creditWalletRemaining=FieldValue.increment(1);
+   }
    tx.update(acc,patch);
   }
   tx.create(acc.collection("audit").doc(),{action:"manual_stale_reservation_recovery",recordingId:id,createdAt:FieldValue.serverTimestamp()});
