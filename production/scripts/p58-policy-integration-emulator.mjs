@@ -12,13 +12,13 @@ const {buildP58DemoRecoveryBackend,createOmiseTestAdapter,assertDemoOnly}=requir
 assertDemoOnly(process.env);
 admin.initializeApp({projectId:'demo-packtook-v72'});
 const db=admin.firestore(),auth=admin.auth();
-const acctId='client_p54_demo_001',requestId='request_p54_demo_001';
+const acctId='client_p58_demo_001',requestId='request_p58_demo_001';
 const chargeId='chrg_test_p54test123',password='P54emulator_test_only_2026';
 const actors=[
- {uid:'p54_maker_00001',role:'maker'},
- {uid:'p54_finance_00001',role:'finance'},
- {uid:'p54_technical_00001',role:'technical'},
- {uid:'p54_owner_00001',role:'owner'}
+ {uid:'p58_maker_00001',role:'maker'},
+ {uid:'p58_finance_00001',role:'finance'},
+ {uid:'p58_technical_00001',role:'technical'},
+ {uid:'p58_owner_00001',role:'owner'}
 ];
 const roleClaims={maker:'packtookRecoveryMaker',finance:'packtookRecoveryFinance',
   technical:'packtookRecoveryTechnical',owner:'packtookRecoveryOwner'};
@@ -73,13 +73,13 @@ const provider=createOmiseTestAdapter({
  }
 });
 const appTokens=new Set(),mockAppCheck={async verifyToken(t,opt){
-  if(opt?.consume!==true||typeof t!=='string'||!t.startsWith('p54_once_'))
+  if(opt?.consume!==true||typeof t!=='string'||!t.startsWith('p58_once_'))
     throw Error('APP_CHECK_SYNTHETIC_INVALID');
   if(appTokens.has(t))return {alreadyConsumed:true};
   appTokens.add(t);return {alreadyConsumed:false,app_id:'demo_appcheck_synthetic'};
 }};
 let nonce=0;
-const input=(role,over={})=>({idToken:tokens[role],appCheckToken:'p54_once_'+(++nonce),
+const input=(role,over={})=>({idToken:tokens[role],appCheckToken:'p58_once_'+(++nonce),
   accountId:acctId,requestId,...over});
 const api=buildP58DemoRecoveryBackend({db,auth,appCheck:mockAppCheck,provider,
  env:process.env,now:()=>Date.now()});
@@ -101,9 +101,9 @@ try {
  pass('case open replay idempotent — one case event');
  await rejected(()=>api.reviewFinance(input('maker')),/role_or_user_not_authorized/);
  pass('maker cannot impersonate Finance role');
- await auth.setCustomUserClaims('p54_finance_00001',{});
+ await auth.setCustomUserClaims('p58_finance_00001',{});
  await rejected(()=>api.reviewFinance(input('finance')),/role_or_user_not_authorized/);
- await auth.setCustomUserClaims('p54_finance_00001',{packtookRecoveryFinance:true});
+ await auth.setCustomUserClaims('p58_finance_00001',{packtookRecoveryFinance:true});
  pass('role revocation in live Auth blocks Finance review');
  await policyRefs.finance.update({active:false,epoch:2});
  await rejected(()=>api.reviewFinance(input('finance')),/policy_revoked_or_invalid/);
@@ -124,10 +124,10 @@ try {
  assert.equal(afterReplay.status,'AWAITING_OWNER');
  await rejected(()=>api.reviewTechnical(replayInput),/appcheck_invalid_or_replayed/);
  pass('consumed synthetic App Check token cannot be replayed');
- await auth.setCustomUserClaims('p54_technical_00001',{});
+ await auth.setCustomUserClaims('p58_technical_00001',{});
  await rejected(()=>api.ownerDecision(input('owner',{resolutionType:'NO_ACTION'})),
    /reviewer_role_revoked/);
- await auth.setCustomUserClaims('p54_technical_00001',{packtookRecoveryTechnical:true});
+ await auth.setCustomUserClaims('p58_technical_00001',{packtookRecoveryTechnical:true});
  pass('revoked Technical reviewer invalidates Owner decision');
  await accountRef.update({creditWalletRemaining:121});
  await rejected(()=>api.ownerDecision(input('owner',{resolutionType:'NO_ACTION'})),
