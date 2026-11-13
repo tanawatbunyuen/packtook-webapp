@@ -1,0 +1,43 @@
+name: PACKTOOK RR Browser Staging E2E Read-only (no login)
+on:
+  pull_request:
+    branches:
+      - review/rr-live-staging-public-smoke
+permissions:
+  contents: read
+jobs:
+  chromium-login-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: Guard no actual account credentials or cloud project access
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -z "${FIREBASE_TOKEN:-}"
+          test -z "${GOOGLE_APPLICATION_CREDENTIALS:-}"
+          test -z "${OMISE_SECRET_KEY:-}"
+          test -z "${PACKTOOK_PRODUCTION_PROJECT_ID:-}"
+          test -z "${RR_ENABLE_REAL_STAGING_PROBES:-}"
+      - name: Install isolated browser tooling (no project deploy)
+        shell: bash
+        run: |
+          python -m pip install --disable-pip-version-check playwright==1.56.0
+          python -m playwright install --with-deps chromium
+      - name: Execute real Chromium browser smoke without credentials
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python production/scripts/rr-browser-staging-smoke.py | tee /tmp/rr-browser-smoke.log
+          grep -Fq 'BROWSER_LIVE_LOGIN_LAYOUT: PASS' /tmp/rr-browser-smoke.log
+          grep -Fq 'BROWSER_UNAUTHENTICATED_ROUTE: PASS' /tmp/rr-browser-smoke.log
+          grep -Fq 'LIVE_BRIDGE_FIREBASE_AUTH_AND_FUNCTIONS_IMPORTS: PASS' /tmp/rr-browser-smoke.log
+          grep -Fq 'BROWSER_PUBLIC_READ_ONLY: PASS' /tmp/rr-browser-smoke.log
+          grep -Fq 'OWNER_AUTHENTICATED_LOGIN: NOT_EXECUTED' /tmp/rr-browser-smoke.log
+          grep -Fq 'OMISE_TEST_MODE_READ: NOT_EXECUTED' /tmp/rr-browser-smoke.log
