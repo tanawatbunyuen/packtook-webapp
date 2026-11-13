@@ -1,0 +1,20 @@
+name: PACKTOOK P61 Pilot Dry Run CI (NO deploy)
+on:
+  pull_request:
+    branches: [review/p60-independent-approval-gates]
+permissions:
+  contents: read
+jobs:
+  simulation:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - run: |
+          set -Eeuo pipefail
+          ! grep -Eq 'p61-pilot-dryrun' production/payment-functions/index.js
+          node --test production/scripts/test-p59-staging-proof-gates.mjs production/scripts/test-p60-independent-approval-gates.mjs production/scripts/test-p61-pilot-dryrun.mjs
