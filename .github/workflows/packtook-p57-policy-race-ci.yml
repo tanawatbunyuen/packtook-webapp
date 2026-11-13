@@ -1,0 +1,69 @@
+name: PACKTOOK P57 Policy Epoch Race Demo CI (no deploy)
+on:
+  pull_request:
+    branches:
+      - review/p56-recovery-race-validation
+    paths:
+      - 'production/payment-functions/p57-demo-policy-epoch.cjs'
+      - 'production/scripts/p57-policy-epoch-race-emulator.mjs'
+      - 'production/docs/P57_AUTHORIZATION_STAGING_GATES.md'
+      - '.github/workflows/packtook-p57-policy-race-ci.yml'
+permissions:
+  contents: read
+concurrency:
+  group: packtook-p57-demo-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  epoch-race:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      GCLOUD_PROJECT: demo-packtook-v72
+      GOOGLE_CLOUD_PROJECT: demo-packtook-v72
+      GCP_PROJECT: demo-packtook-v72
+      FIRESTORE_EMULATOR_HOST: '127.0.0.1:18080'
+      FIREBASE_AUTH_EMULATOR_HOST: '127.0.0.1:19099'
+      FIREBASE_CLI_DISABLE_UPDATE_CHECK: 'true'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Strict isolated demo guards
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "${GCLOUD_PROJECT}" = demo-packtook-v72
+          test "${GOOGLE_CLOUD_PROJECT}" = demo-packtook-v72
+          test "${GCP_PROJECT}" = demo-packtook-v72
+          test "${FIRESTORE_EMULATOR_HOST}" = 127.0.0.1:18080
+          test "${FIREBASE_AUTH_EMULATOR_HOST}" = 127.0.0.1:19099
+          test -z "${GOOGLE_APPLICATION_CREDENTIALS:-}"
+          test -z "${FIREBASE_TOKEN:-}"
+          test -z "${OMISE_SECRET_KEY:-}"
+          if grep -Eq 'p57-demo-policy-epoch|p57-policy-epoch-race-emulator' production/payment-functions/index.js; then exit 1; fi
+          node --check production/payment-functions/p57-demo-policy-epoch.cjs
+          node --check production/scripts/p57-policy-epoch-race-emulator.mjs
+      - name: Install locked Firebase Admin dependencies
+        run: npm ci --prefix production/payment-functions --ignore-scripts --no-audit --no-fund
+      - name: Run real Firestore Emulator with synthetic policy
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          npm exec --yes --package=firebase-tools@15.22.1 -- firebase emulators:exec \
+            --project demo-packtook-v72 \
+            --only auth,firestore \
+            --config production/scripts/v72-isolated-emulators.firebase.json \
+            'node production/scripts/p57-policy-epoch-race-emulator.mjs' | tee /tmp/p57.log
+          grep -Fq 'P57_POLICY_EPOCH_EMULATOR: 9/9 PASS' /tmp/p57.log
+          grep -Fq 'P57_PRODUCTION_WRITES: 0' /tmp/p57.log
+          grep -Fq 'P57_PRODUCTION_RUNTIME_WIRED: false' /tmp/p57.log
+          grep -Fq 'P57_RELEASE: NO_GO_RELEASE' /tmp/p57.log
