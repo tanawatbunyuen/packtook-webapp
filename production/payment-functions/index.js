@@ -565,6 +565,8 @@ exports.promptpayExpireUnusedCredits=onSchedule({
     const current=await tx.get(doc.ref);
      if(!current.exists)return "missing_account";
      const a=current.data(),deadline=carryoverDeadline(a);
+     // Unknown plan names fail closed; undefined is not the same as Pro's null limit.
+     if(!Object.hasOwn(limits,a.plan))return "unknown_plan";
      if(a.plan==="Free"||limits[a.plan]===null||!walletEnabled(a)||
         subscriptionState(a)!=="expired"||deadline===null||deadline>=Date.now())
       return "ineligible";
@@ -614,7 +616,7 @@ exports.promptpayExpireUnusedCredits=onSchedule({
    cursorVersion:2,lastScannedAt:FieldValue.serverTimestamp()});
   console.info("PACKTOOK expired credit grace sweep",{
    visited,forfeitedAccounts:forfeited,skipped,skippedReasons,
-   reviewRequired:(skippedReasons.invalid_wallet||0)+(skippedReasons.invalid_reserved||0),
+   reviewRequired:(skippedReasons.invalid_wallet||0)+(skippedReasons.invalid_reserved||0)+(skippedReasons.unknown_plan||0),
    scanLimit:MAX_SCAN,
   possiblyTruncated:visited===MAX_SCAN&&!endOfResults,
   cursorSaved:!endOfResults&&!!cursor,
