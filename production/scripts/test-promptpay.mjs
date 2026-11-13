@@ -615,11 +615,19 @@ documents.set("accounts/p30_invalid_wallet_alert",{
  plan:"Starter",planExpiresAt:"2018-01-02T00:00:00.000Z",
  creditWalletV1:true,creditWalletRemaining:"invalid",used:0,reserved:0
 });
+// P49 regression: unknown plan must never forfeit a paid wallet.
+// Give the candidate the earliest expiry so it is inside the first bounded page.
+documents.set("accounts/p49_unknown_plan",{
+  plan:"UnknownTier",planExpiresAt:"2017-01-01T00:00:00.000Z",
+  creditWalletV1:true,creditWalletRemaining:41,used:0,reserved:0
+});
+const originalInfo=console.info,p49Summaries=[];
+console.info=(...args)=>{p49Summaries.push(args);originalInfo(...args)};
 const originalWarn=console.warn;
 const p30Warnings=[];
 console.warn=(...args)=>{p30Warnings.push(args)};
 try{await api.promptpayExpireUnusedCredits()}
-finally{console.warn=originalWarn}
+finally{console.warn=originalWarn;console.info=originalInfo}
 assert(p30Warnings.some(([message,details])=>
  message==="PACKTOOK expired credit grace sweep needs manual review"&&
  details?.accountId==="p30_invalid_alert"&&
@@ -634,5 +642,12 @@ assert(p30Warnings.some(([message,details])=>
  "P30 invalid wallet reason was not emitted for monitoring");
 assert(documents.get("accounts/p30_invalid_wallet_alert").creditWalletRemaining==="invalid",
  "P30 invalid wallet was modified by sweep");
+assert(documents.get("accounts/p49_unknown_plan").creditWalletRemaining===41,
+  "P49 unknown-plan wallet must remain unchanged");
+assert(p49Summaries.some(([message,details])=>
+  message==="PACKTOOK expired credit grace sweep"&&
+  details?.skippedReasons?.unknown_plan>=1&&details?.reviewRequired>=3),
+  "P49 unknown plan must appear in aggregate manual-review summary");
+console.log("P49_UNKNOWN_PLAN_PROTECTION: PASS");
 console.log("P30_INVALID_EXPIRY_ALERT: PASS");
 console.log("P30_PAYMENT_REVIEW_EVIDENCE: 4/4 PASS");
