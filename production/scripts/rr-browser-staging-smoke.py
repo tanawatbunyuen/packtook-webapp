@@ -43,9 +43,9 @@ with sync_playwright() as p:
     print("LIVE_BRIDGE_EQUALS_REPO:", "YES" if local==live else "NO")
     indicators={
       "FIREBASE_APPCHECK_IMPORT": "firebase-app-check" in source,
-      "INITIALIZE_APPCHECK": bool(re.search(r'initializeAppCheck\\s*\\(',source)),
+      "INITIALIZE_APPCHECK": "initializeAppCheck(" in source,
       "RECAPTCHA_PROVIDER": bool(re.search(r'ReCaptcha(?:Enterprise)?Provider',source)),
-      "APPCHECK_TOKEN_GET": bool(re.search(r'getToken\\s*\\(',source)),
+      "APPCHECK_TOKEN_GET": "getToken(" in source,
       "FIREBASE_BRIDGE_READY": "PACKTOOK_FIREBASE" in source
     }
     for k,v in indicators.items(): print("LIVE_"+k+":", "YES" if v else "NO")
