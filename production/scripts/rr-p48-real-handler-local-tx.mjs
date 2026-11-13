@@ -26,8 +26,10 @@ const pricesTHB={Free:0,Starter:199,Basic:299,Growth:599,Business:1290,Pro:1990}
 const PLAN_TIERS=['Free','Starter','Basic','Growth','Business','Pro'];
 const fixed=(s)=>s;
 const current={charge:null};
+const vmDb={collection:(...args)=>db.collection(...args),
+ runTransaction:(cb)=>db.runTransaction(async(tx)=>await cb(tx))};
 const context=vm.createContext({
- db,FieldValue,HttpsError,Date,Math,Number,Object,JSON,Error,
+ db:vmDb,FieldValue,HttpsError,Date,Math,Number,Object,JSON,Error,
  own:(uid)=>db.collection('accounts').doc(uid),
  omiseAPI:async()=>structuredClone(current.charge),
  limits,pricesTHB,PLAN_TIERS,CREDIT_GRACE_DAYS:10,
