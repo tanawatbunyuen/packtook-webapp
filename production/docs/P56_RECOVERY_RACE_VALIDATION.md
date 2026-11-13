@@ -26,7 +26,7 @@ From project root, install locked dependency set and run local emulators:
     npm ci --prefix production/payment-functions --ignore-scripts --no-audit --no-fund
     npm exec --yes --package=firebase-tools@15.22.1 -- firebase emulators:exec --project demo-packtook-v72 --only auth,firestore --config production/scripts/v72-isolated-emulators.firebase.json 'node production/scripts/p56-recovery-race-emulator.mjs'
 
-Expected output when passing: P56_RACE_EMULATOR: 8/8 PASS.
+Expected output when passing: P56_RACE_EMULATOR: 10/10 PASS.
 
 ## Proposed P57 blockers
 - Resolve reviewer role revocation / transaction TOCTOU through an approved, correctly scoped authorization governance mechanism and red-team tests.
