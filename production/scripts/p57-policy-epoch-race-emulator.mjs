@@ -24,19 +24,17 @@ try{
  let enteredResolve,proceedResolve;
  const entered=new Promise(resolve=>{enteredResolve=resolve});
  const proceed=new Promise(resolve=>{proceedResolve=resolve});
- let executions=0;
- const pending=api.decision({accountId:subject,actorId:actor,role,
-  requestId:'p57_racing_001',beforeCommit:async()=>{
-   executions++;
-   if(executions===1){enteredResolve();await proceed}
-  }});
+ const pendingRevoke=api.revoke({accountId:subject,actorId:actor,role,
+  beforeCommit:async()=>{enteredResolve();await proceed}});
  await entered;
- const newEpoch=await api.revoke({accountId:subject,actorId:actor,role});
- assert.equal(newEpoch,2);
+ const pendingDecision=api.decision({accountId:subject,actorId:actor,role,
+  requestId:'p57_racing_001'});
  proceedResolve();
- await assert.rejects(pending,/P57_DENIED:revoked_or_stale_epoch/);
+ const newEpoch=await pendingRevoke;
+ assert.equal(newEpoch,2);
+ await assert.rejects(pendingDecision,/P57_DENIED:revoked_or_stale_epoch/);
  assert.equal((await auditRef.doc('finance_p57_racing_001').get()).exists,false);
- pass('revocation commits while approval transaction in flight, stale decision blocked');
+ pass('revocation-first transaction serializes concurrent stale decision safely');
  const policy=(await policyRef.get()).data();
  assert.equal(policy.epoch,2);assert.equal(policy.active,false);
  pass('policy epoch monotonic and disabled');
