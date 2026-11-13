@@ -1,0 +1,55 @@
+name: PACKTOOK staging live public-page smoke (read-only)
+on:
+  pull_request:
+    branches: [review/rr-authorized-isolated-staging-probes]
+permissions:
+  contents: read
+jobs:
+  public-staging-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Assert no credentials are in this read-only job
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -z "${OMISE_SECRET_KEY:-}"
+          test -z "${FIREBASE_TOKEN:-}"
+          test -z "${GOOGLE_APPLICATION_CREDENTIALS:-}"
+          test -z "${PACKTOOK_PRODUCTION_PROJECT_ID:-}"
+      - name: Real hosting smoke — HTTPS GET only, no login
+        shell: bash
+        env:
+          STAGING_ORIGIN: https://packtook-staging.web.app
+        run: |
+          set -Eeuo pipefail
+          mkdir -p /tmp/packtook_staging_smoke
+          curl --silent --show-error --fail --location --max-time 20 \
+            --proto '=https' --proto-redir '=https' \
+            --output /tmp/packtook_staging_smoke/index.html \
+            --write-out 'STAGING_HTML_HTTP=%{http_code} STAGING_HTML_CONTENT_TYPE=%{content_type}\n' \
+            "${STAGING_ORIGIN}/"
+          grep -Fq 'PACKTOOK' /tmp/packtook_staging_smoke/index.html
+          grep -Fq 'loginPage' /tmp/packtook_staging_smoke/index.html
+          grep -Fq 'firebase-packing-bridge.js' /tmp/packtook_staging_smoke/index.html
+          echo 'STAGING_LOGIN_PUBLIC_HTML: PASS'
+          for filename in firebase-packing-bridge.js app.js video-history-db.js video-stream-writer.js performance-monitor.js; do
+            curl --silent --show-error --fail --location --max-time 20 \
+              --proto '=https' --proto-redir '=https' \
+              --output "/tmp/packtook_staging_smoke/${filename}" \
+              --write-out "STAGING_ASSET_HTTP=%{http_code} STAGING_ASSET_CONTENT_TYPE=%{content_type}\n" \
+              "${STAGING_ORIGIN}/${filename}"
+            test -s "/tmp/packtook_staging_smoke/${filename}"
+            if grep -Fq '<!doctype html' "/tmp/packtook_staging_smoke/${filename}"; then
+              echo 'JS_ASSET_RETURNED_HTML_NOT_JS'; exit 8
+            fi
+            echo "STAGING_ASSET_OK: ${filename}"
+          done
+          echo 'STAGING_PUBLIC_READ_ONLY_SMOKE: PASS'
+          echo 'STAGING_OWNER_LOGIN: NOT_TESTED'
+          echo 'STAGING_APPCHECK_REAL_TOKEN: NOT_TESTED'
+          echo 'STAGING_OMISE_REAL_TEST_GET: NOT_TESTED'
+          echo 'STAGING_RELEASE: NO_GO_RELEASE PUBLIC_CLOSED'
