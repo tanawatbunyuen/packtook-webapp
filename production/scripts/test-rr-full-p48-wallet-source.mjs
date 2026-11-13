@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 const src=readFileSync(new URL('../payment-functions/index.js',import.meta.url),'utf8');
-const begin=src.indexOf('function walletEnabled(a)');
+const begin=src.indexOf('function periodId(at)');
 const end=src.indexOf('function billingOpen(a)');
 assert.ok(begin>=0&&end>begin,'expected source functions are present');
 const fnSrc=src.slice(begin,end);
