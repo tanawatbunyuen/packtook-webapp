@@ -109,6 +109,11 @@ try {
  assert.equal(afterReplay.status,'AWAITING_OWNER');
  await rejected(()=>api.reviewTechnical(replayInput),/appcheck_invalid_or_replayed/);
  pass('consumed synthetic App Check token cannot be replayed');
+ await auth.setCustomUserClaims('p54_technical_00001',{});
+ await rejected(()=>api.ownerDecision(input('owner',{resolutionType:'NO_ACTION'})),
+   /reviewer_role_revoked/);
+ await auth.setCustomUserClaims('p54_technical_00001',{packtookRecoveryTechnical:true});
+ pass('revoked Technical reviewer invalidates Owner decision');
  await accountRef.update({creditWalletRemaining:121});
  await rejected(()=>api.ownerDecision(input('owner',{resolutionType:'NO_ACTION'})),
    /evidence_changed_refresh_required/);
@@ -140,17 +145,13 @@ try {
   readSecret:async()=> 'skey_live_never_allowed'
  }).getCharge(chargeId),/omise_test_key_only/);
  pass('live Omise secret is rejected in candidate adapter');
- const grantRequest='request_p54_grant_guard';
- await accountRef.collection('billingRequests').doc(grantRequest).set({
-   ...seedBill,omiseChargeId:chargeId
- });
- await accountRef.update({openBillingRequestId:grantRequest});
- await accountRef.collection('entitlementGrants').doc(grantRequest).create({existingGrant:true});
- await rejected(()=>api.openCase(input('maker',{requestId:grantRequest})),
-   /provider_evidence_mismatch|prior_entitlement_grant/);
- pass('prior-entitlement or wrong-charge claim cannot open case');
+ await accountRef.collection('entitlementGrants').doc(requestId).create({
+  existingGrant:true,source:'fixture_previously_applied'});
+ await rejected(()=>api.openCase(input('maker')),
+   /prior_entitlement_grant/);
+ pass('pre-existing deterministic entitlement grant blocks case replay');
  console.log('=== PACKTOOK P54 AUTH/FIRESTORE DEMO EMULATOR ===');
- console.log('P54_BACKEND_EMULATOR: '+passed+'/13 PASS');
+ console.log('P54_BACKEND_EMULATOR: '+passed+'/16 PASS');
  console.log('P54_ACCOUNT_BILLING_WRITES_BY_BACKEND: 0');
  console.log('P54_ACTUAL_OMISE_REQUESTS: 0');
  console.log('P54_APP_CHECK: SYNTHETIC_REPLAY_TEST_ONLY');
