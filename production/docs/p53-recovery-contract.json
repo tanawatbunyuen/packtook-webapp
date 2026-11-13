@@ -1,0 +1,175 @@
+{
+  "schemaVersion": 1,
+  "designStatus": "PROPOSAL_ONLY",
+  "repository": "tanawatbunyuen/packtook-webapp",
+  "controls": {
+    "productionEndpointImplemented": false,
+    "productionWritesAllowed": false,
+    "omiseRefundApiEnabled": false,
+    "entitlementMutationAllowed": false,
+    "billingLockReleaseAllowed": false,
+    "mergesOrDeploysAllowed": false,
+    "publicSignupEnabled": false,
+    "syntheticRolesOnly": true,
+    "approvalTTLMinutes": 15,
+    "requiredDistinctReviewRoles": [
+      "finance",
+      "technical"
+    ],
+    "ownerDecisionRequired": true,
+    "expectedAppCheckEnforceOnFutureCallable": true
+  },
+  "states": [
+    "PAYMENT_REVIEW",
+    "EVIDENCE_VERIFIED",
+    "AWAITING_DUAL_REVIEW",
+    "DUAL_REVIEW_COMPLETE",
+    "OWNER_DECISION_RECORDED",
+    "ESCALATED",
+    "CANCELLED"
+  ],
+  "events": [
+    {
+      "event": "VERIFY_EVIDENCE",
+      "from": [
+        "PAYMENT_REVIEW"
+      ],
+      "to": "EVIDENCE_VERIFIED",
+      "actor": "trusted_server_future",
+      "guards": [
+        "serverSideOmiseGET",
+        "chargeSuccessfulPaid",
+        "exactAccountBillAmountAndCurrency",
+        "noPriorGrant",
+        "testLiveSeparated"
+      ]
+    },
+    {
+      "event": "OPEN_DUAL_REVIEW",
+      "from": [
+        "EVIDENCE_VERIFIED"
+      ],
+      "to": "AWAITING_DUAL_REVIEW",
+      "actor": "case_maker",
+      "guards": [
+        "snapshotHashBound",
+        "roleRevalidated"
+      ]
+    },
+    {
+      "event": "FINANCE_REVIEW",
+      "from": [
+        "AWAITING_DUAL_REVIEW"
+      ],
+      "to": "AWAITING_DUAL_REVIEW",
+      "actor": "finance",
+      "guards": [
+        "notMakerNotBeneficiary",
+        "distinctReviewerUid",
+        "currentEvidenceHash",
+        "noDuplicateRole"
+      ]
+    },
+    {
+      "event": "TECHNICAL_REVIEW",
+      "from": [
+        "AWAITING_DUAL_REVIEW"
+      ],
+      "to": "DUAL_REVIEW_COMPLETE",
+      "actor": "technical",
+      "guards": [
+        "notMakerNotBeneficiary",
+        "distinctReviewerUid",
+        "currentEvidenceHash",
+        "noDuplicateRole",
+        "bothRolesPresent"
+      ]
+    },
+    {
+      "event": "OWNER_DECISION",
+      "from": [
+        "DUAL_REVIEW_COMPLETE"
+      ],
+      "to": "OWNER_DECISION_RECORDED",
+      "actor": "owner",
+      "guards": [
+        "distinctFromMakerAndReviewers",
+        "currentHashAndAuthz",
+        "reconciliationType",
+        "billingLockUnchanged"
+      ],
+      "outputs": [
+        "action_NONE"
+      ]
+    },
+    {
+      "event": "ESCALATE",
+      "from": [
+        "PAYMENT_REVIEW",
+        "EVIDENCE_VERIFIED",
+        "AWAITING_DUAL_REVIEW",
+        "DUAL_REVIEW_COMPLETE",
+        "OWNER_DECISION_RECORDED"
+      ],
+      "to": "ESCALATED",
+      "actor": "trusted_owner_or_system",
+      "guards": [
+        "reasonAndImmutableAudit"
+      ],
+      "outputs": [
+        "action_NONE"
+      ]
+    },
+    {
+      "event": "CANCEL",
+      "from": [
+        "PAYMENT_REVIEW",
+        "EVIDENCE_VERIFIED",
+        "AWAITING_DUAL_REVIEW",
+        "DUAL_REVIEW_COMPLETE"
+      ],
+      "to": "CANCELLED",
+      "actor": "owner",
+      "guards": [
+        "noExecutionAndNoExternalRefund",
+        "reasonAndImmutableAudit"
+      ],
+      "outputs": [
+        "action_NONE"
+      ]
+    }
+  ],
+  "resolutionTypes": [
+    "ENTITLEMENT_RECONCILIATION_PROPOSAL",
+    "MANUAL_PROMPTPAY_REFUND_ESCALATION",
+    "FRAUD_OR_DISPUTE_ESCALATION",
+    "NO_ACTION"
+  ],
+  "futureNotImplemented": [
+    "recoveryCaseOpenV1",
+    "recoveryEvidenceRefreshV1",
+    "recoveryReviewV1",
+    "recoveryOwnerDecisionV1",
+    "recoveryStatusV1",
+    "recoveryEntitlementApplyV1",
+    "manualRefundEvidenceVerify"
+  ],
+  "idempotency": {
+    "casePath": "accounts/{uid}/recoveryCases/{requestId}",
+    "entitlementGrantPath": "accounts/{uid}/entitlementGrants/{requestId}",
+    "immutableAuditPath": "accounts/{uid}/recoveryCases/{requestId}/events/{eventId}",
+    "duplicateGrant": "REFUSE_AND_ESCALATE"
+  },
+  "relevantExistingFields": [
+    "accounts.openBillingRequestId",
+    "accounts.billingVersion",
+    "accounts.creditWalletRemaining",
+    "accounts.reserved",
+    "billingRequests.status",
+    "billingRequests.providerVerifiedChargeId",
+    "billingRequests.providerVerifiedPaid",
+    "billingRequests.providerVerifiedAmountSatang"
+  ],
+  "externalProviderRefundPolicy": "NO_OMISE_PROMPTPAY_REFUNDS_API",
+  "release": "F0_HOLD_F1_F2_F3_NOT_AUTHORIZED_PUBLIC_CLOSED"
+}
