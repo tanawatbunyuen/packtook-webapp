@@ -1,0 +1,50 @@
+name: PACKTOOK isolated Omise TEST container build and fail-closed CI
+on:
+  pull_request:
+    branches: [review/rr-staging-secret-preflight-20261114]
+permissions:
+  contents: read
+jobs:
+  omise-test-container:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: Assert no credentials and no production authority
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -z "${OMISE_SECRET_KEY:-}"
+          test -z "${GOOGLE_APPLICATION_CREDENTIALS:-}"
+          test -z "${FIREBASE_TOKEN:-}"
+          test -z "${PACKTOOK_PRODUCTION_PROJECT_ID:-}"
+      - name: Offline read-only contract regression
+        run: node --test production/omise-test-job/test-probe.cjs
+      - name: Build container locally without publishing or deploying
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          docker build --pull --tag packtook-omise-test-probe:ci ./production/omise-test-job
+          test "$(docker image inspect packtook-omise-test-probe:ci --format '{{.Config.User}}')" = "node"
+          docker image inspect packtook-omise-test-probe:ci --format 'LOCAL_IMAGE_ID={{.Id}}'
+      - name: Container must refuse missing staging grant / mounted secret
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +e
+          docker run --rm --network none packtook-omise-test-probe:ci >/tmp/failclosed.out 2>&1
+          status=$?
+          set -e
+          test "$status" -eq 1
+          grep -Fq 'OMISE_TEST_READ_ONLY_VERIFIED: FAIL' /tmp/failclosed.out
+          ! grep -Fq 'OMISE_TEST_READ_ONLY_VERIFIED: PASS' /tmp/failclosed.out
+          echo 'CONTAINER_FAIL_CLOSED_WITHOUT_SECRET: PASS'
+          echo 'IMAGE_PUBLISHED: NO'
+          echo 'CLOUD_RUN_JOB_CREATED: NO'
+          echo 'PRODUCTION_WRITES: 0'
+          echo 'RELEASE: NO_GO_RELEASE'
