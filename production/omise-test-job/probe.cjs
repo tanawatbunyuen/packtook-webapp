@@ -46,8 +46,14 @@ async function readOnlyTestCharge({env,fetchImpl=fetch,readSecret=fs.readFileSyn
     Accept:'application/json'
    }
   });
-  if(!response||response.ok!==true||typeof response.json!=='function')
-   deny('PROVIDER_HTTP_NOT_SUCCESS');
+  if(!response||response.ok!==true||typeof response.json!=='function'){
+   const error=new Error('PROVIDER_HTTP_NOT_SUCCESS');
+   error.code='PROVIDER_HTTP_NOT_SUCCESS';
+   // Report only a bounded numeric HTTP code, never the response body or headers.
+   error.httpStatus=Number.isInteger(response?.status)&&response.status>=100&&response.status<=599
+     ?response.status:null;
+   throw error;
+  }
   const charge=await response.json();
   if(charge?.id!==env.RR_OMISE_TEST_CHARGE_ID||charge?.livemode!==false||
     String(charge.currency||'').toLowerCase()!=='thb')
@@ -75,6 +81,8 @@ async function main(){
    'TEST_CHARGE_ID_OR_LIVEMODE_MISMATCH','AMOUNT_OR_OWNER_METADATA_MISMATCH','PROVIDER_TIMEOUT']);
   console.error('OMISE_TEST_READ_ONLY_VERIFIED: FAIL');
   console.error('FAILURE_CATEGORY:',safe.has(e?.code)?e.code:'CONFIG_OR_PROVIDER_FAILURE');
+  if(e?.code==='PROVIDER_HTTP_NOT_SUCCESS')
+   console.error('PROVIDER_HTTP_STATUS:',Number.isInteger(e?.httpStatus)?e.httpStatus:'UNKNOWN');
   process.exitCode=1;
  }
 }
