@@ -62,3 +62,20 @@ test('reject bad provider HTTP',async()=>{
 test('reject unexpected currency',async()=>{
  await assert.rejects(readOnlyTestCharge({env,exists,readSecret:secret,fetchImpl:fake({...charge,currency:'usd'})}),/TEST_CHARGE_ID_OR_LIVEMODE_MISMATCH/);
 });
+
+test('preserve safe provider HTTP 401 status without body',async()=>{
+ await assert.rejects(readOnlyTestCharge({
+  env,exists,readSecret:secret,fetchImpl:async()=>({ok:false,status:401,
+    json:async()=>{throw Error('MUST_NOT_READ_PROVIDER_ERROR_BODY')}})
+ }),e=>e.code==='PROVIDER_HTTP_NOT_SUCCESS'&&e.httpStatus===401);
+});
+test('preserve safe provider HTTP 404 status',async()=>{
+ await assert.rejects(readOnlyTestCharge({
+  env,exists,readSecret:secret,fetchImpl:async()=>({ok:false,status:404})
+ }),e=>e.code==='PROVIDER_HTTP_NOT_SUCCESS'&&e.httpStatus===404);
+});
+test('invalid provider status cannot be included in logs',async()=>{
+ await assert.rejects(readOnlyTestCharge({
+  env,exists,readSecret:secret,fetchImpl:async()=>({ok:false,status:'private-message'})
+ }),e=>e.code==='PROVIDER_HTTP_NOT_SUCCESS'&&e.httpStatus===null);
+});
