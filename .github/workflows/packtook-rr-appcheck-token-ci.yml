@@ -1,0 +1,37 @@
+name: PACKTOOK real staging App Check browser token (no account login)
+on:
+  pull_request:
+    branches: [review/rr-staging-unauth-callable-security]
+permissions:
+  contents: read
+jobs:
+  browser-appcheck-token:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: Ensure no credentials and no production authority
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -z "${FIREBASE_TOKEN:-}"
+          test -z "${OMISE_SECRET_KEY:-}"
+          test -z "${GOOGLE_APPLICATION_CREDENTIALS:-}"
+          test -z "${PACKTOOK_PRODUCTION_PROJECT_ID:-}"
+      - name: Install isolated browser
+        run: |
+          python -m pip install --disable-pip-version-check playwright==1.56.0
+          python -m playwright install --with-deps chromium
+      - name: Request real App Check token without logging it
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python production/scripts/rr-real-appcheck-browser-token.py | tee /tmp/rr-real-appcheck.log
+          grep -Fq 'RR_REAL_STAGING_APPCHECK_BROWSER_TOKEN: PASS' /tmp/rr-real-appcheck.log
+          grep -Fq 'RR_REAL_STAGING_APPCHECK_BACKEND_VERIFICATION: NOT_TESTED' /tmp/rr-real-appcheck.log
+          grep -Fq 'RR_PRODUCTION_WRITES: 0' /tmp/rr-real-appcheck.log
