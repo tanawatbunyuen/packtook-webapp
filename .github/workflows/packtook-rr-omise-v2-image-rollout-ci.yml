@@ -1,0 +1,29 @@
+name: PACKTOOK Omise V2 Staging Image Rollout Guard — offline
+on:
+  pull_request:
+    branches: [review/rr-omise-provider-http-status-diagnostics]
+permissions:
+  contents: read
+jobs:
+  guard:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: Validate safe staging image update guards
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python -m unittest -v production/scripts/test-rr-stage-omise-diagnostic-image.py
+          python -m py_compile production/scripts/rr-stage-omise-diagnostic-image.py
+          test -z "${OMISE_SECRET_KEY:-}"
+          test -z "${GOOGLE_APPLICATION_CREDENTIALS:-}"
+          echo 'STAGING_ROLLOUT_GUARD: PASS'
+          echo 'GCP_WRITES: 0'
+          echo 'JOB_EXECUTED: NO'
+          echo 'RELEASE: NO_GO_RELEASE'
