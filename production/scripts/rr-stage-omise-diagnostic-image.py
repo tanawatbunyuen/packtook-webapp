@@ -15,7 +15,7 @@ SA="packtook-omise-test@packtook-staging.iam.gserviceaccount.com"
 SECRET="PACKTOOK_OMISE_TEST_SECRET_KEY"
 SECRET_FILE="omise-test-secret"
 REPO="asia-southeast1-docker.pkg.dev/packtook-staging/packtook-staging-probes/packtook-omise-test-probe"
-ORIGINAL="sha256:813990148140e6709bb93dc86e303627b393462cb1f2031efcb07215f80ab00b"
+ORIGINAL="sha256:405fa15b5216bf1c43bc475f7edf9078d97bb61ff71bde0d6e9cf81685e8a606"
 def command(argv):
     return subprocess.check_output(argv,text=True,stderr=subprocess.DEVNULL).strip()
 def guard_env(env):
