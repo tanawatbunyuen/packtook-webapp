@@ -1,0 +1,10 @@
+# Omise TEST Staging HTTP 404 — Typed provider error diagnostic
+Date: 2026-11-14. Real Cloud Run Staging job `packtook-omise-test-probe-cxd7q` returned HTTP 404 and did not confirm charge; the user verified that the dashboard charge ID and account match intended configuration.
+
+Documented Omise codes (https://docs.omise.co/api-errors): HTTP 404 `not_found` (resource lookup), `serializer_not_found` (API version compatibility), `service_not_found` (unsupported service/version). This patch does **not** assume a cause. It preserves one bounded GET to `https://api.omise.co/charges/{test_charge_id}` with mounted `skey_test_...`, no redirects and four-second timeout.
+
+Diagnostic accepts at most 4096 bytes of *provider error response* and allows only known static error code identifiers; `message`, `location`, account details, raw responses, response headers, credentials, request IDs and Charge IDs are never logged. Log `PROVIDER_ERROR_CODE: not_found|serializer_not_found|service_not_found|UNKNOWN` alongside existing sanitized status. Unknown or malformed responses fail closed.
+
+Offline CI and mock tests only in this PR. NO provider requests, image publish, Cloud Run changes or production writes. After PASS, using isolated clean Cloud Shell worktree, execute existing `rr-publish-omise-staging-image.py` to publish *new reviewed commit SHA*, obtain immutable digest, run `rr-stage-omise-diagnostic-image.py` dry-run then apply *only if preflight passes*. Note that its update guard currently requires V1 old digest; **the job is already on V2**. That older guard must be updated to use the verified prior V2 digest `sha256:405fa15b5216bf1c43bc475f7edf9078d97bb61ff71bde0d6e9cf81685e8a606` before applying to current job. Do not bypass the guard by arbitrary direct updates. Verify post-update YAML and only then decide whether to execute a **single** read-only Staging run.
+
+No API version changes, Secret Manager writes, IAM changes, credits, charge creation/refunds, or Production release without specific new evidence. NO_GO_RELEASE.
