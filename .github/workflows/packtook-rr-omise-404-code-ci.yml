@@ -1,0 +1,39 @@
+name: PACKTOOK Omise 404 typed diagnostic - offline CI
+on:
+  pull_request:
+    branches: [review/rr-omise-v2-staging-rollout-guard]
+permissions:
+  contents: read
+jobs:
+  typed-404:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: All mock HTTP error tests
+        run: |
+          set -Eeuo pipefail
+          node --test production/omise-test-job/test-probe.cjs | tee /tmp/typed-404-ci.log
+          grep -Fq '# fail 0' /tmp/typed-404-ci.log
+      - name: Build locked-down container; never push
+        run: |
+          set -Eeuo pipefail
+          docker build --pull -t packtook-omise-404:ci production/omise-test-job
+          test "$(docker image inspect packtook-omise-404:ci --format '{{.Config.User}}')" = node
+          set +e
+          docker run --rm --network none packtook-omise-404:ci > /tmp/failclosed.log 2>&1
+          code=$?
+          set -e
+          test "$code" -eq 1
+          grep -Fq 'OMISE_TEST_READ_ONLY_VERIFIED: FAIL' /tmp/failclosed.log
+          grep -Fq 'FAILURE_CATEGORY: CONFIG_OR_PROVIDER_FAILURE' /tmp/failclosed.log
+          echo 'SAFE_404_DIAGNOSTIC_CI: PASS'
+          echo 'STAGING_IMAGE_PUBLISHED: NO'
+          echo 'JOB_EXECUTED: NO'
+          echo 'PRODUCTION_WRITES: 0'
+          echo 'RELEASE: NO_GO_RELEASE'

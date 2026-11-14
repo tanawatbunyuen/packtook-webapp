@@ -79,3 +79,50 @@ test('invalid provider status cannot be included in logs',async()=>{
   env,exists,readSecret:secret,fetchImpl:async()=>({ok:false,status:'private-message'})
  }),e=>e.code==='PROVIDER_HTTP_NOT_SUCCESS'&&e.httpStatus===null);
 });
+
+
+const errorResponse=(status,payload)=>new Response(
+ JSON.stringify(payload),{status,headers:{'content-type':'application/json'}});
+
+test('404 not_found classification, never print raw message',async()=>{
+ const response=errorResponse(404,{object:'error',code:'not_found',message:'skey_test_fake_should_not_log'});
+ await assert.rejects(readOnlyTestCharge({
+  env,exists,readSecret:secret,fetchImpl:async()=>response
+ }),e=>e.code==='PROVIDER_HTTP_NOT_SUCCESS'&&e.httpStatus===404&&e.providerErrorCode==='not_found'
+  &&!String(e.message).includes('skey_test_'));
+});
+test('404 serializer_not_found classification',async()=>{
+ await assert.rejects(readOnlyTestCharge({
+  env,exists,readSecret:secret,fetchImpl:async()=>errorResponse(404,{object:'error',code:'serializer_not_found'})
+ }),e=>e.providerErrorCode==='serializer_not_found'&&e.httpStatus===404);
+});
+test('404 service_not_found classification',async()=>{
+ await assert.rejects(readOnlyTestCharge({
+  env,exists,readSecret:secret,fetchImpl:async()=>errorResponse(404,{object:'error',code:'service_not_found'})
+ }),e=>e.providerErrorCode==='service_not_found'&&e.httpStatus===404);
+});
+test('unknown and attacker-controlled code fail closed',async()=>{
+ await assert.rejects(readOnlyTestCharge({
+  env,exists,readSecret:secret,fetchImpl:async()=>errorResponse(404,{object:'error',code:'SECRET_KEY_DUMP'})
+ }),e=>e.providerErrorCode==='UNKNOWN');
+});
+test('malformed JSON cannot leak body',async()=>{
+ await assert.rejects(readOnlyTestCharge({
+  env,exists,readSecret:secret,fetchImpl:async()=>new Response('skey_test_SECRET',{status:404})
+ }),e=>e.providerErrorCode==='UNKNOWN'&&!String(e.message).includes('SECRET'));
+});
+test('oversized error response will not be parsed or logged',async()=>{
+ await assert.rejects(readOnlyTestCharge({
+  env,exists,readSecret:secret,fetchImpl:async()=>new Response(JSON.stringify({object:'error',code:'not_found',message:'X'.repeat(8192)}),{status:404})
+ }),e=>e.providerErrorCode==='UNKNOWN'&&e.httpStatus===404);
+});
+test('missing body is UNKNOWN (no fallback network call)',async()=>{
+ await assert.rejects(readOnlyTestCharge({
+  env,exists,readSecret:secret,fetchImpl:async()=>({ok:false,status:404})
+ }),e=>e.providerErrorCode==='UNKNOWN');
+});
+test('401 auth error code classification',async()=>{
+ await assert.rejects(readOnlyTestCharge({
+  env,exists,readSecret:secret,fetchImpl:async()=>errorResponse(401,{object:'error',code:'authentication_failure'})
+ }),e=>e.providerErrorCode==='authentication_failure'&&e.httpStatus===401);
+});

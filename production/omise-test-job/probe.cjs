@@ -5,6 +5,31 @@ const fs=require('node:fs');
 const path=require('node:path');
 const TEST_CHARGE=/^chrg_test_[A-Za-z0-9]{8,128}$/;
 const TEST_SECRET=/^skey_test_[A-Za-z0-9_]+$/;
+const PROVIDER_ERROR_CODES=new Set([
+ 'not_found','serializer_not_found','service_not_found',
+ 'authentication_failure','key_expired_error','locked_account_error',
+ 'not_authorized','too_many_requests','internal_error','search_unavailable'
+]);
+// Read a tightly bounded error response to distinguish Omise's documented codes.
+// Do not log or propagate response body, message, location, account or key.
+async function safeProviderErrorCode(response){
+ if(!response?.body||typeof response.body.getReader!=='function')return 'UNKNOWN';
+ const reader=response.body.getReader();
+ let total=0;
+ const chunks=[];
+ try{
+  while(true){
+   const {done,value}=await reader.read();
+   if(done)break;
+   if(!(value instanceof Uint8Array)||total+value.length>4096)return 'UNKNOWN';
+   total+=value.length;chunks.push(value);
+  }
+  const data=JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  return data&&data.object==='error'&&typeof data.code==='string'&&PROVIDER_ERROR_CODES.has(data.code)
+    ?data.code:'UNKNOWN';
+ }catch(_){return 'UNKNOWN'}
+ finally{try{await reader.cancel()}catch(_){}}
+}
 function deny(code){const e=new Error(code);e.code=code;throw e}
 function validateConfig(env,exists=fs.existsSync){
  const errors=[];
@@ -52,6 +77,7 @@ async function readOnlyTestCharge({env,fetchImpl=fetch,readSecret=fs.readFileSyn
    // Report only a bounded numeric HTTP code, never the response body or headers.
    error.httpStatus=Number.isInteger(response?.status)&&response.status>=100&&response.status<=599
      ?response.status:null;
+   error.providerErrorCode=await safeProviderErrorCode(response);
    throw error;
   }
   const charge=await response.json();
@@ -82,7 +108,10 @@ async function main(){
   console.error('OMISE_TEST_READ_ONLY_VERIFIED: FAIL');
   console.error('FAILURE_CATEGORY:',safe.has(e?.code)?e.code:'CONFIG_OR_PROVIDER_FAILURE');
   if(e?.code==='PROVIDER_HTTP_NOT_SUCCESS')
+  {
    console.error('PROVIDER_HTTP_STATUS:',Number.isInteger(e?.httpStatus)?e.httpStatus:'UNKNOWN');
+   console.error('PROVIDER_ERROR_CODE:',PROVIDER_ERROR_CODES.has(e?.providerErrorCode)?e.providerErrorCode:'UNKNOWN');
+  }
   process.exitCode=1;
  }
 }
