@@ -1,0 +1,50 @@
+name: PACKTOOK Omise TEST safe HTTP status diagnostics
+on:
+  pull_request:
+    branches: [review/rr-omise-image-publish-handoff-20261114]
+permissions:
+  contents: read
+jobs:
+  safe-http-status:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: Guard no provider secrets
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -z "${OMISE_SECRET_KEY:-}"
+          test -z "${GOOGLE_APPLICATION_CREDENTIALS:-}"
+          test -z "${FIREBASE_TOKEN:-}"
+          test -z "${PACKTOOK_PRODUCTION_PROJECT_ID:-}"
+      - name: Unit tests with mocked provider
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          node --test production/omise-test-job/test-probe.cjs | tee /tmp/omise-safe-status.log
+          grep -Fq '# fail 0' /tmp/omise-safe-status.log
+      - name: Build local Docker without publishing
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          docker build --pull --tag packtook-omise-http-status:ci production/omise-test-job
+          test "$(docker image inspect packtook-omise-http-status:ci --format '{{.Config.User}}')" = node
+          set +e
+          docker run --rm --network none packtook-omise-http-status:ci >/tmp/failclosed.log 2>&1
+          code=$?
+          set -e
+          test "$code" -eq 1
+          grep -Fq 'OMISE_TEST_READ_ONLY_VERIFIED: FAIL' /tmp/failclosed.log
+          grep -Fq 'FAILURE_CATEGORY: CONFIG_OR_PROVIDER_FAILURE' /tmp/failclosed.log
+          echo 'SAFE_HTTP_STATUS_LOCAL_DOCKER_BUILD: PASS'
+          echo 'STAGING_IMAGE_PUBLISHED: NO'
+          echo 'STAGING_JOB_UPDATED: NO'
+          echo 'STAGING_JOB_EXECUTED: NO'
+          echo 'PRODUCTION_WRITES: 0'
+          echo 'RELEASE: NO_GO_RELEASE'
