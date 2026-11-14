@@ -18,7 +18,8 @@ with sync_playwright() as p:
         const app=appSdk.getApp();
         if(app.options.projectId!=='packtook-staging')
           return {status:'REJECT',reason:'PROJECT_MISMATCH'};
-        const check=checkSdk.getAppCheck(app);
+        const check=app.container?.getProvider?.('app-check')?.getImmediate?.({optional:true});
+        if(!check)return {status:'BLOCKED',reason:'APPCHECK_INSTANCE_UNAVAILABLE'};
         const receipt=await Promise.race([
           checkSdk.getToken(check,true),
           new Promise(resolve=>setTimeout(()=>resolve({timedOut:true}),20000))
