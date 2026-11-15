@@ -1,0 +1,36 @@
+name: PACKTOOK V7 Controlled Staging Device Readiness
+on:
+  pull_request:
+    branches: [review/rr-v6-staging-recorder-recovery-preflight]
+permissions:
+  contents: read
+jobs:
+  device-readiness:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: Device preflight read-only browser tests
+        run: |
+          set -Eeuo pipefail
+          node --test production/tests/rr-v7-browser-capability-offline.test.cjs | tee /tmp/v7-browser.log
+          grep -Fq '# fail 0' /tmp/v7-browser.log
+      - name: Hosting parity security tests
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest -v production/scripts/test-rr-v7-staging-hosting-parity-readonly.py
+          python3 -m py_compile production/scripts/rr-v7-staging-hosting-parity-readonly.py
+          echo 'V7_CONTROLLED_DEVICE_READINESS_CI: PASS'
+          echo 'REMOTE_HOSTING_CALLS: 0'
+          echo 'CAMERA_PERMISSION_REQUESTS: 0'
+          echo 'FIRESTORE_WRITES: 0'
+          echo 'CLOUD_DEPLOYS: 0'
+          echo 'NO_GO_RELEASE'
