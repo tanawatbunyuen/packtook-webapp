@@ -1,0 +1,37 @@
+name: PACKTOOK Omise Local API Sandbox — no provider access
+on:
+  pull_request:
+    branches: [review/rr-omise-404-billing-fail-closed-emulator]
+permissions:
+  contents: read
+jobs:
+  local-omise:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: Run real probe with loopback-only temporary Omise server
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -z "${OMISE_SECRET_KEY:-}"
+          test -z "${GOOGLE_APPLICATION_CREDENTIALS:-}"
+          test -z "${FIREBASE_TOKEN:-}"
+          node --test production/omise-test-job/test-local-api-sandbox.cjs | tee /tmp/omise-local.txt
+          grep -Fq '# fail 0' /tmp/omise-local.txt
+      - name: Existing Omise validator unit tests and real billing 404 guards
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          node --test production/omise-test-job/test-probe.cjs production/tests/omise-404-real-handler-offline.test.cjs | tee /tmp/omise-guards.txt
+          grep -Fq '# fail 0' /tmp/omise-guards.txt
+          echo 'OMISE_LOCAL_SANDBOX: PASS'
+          echo 'EXTERNAL_OMISE_REQUESTS: 0'
+          echo 'GCP_WRITES: 0'
+          echo 'PRODUCTION_WRITES: 0'
+          echo 'RELEASE: NO_GO_RELEASE'
