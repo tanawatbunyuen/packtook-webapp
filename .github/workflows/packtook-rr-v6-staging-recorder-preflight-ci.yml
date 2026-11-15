@@ -1,0 +1,35 @@
+name: PACKTOOK V6 Staging Recorder Integration Recovery Preflight
+on:
+  pull_request:
+    branches: [review/rr-v5-credit-lifecycle-recovery-emulator]
+permissions:
+  contents: read
+jobs:
+  staging-recorder-preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: Source integration contracts
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          node --test production/tests/rr-v6-staging-recorder-contract.test.cjs | tee /tmp/v6-contract.log
+          grep -Fq '# fail 0' /tmp/v6-contract.log
+      - name: Execute actual Staging recoverCredit browser state machine against mocks
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          node --test production/tests/rr-v6-staging-recovery-ui-vm.test.cjs | tee /tmp/v6-recovery.log
+          grep -Fq '# fail 0' /tmp/v6-recovery.log
+          echo 'V6_STAGING_RECORDER_PREFLIGHT: PASS'
+          echo 'REAL_FIRESTORE_WRITES: 0'
+          echo 'REAL_OMISE_CALLS: 0'
+          echo 'CAMERA_OR_FILESYSTEM_ACCESS: 0'
+          echo 'DEPLOY: NO'
+          echo 'RELEASE: NO_GO_RELEASE'
