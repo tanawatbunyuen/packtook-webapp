@@ -32,7 +32,11 @@ function makeHarness({id,plan='Basic',paid=true,status='successful',amount,livem
   exports:{},Buffer,URLSearchParams,Date,Promise,
   console:{log(){},warn(){},error(){}},
   require(name){
-   if(name==='firebase-admin')return {initializeApp(){},firestore:Object.assign(()=>db,{FieldValue:admin.firestore.FieldValue})};
+   if(name==='firebase-admin')return {initializeApp(){},firestore:Object.assign(()=>({
+    collection:(...args)=>db.collection(...args),
+    runTransaction:(callback,options)=>db.runTransaction(
+      tx=>Promise.resolve().then(()=>callback(tx)),options)
+   }),{FieldValue:admin.firestore.FieldValue})};
    if(name==='firebase-functions/v2/https')return {onCall:(_opts,fn)=>fn,onRequest:(_opts,fn)=>fn,HttpsError};
    if(name==='firebase-functions/params')return {defineSecret:()=>({value:()=> 'skey_test_LOCAL_V4_MOCK'})};
    if(name==='node:crypto')return crypto;
