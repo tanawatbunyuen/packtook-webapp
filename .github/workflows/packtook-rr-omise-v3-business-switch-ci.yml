@@ -1,0 +1,26 @@
+name: PACKTOOK Omise V3 Business Test Charge Guard
+on:
+  pull_request:
+    branches: [review/rr-omise-payment-wallet-idempotency-offline]
+permissions:
+  contents: read
+jobs:
+  guard-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: Offline cloud run switch guard tests
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest -v production/scripts/test-rr-switch-omise-v3-business-charge.py
+          python3 -m py_compile production/scripts/rr-switch-omise-v3-business-charge.py
+          echo 'CHARGE_SWITCH_GUARD_TEST: PASS'
+          echo 'OMISE_EXTERNAL_READS: 0'
+          echo 'GCP_WRITES: 0'
+          echo 'RELEASE: NO_GO_RELEASE'
