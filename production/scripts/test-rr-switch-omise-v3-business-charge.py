@@ -13,25 +13,37 @@ mod=importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
 def fixture():
+    values={
+        "RR_STAGING_PROJECT_ID":mod.PROJECT,
+        "RR_NO_PRODUCTION_WRITES":"true",
+        "RR_PUBLIC_SIGNUP_CLOSED":"true",
+        "RR_OMISE_TEST_SECRET_FILE":"/run/secrets/omise-test-secret",
+        "RR_ENABLE_OMISE_TEST_READ":"I_AUTHORIZE_TEST_ONLY_READS",
+        "RR_OMISE_TEST_CHARGE_ID":mod.OLD_ID,
+        "RR_EXPECTED_AMOUNT_SATANG":"29900",
+        "RR_EXPECTED_ACCOUNT_ID":"oldOwnerId123",
+        "RR_EXPECTED_REQUEST_ID":"oldRequestId123"
+    }
+    container={
+        "image":mod.IMAGE,
+        "env":[{"name":k,"value":v} for k,v in values.items()],
+        "volumeMounts":[{"name":"secretvol","mountPath":"/run/secrets"}]
+    }
+    config={
+        "maxRetries":0,
+        "serviceAccountName":mod.SA,
+        "containers":[container],
+        "volumes":[{
+            "name":"secretvol",
+            "secret":{"secretName":mod.SECRET,
+                      "items":[{"key":"1","path":mod.SECRET_FILE}]}
+        }]
+    }
     return {
         "metadata":{"name":mod.JOB},
-        "spec":{"template":{"spec":{"taskCount":1,"parallelism":1,
-          "template":{"spec":{"maxRetries":0,"serviceAccountName":mod.SA,
-            "containers":[{"image":mod.IMAGE,"env":[{"name":k,"value":v} for k,v in {
-              "RR_STAGING_PROJECT_ID":mod.PROJECT,
-              "RR_NO_PRODUCTION_WRITES":"true",
-              "RR_PUBLIC_SIGNUP_CLOSED":"true",
-              "RR_OMISE_TEST_SECRET_FILE":"/run/secrets/omise-test-secret",
-              "RR_ENABLE_OMISE_TEST_READ":"I_AUTHORIZE_TEST_ONLY_READS",
-              "RR_OMISE_TEST_CHARGE_ID":mod.OLD_ID,
-              "RR_EXPECTED_AMOUNT_SATANG":"29900",
-              "RR_EXPECTED_ACCOUNT_ID":"oldOwnerId123",
-              "RR_EXPECTED_REQUEST_ID":"oldRequestId123"
-            }.items()],
-              "volumeMounts":[{"name":"secretvol","mountPath":"/run/secrets"}]}],
-            "volumes":[{"name":"secretvol","secret":{"secretName":mod.SECRET,
-              "items":[{"key":"1","path":mod.SECRET_FILE}]}}]
-        }}}}}}
+        "spec":{"template":{"spec":{
+            "taskCount":1,"parallelism":1,"template":{"spec":config}
+        }}}
     }
 
 def response(payload,status=200):
