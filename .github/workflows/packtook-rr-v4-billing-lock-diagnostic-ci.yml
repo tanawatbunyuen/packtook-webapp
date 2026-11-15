@@ -1,0 +1,26 @@
+name: PACKTOOK V4 Staging Billing Lock Read-only Diagnosis
+on:
+  pull_request:
+    branches: [review/rr-v4-payment-firestore-emulator-e2e]
+permissions:
+  contents: read
+jobs:
+  lock-analysis:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: Offline safe Staging Billing Lock state machine tests
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest -v production/scripts/test-rr-v4-staging-lock-diagnostic-readonly.py
+          python3 -m py_compile production/scripts/rr-v4-staging-lock-diagnostic-readonly.py
+          echo 'V4_BILLING_LOCK_DIAGNOSTIC_MOCK: PASS'
+          echo 'CLOUD_CALLS: 0'
+          echo 'GCP_WRITES: 0'
+          echo 'NO_GO_RELEASE'
