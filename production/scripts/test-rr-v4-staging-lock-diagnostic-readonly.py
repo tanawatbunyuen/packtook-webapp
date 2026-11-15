@@ -68,5 +68,5 @@ class LockDiagnostics(unittest.TestCase):
     def test_no_write_action_any_case(self):
         for args in (fixtures(),fixtures(lock=None),fixtures(status="paid"),
                      fixtures(lock="otherRequest000000001")):
-            self.assertNotIn("WRITE_AUTHORIZED",mod.assess(*args)[1])
+            self.assertIn(mod.assess(*args)[1],{"NO_WRITE_MANUAL_REVIEW","NO_WRITE_AUDIT_ONLY","READ_ONLY_VERIFIED_NO_WRITE_AUTHORIZED"})
 if __name__=="__main__":unittest.main()
