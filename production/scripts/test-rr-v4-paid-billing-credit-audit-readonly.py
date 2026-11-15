@@ -68,8 +68,10 @@ class TestAudit(unittest.TestCase):
   self.assertEqual(len(docs),1);self.assertTrue(done)
   self.assertEqual(len(calls),1)
  def test_page_incomplete(self):
+  calls=[]
   def fetch(url,headers):
-   return {"documents":[d({"action":"reserve"})]*50,"nextPageToken":"newtoken"+str(len(url))}
+   calls.append(url)
+   return {"documents":[d({"action":"reserve"})]*51,"nextPageToken":"page"+str(len(calls))}
   docs,done=m.list_all_audits("https://example.test/documents/accounts/only",{},fetch)
   self.assertFalse(done)
 if __name__=="__main__":unittest.main()
