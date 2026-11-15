@@ -129,7 +129,7 @@ test('provider paid=false despite successful status must not activate',async()=>
 test('provider amount mismatch blocks Firestore transaction',async()=>{
  const h=setup({amount:19900});
  await assert.rejects(h.handler(h.req),/Charge mismatch/);
- assert.equal(h.counts().commits,1);
+ assert.equal(h.counts().commits,0); // provider mismatch rejects before transaction
  assert.equal(h.account().creditWalletRemaining,20);
  assert.equal(h.counts().audits,0);
 });
