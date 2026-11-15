@@ -1,0 +1,27 @@
+name: PACKTOOK V4 Paid Billing Credit Audit Readonly
+on:
+  pull_request:
+    branches: [review/rr-v4-staging-lock-diagnostic-readonly]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: Paid billing audit offline guard tests
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest -v production/scripts/test-rr-v4-paid-billing-credit-audit-readonly.py
+          python3 -m py_compile production/scripts/rr-v4-paid-billing-credit-audit-readonly.py
+          echo 'PAID_BILLING_CREDIT_AUDIT_TEST: PASS'
+          echo 'OMISE_REQUESTS: 0'
+          echo 'FIRESTORE_REQUESTS: 0'
+          echo 'CLOUD_WRITES: 0'
+          echo 'RELEASE: NO_GO_RELEASE'
