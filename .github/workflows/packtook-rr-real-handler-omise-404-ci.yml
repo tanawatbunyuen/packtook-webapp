@@ -1,0 +1,30 @@
+name: PACKTOOK Real Handler Omise 404 Fail-Closed Offline
+on:
+  pull_request:
+    branches: [review/rr-omise-404-evidence-support-handoff]
+permissions:
+  contents: read
+jobs:
+  real-handler-offline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: Actual billing handler 404 mock, no cloud keys
+        run: |
+          set -Eeuo pipefail
+          test -z "${OMISE_SECRET_KEY:-}"
+          test -z "${FIREBASE_TOKEN:-}"
+          test -z "${GOOGLE_APPLICATION_CREDENTIALS:-}"
+          node --test production/tests/omise-404-real-handler-offline.test.cjs | tee /tmp/real-handler-404.txt
+          grep -Fq '# fail 0' /tmp/real-handler-404.txt
+          echo 'OMISE_REAL_HANDLER_404_FAIL_CLOSED: PASS'
+          echo 'OMISE_PROVIDER_CALLS: 0'
+          echo 'FIRESTORE_EXTERNAL_WRITES: 0'
+          echo 'STAGING_DEPLOY: NO'
+          echo 'RELEASE: NO_GO_RELEASE'
