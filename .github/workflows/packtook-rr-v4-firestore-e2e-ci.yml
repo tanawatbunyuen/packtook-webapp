@@ -27,6 +27,12 @@ jobs:
           set -Eeuo pipefail
           npm install --prefix functions --no-audit --no-fund --ignore-scripts
           npm install --global firebase-tools@14.12.1 --no-audit --no-fund
+      - name: Offline-only staging linkage preflight guards
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest -v production/scripts/test-rr-v4-staging-billing-linkage-readonly.py
+          python3 -m py_compile production/scripts/rr-v4-staging-billing-linkage-readonly.py
       - name: Execute V4 billing handler with Firestore emulator
         shell: bash
         run: |
