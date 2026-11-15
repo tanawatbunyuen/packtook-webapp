@@ -13,7 +13,7 @@ CATEGORIES={"PROVIDER_HTTP_NOT_SUCCESS","PROVIDER_TIMEOUT",
 CODES={"not_found","serializer_not_found","service_not_found","UNKNOWN",
  "authentication_failure","key_expired_error","locked_account_error","not_authorized",
  "too_many_requests","internal_error","search_unavailable"}
-FIELD=re.compile(r"(?m)^.*?\\b(OMISE_TEST_READ_ONLY_VERIFIED|FAILURE_CATEGORY|PROVIDER_HTTP_STATUS|PROVIDER_ERROR_CODE):[ \\t]*([^\\r\\n]*)$")
+FIELD=re.compile(r"(?m)^.*?\b(OMISE_TEST_READ_ONLY_VERIFIED|FAILURE_CATEGORY|PROVIDER_HTTP_STATUS|PROVIDER_ERROR_CODE):[ \t]*([^\r\n]*)$")
 CHARGE="chrg_test_69jkgjiaft9zvl2pzst"
 PROJECT="packtook-staging"
 def sanitized(lines, execution):
@@ -34,20 +34,20 @@ def sanitized(lines, execution):
   http="OTHER_REDACTED"
  return {"execution":execution,"verification":status,"failure":category,"http_status":http,"provider_code":code}
 def render(evidence):
- return ("PACKTOOK / Omise Test Mode - Support Evidence (sanitized)\\n"
-  "Project environment: packtook-staging (no production)\\n"
-  "Charge ID: "+CHARGE+"\\n"
-  "Dashboard: Test Mode; 299 THB; PromptPay; paid (reported by operator)\\n"
-  "Test Secret Key: operator confirmed matches Secret Manager version 1 (not independently verified by this report)\\n"
-  "API endpoint: GET https://api.omise.co/charges/{id}\\n"
-  "Cloud Run execution: "+evidence["execution"]+"\\n"
-  "Charge verification: "+evidence["verification"]+"\\n"
-  "Failure category: "+evidence["failure"]+"\\n"
-  "HTTP status: "+evidence["http_status"]+"\\n"
-  "Provider error code: "+evidence["provider_code"]+"\\n"
-  "Request: Please confirm whether this test charge is visible through the Test API for this Omise account and explain the 404/not_found response.\\n"
-  "Security: No API keys, request/response bodies, credential headers, or customer metadata included.\\n"
-  "No production deploy or real payment operation authorized.\\n")
+ return ("PACKTOOK / Omise Test Mode - Support Evidence (sanitized)\n"
+  "Project environment: packtook-staging (no production)\n"
+  "Charge ID: "+CHARGE+"\n"
+  "Dashboard: Test Mode; 299 THB; PromptPay; paid (reported by operator)\n"
+  "Test Secret Key: operator confirmed matches Secret Manager version 1 (not independently verified by this report)\n"
+  "API endpoint: GET https://api.omise.co/charges/{id}\n"
+  "Cloud Run execution: "+evidence["execution"]+"\n"
+  "Charge verification: "+evidence["verification"]+"\n"
+  "Failure category: "+evidence["failure"]+"\n"
+  "HTTP status: "+evidence["http_status"]+"\n"
+  "Provider error code: "+evidence["provider_code"]+"\n"
+  "Request: Please confirm whether this test charge is visible through the Test API for this Omise account and explain the 404/not_found response.\n"
+  "Security: No API keys, request/response bodies, credential headers, or customer metadata included.\n"
+  "No production deploy or real payment operation authorized.\n")
 def main():
  p=argparse.ArgumentParser()
  p.add_argument("--execution",required=True)
