@@ -26,6 +26,12 @@ class FakeOpener:
         assert request.get_method()=="GET"
         return FakeResp(self.data)
 class TestV7(unittest.TestCase):
+    def test_canonical_index_uses_root_not_html_redirect(self):
+        self.assertEqual(mod.asset_url("https://packtook-staging.web.app","index.html"),
+                         "https://packtook-staging.web.app/")
+    def test_js_asset_path_unchanged(self):
+        self.assertEqual(mod.asset_url("https://packtook-staging.web.app","app.js"),
+                         "https://packtook-staging.web.app/app.js")
     def test_match(self):self.assertEqual(mod.classify(b"a",b"a"),"MATCH")
     def test_drift(self):self.assertEqual(mod.classify(b"a",b"b"),"DRIFT")
     def test_bounded_get(self):
