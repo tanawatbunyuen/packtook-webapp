@@ -4,7 +4,6 @@ Default URL is the Staging project's default Hosting site. Never accesses Auth,
 Firestore, Cloud Run, Omise, camera, or file contents. No deploy.
 """
 import argparse
-import hashlib
 import os
 import pathlib
 import subprocess
@@ -31,6 +30,11 @@ def fetch(url, opener=None):
     if not body or len(body)>MAX_BYTES:raise ValueError("BAD_ASSET_SIZE")
     return body
 
+def asset_url(base_url, asset):
+    # Firebase Hosting cleanUrls can redirect /index.html to /.
+    # Fetch canonical root directly; retain redirect denial on all requests.
+    return base_url.rstrip("/") + ("/" if asset == "index.html" else "/" + asset)
+
 def classify(local,remote):
     if local==remote:return "MATCH"
     return "DRIFT"
@@ -51,7 +55,7 @@ def main():
     results={}
     for asset in ASSETS:
         local=(root/asset).read_bytes()
-        remote=fetch(args.url.rstrip("/")+"/"+asset)
+        remote=fetch(asset_url(args.url,asset))
         results[asset]=classify(local,remote)
     for name,result in results.items():
         print("STAGING_HOSTING_ASSET_"+name.replace(".","_").upper()+":",result)
