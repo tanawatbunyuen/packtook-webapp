@@ -32,6 +32,8 @@ jobs:
           python3 -m py_compile production/scripts/rr-v7-hosting-blocker-diagnostic-readonly.py
           python3 -m unittest -v production/scripts/test-rr-v7-staging-hosting-drift-triage-readonly.py
           python3 -m py_compile production/scripts/rr-v7-staging-hosting-drift-triage-readonly.py
+          python3 -m unittest -v production/scripts/test-rr-v7-staging-semantic-drift-readonly.py
+          python3 -m py_compile production/scripts/rr-v7-staging-semantic-drift-readonly.py
           echo 'V7_CONTROLLED_DEVICE_READINESS_CI: PASS'
           echo 'REMOTE_HOSTING_CALLS: 0'
           echo 'CAMERA_PERMISSION_REQUESTS: 0'
