@@ -47,7 +47,7 @@ def guarded():
             print("CHECKING_ASSET:",asset,flush=True)
             try:
                 local=(root/asset).read_bytes()
-                remote=mod.fetch(url+"/"+asset)
+                remote=mod.fetch(mod.asset_url(url,asset))
                 print("STAGING_ASSET_"+asset.replace(".","_").upper()+":",
                       mod.classify(local,remote),flush=True)
                 if local!=remote:
