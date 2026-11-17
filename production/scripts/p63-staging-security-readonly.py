@@ -37,7 +37,7 @@ def checked_local(runner=subprocess.run):
                   capture_output=True,timeout=10,check=False)
     if branch.returncode or branch.stdout.strip()!=BRANCH:raise ValueError("WRONG_BRANCH")
     head=runner(["git","show","HEAD:production/functions/index.js"],cwd=ROOT,
-                capture_output=True,timeout=15,check=False)
+                capture_output=True,text=False,timeout=15,check=False)
     if head.returncode or not head.stdout:raise ValueError("GIT_SOURCE_UNAVAILABLE")
     local=(ROOT/"production/functions/index.js").read_bytes()
     if local!=head.stdout:raise ValueError("LOCAL_SOURCE_DIRTY")
@@ -60,10 +60,10 @@ def main():
             return 2
         att.guard()
         local=checked_local()
-        first={}
+        # Fetch metadata for all five targets: P61 stability gate requires 5/5.
+        first={name:att.function_metadata(name) for name in att.NAMES}
         statuses=[]
         for name in NAMES:
-            first[name]=att.function_metadata(name)
             pin=att.pinned_source(first[name])
             if pin is None:raise ValueError("UNPINNED_SOURCE")
             remote=att.handler_from_zip(att.bounded_archive(pin))
@@ -74,7 +74,7 @@ def main():
             print("DEPLOYED_GUARDED_CALL:",str(flags["deployedGuarded"]).upper())
             print("SCOPED_GUARD_STATE:",result["state"])
             statuses.append(result["state"])
-        second={name:att.function_metadata(name) for name in NAMES}
+        second={name:att.function_metadata(name) for name in att.NAMES}
         stable=att.stable_metadata(first,second)
         print("P63_SOURCE_STABLE:", "YES" if stable else "NOT_VERIFIABLE")
         ok=stable and len(statuses)==2 and all(
