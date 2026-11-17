@@ -35,6 +35,8 @@ SCRIPTS=(
  "deployment-delta-attribution",
  "delta-scope-reconciliation",
  "one-pass",
+ "ast-delta-review",
+ "performance-benchmark",
 )
 
 def suite_and_compiled(names=SCRIPTS):
