@@ -50,9 +50,8 @@ test("unrelated comment does not cause drift",()=>{
 
 test("pilot lease moved after handler dispatch is rejected",()=>{
  const original="await requirePilotLease(req,{claimRequired:true});";
- const mutated=mutate(original,"await requirePilotLease(req,{claimRequired:true});");
  // Use a distinct source transformation for an ordering regression.
- const reordered=mutated.replace(
+ const reordered=real.replace(
    "return handler(req);",
    "const bypass=handler(req);await requirePilotLease(req,{claimRequired:true});return bypass;"
  ).replace(original,"void 0;");
