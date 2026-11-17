@@ -1,0 +1,38 @@
+name: PACKTOOK P65 Staging Authorization Candidate
+on:
+  pull_request:
+    branches: [review/p64-staging-callable-remediation-preflight]
+  push:
+    branches: [review/p65-staging-authorization-lease-candidate]
+permissions:
+  contents: read
+jobs:
+  p65-authorization-offline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: Staging authorization synthetic test matrix
+        run: node --test production/staging-candidates/p65/test-staging-authorization.cjs
+      - name: Validate no Cloud functions deployment registration
+        run: |
+          node --check production/staging-candidates/p65/staging-authorization.cjs
+          node - <<'NODE'
+          const fs=require("fs");
+          const candidate=fs.readFileSync("production/staging-candidates/p65/staging-authorization.cjs","utf8");
+          const runtime=fs.readFileSync("production/functions/index.js","utf8");
+          if(candidate.includes('require("firebase-functions') || runtime.includes("staging-candidates/p65"))
+            process.exit(2);
+          console.log("ISOLATED_CANDIDATE=TRUE");
+          NODE
+      - name: Enforce deployment boundary
+        run: |
+          echo 'STAGING_DEPLOY=0'
+          echo 'PRODUCTION_WRITES=0'
+          echo 'APP_CHECK_BACKEND=NOT_PROVEN'
+          echo 'RELEASE=NO_GO_RELEASE'
