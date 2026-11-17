@@ -50,6 +50,8 @@ jobs:
           python3 -m py_compile production/scripts/rr-v7-deployed-source-attestation-readonly.py
           python3 -m unittest -v production/scripts/test-rr-v7-handler-semantic-attestation-readonly.py
           python3 -m py_compile production/scripts/rr-v7-handler-semantic-attestation-readonly.py
+          python3 -m unittest -v production/scripts/test-rr-v7-scoped-handler-delta-readonly.py
+          python3 -m py_compile production/scripts/rr-v7-scoped-handler-delta-readonly.py
           echo 'V7_CONTROLLED_DEVICE_READINESS_CI: PASS'
           echo 'REMOTE_HOSTING_CALLS: 0'
           echo 'CAMERA_PERMISSION_REQUESTS: 0'
