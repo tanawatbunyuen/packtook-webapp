@@ -1,0 +1,49 @@
+name: PACKTOOK P66 Firebase Emulator Integration
+on:
+  pull_request:
+    branches: [review/p65-staging-authorization-lease-candidate]
+  push:
+    branches: [review/p66-firebase-emulator-auth-credit-matrix]
+permissions:
+  contents: read
+jobs:
+  p66-local-emulators-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      CI: "true"
+      GCLOUD_PROJECT: demo-packtook-p66
+      GCP_PROJECT: demo-packtook-p66
+      GOOGLE_CLOUD_PROJECT: demo-packtook-p66
+      FIREBASE_AUTH_EMULATOR_HOST: "127.0.0.1:9097"
+      FIRESTORE_EMULATOR_HOST: "127.0.0.1:8097"
+    steps:
+      - name: Read-only checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Node 22
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: Java 21 for Firestore emulator
+        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install pinned production Firebase Admin dependencies for local emulator
+        run: npm ci --prefix production/functions --ignore-scripts --no-audit --no-fund
+      - name: Install Firebase CLI pinned for emulator only
+        run: npm install --global firebase-tools@14.27.0 --ignore-scripts --no-audit --no-fund
+      - name: P65 synthetic denial matrix
+        run: node --test production/staging-candidates/p65/test-staging-authorization.cjs
+      - name: Run real Auth+Firestore emulators for demo project (NO CLOUD)
+        run: firebase emulators:exec --only auth,firestore --project demo-packtook-p66 --config production/staging-candidates/p66/firebase.json "node production/staging-candidates/p66/test-emulator-integration.cjs"
+      - name: Security boundary
+        run: |
+          echo 'EMULATOR_PROJECT=demo-packtook-p66'
+          echo 'ACTUAL_STAGING_CALLS=0'
+          echo 'PRODUCTION_WRITES=0'
+          echo 'PRODUCTION_FUNCTIONS_TESTED=NO'
+          echo 'APP_CHECK_BACKEND=NOT_PROVEN'
+          echo 'RELEASE=NO_GO_RELEASE'
