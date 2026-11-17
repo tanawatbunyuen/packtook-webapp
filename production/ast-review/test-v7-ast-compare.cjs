@@ -54,3 +54,20 @@ test("syntax parse error fails without exposing source",()=>{
 test("duplicate declaration must fail closed",()=>{
   assert.throws(()=>compare(src({},'function uid(req){}'),src(),"reserveCredit"),/DUPLICATE_DECLARATION/);
 });
+
+test("current handler attribution excludes drift in other selected handler",()=>{
+  const a=src();
+  const b=src({recordingStatus:"const x=2;return {status:x};",
+               usageStatus:"const x=3;return {status:x};"});
+  const r=compare(a,b,"recordingStatus");
+  assert.equal(r.counts.SELECTED_HANDLER.MODIFIED,2);
+  assert.equal(r.selectedCurrent.MODIFIED,1);
+  assert.equal(r.selectedOther.MODIFIED,1);
+});
+test("exact selected callable with a different selected callable drifting",()=>{
+  const a=src();
+  const b=src({usageStatus:"const x=4;return {status:x};"});
+  const r=compare(a,b,"reserveCredit");
+  assert.equal(r.selectedCurrent.MODIFIED,0);
+  assert.equal(r.selectedOther.MODIFIED,1);
+});
