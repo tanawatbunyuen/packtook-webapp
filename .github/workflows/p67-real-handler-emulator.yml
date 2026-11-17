@@ -1,0 +1,52 @@
+name: PACKTOOK P67 Real Handler Emulator Integration
+on:
+  pull_request:
+    branches: [review/p66-firebase-emulator-auth-credit-matrix]
+  push:
+    branches: [review/p67-real-handler-emulator-integration]
+permissions:
+  contents: read
+jobs:
+  p67-real-handler-demo-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      CI: "true"
+      GCLOUD_PROJECT: demo-packtook-p67
+      GCP_PROJECT: demo-packtook-p67
+      GOOGLE_CLOUD_PROJECT: demo-packtook-p67
+      FIREBASE_AUTH_EMULATOR_HOST: "127.0.0.1:9098"
+      FIRESTORE_EMULATOR_HOST: "127.0.0.1:8098"
+    steps:
+      - name: Read-only checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Node 22
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: Java 21 for Firestore emulator
+        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install production Admin SDK dependencies from pinned lock
+        run: npm ci --prefix production/functions --ignore-scripts --no-audit --no-fund
+      - name: Install Firebase CLI pinned for local emulator
+        run: npm install --global firebase-tools@14.27.0 --ignore-scripts --no-audit --no-fund
+      - name: P65 synthetic authorization denial matrix
+        run: node --test production/staging-candidates/p65/test-staging-authorization.cjs
+      - name: Validate handler source syntax
+        run: node --check production/functions/index.js
+      - name: Run real source handlers using isolated Firebase demo emulator
+        run: firebase emulators:exec --only auth,firestore --project demo-packtook-p67 --config production/staging-candidates/p67/firebase.json "node production/staging-candidates/p67/test-real-handler-emulator.cjs"
+      - name: Security boundary remains closed
+        run: |
+          echo 'ORIGINAL_HANDLER_SOURCE=EXECUTED_IN_VM'
+          echo 'CALLABLE_TRANSPORT=MOCKED_NOT_PROVEN'
+          echo 'LIVE_STAGING_READS=0'
+          echo 'CLOUD_WRITES=0'
+          echo 'PRODUCTION_WRITES=0'
+          echo 'BACKEND_APP_CHECK=NOT_PROVEN'
+          echo 'RELEASE=NO_GO_RELEASE'
