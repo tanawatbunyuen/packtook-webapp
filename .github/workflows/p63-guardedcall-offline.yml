@@ -22,8 +22,10 @@ jobs:
         run: |
           node --test production/ast-review/test-p57-wrapper-dependency-ast.cjs
           node --test production/ast-review/test-p63-guarded-call-security.cjs
-      - name: P63 operator syntax validation
-        run: python3 -m py_compile production/scripts/p63-staging-security-readonly.py
+      - name: P63 operator source-integrity and stability regression
+        run: |
+          python3 -m py_compile production/scripts/p63-staging-security-readonly.py
+          python3 -m unittest -v production/scripts/test-p63-source-integrity-offline.py
       - name: Release remains blocked
         run: |
           echo 'STAGING_SOURCE_READS=0'
