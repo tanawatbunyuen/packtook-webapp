@@ -37,6 +37,7 @@ SCRIPTS=(
  "one-pass",
  "ast-delta-review",
  "performance-benchmark",
+ "ast-statement-security",
 )
 
 def suite_and_compiled(names=SCRIPTS):
