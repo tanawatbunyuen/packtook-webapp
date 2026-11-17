@@ -15,7 +15,7 @@ def code(other="exports.other=onCall(options,async req=>{\nreturn 1;\n});",
  lines=["const options={region:'asia-southeast1'};",helper]
  for name in v.att.NAMES:
   body=status if name=="recordingStatus" else "const x=1;"
-  lines.append("exports."+name+"=onCall(options,async req=>{\n"+body+"\n});")
+  lines.append("exports."+name+"=onCall(options,async req=>{\n "+body+"\n});")
  lines.append(other)
  if new_bind:lines.append(new_bind)
  return ("\n".join(lines)+"\n").encode()
