@@ -9,7 +9,7 @@ spec=importlib.util.spec_from_file_location("unified",file)
 m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 class Tests(unittest.TestCase):
  def test_declared_manifest_exists(self):
-  self.assertEqual(len(m.SCRIPTS),23)
+  self.assertEqual(len(m.SCRIPTS),24)
   self.assertEqual(len(set(m.SCRIPTS)),len(m.SCRIPTS))
   for name in m.SCRIPTS:
    self.assertTrue((root/("rr-v7-"+name+"-readonly.py")).is_file())
