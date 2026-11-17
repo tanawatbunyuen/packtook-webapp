@@ -71,10 +71,17 @@ class P60FailClosed(unittest.TestCase):
         self.assertIn("BLOCKED_EXPLICIT_INSPECTION_FLAG_REQUIRED",buf.getvalue())
 
     def test_mismatch_returns_nonzero_from_main(self):
+        # Mock attest(), not bounded_archive: Python binds default parameters
+        # at definition time, so patching the module name cannot intercept it.
+        def fake_attest(functions, local):
+            self.assertEqual(len(functions),len(att.NAMES))
+            print("SOURCE_ATTESTATION_SUMMARY: REVIEW_REQUIRED")
+            return False
         with patch.object(sys,"argv",["attest","--inspect-source"]),\
              patch.object(att,"guard"),\
              patch.object(att,"function_metadata",return_value=pinned()),\
-             patch.object(att,"bounded_archive",return_value=archive(b"other")):
+             patch.object(att,"attest",side_effect=fake_attest),\
+             patch.object(att,"bounded_archive",side_effect=AssertionError("CLOUD_IO_FORBIDDEN")):
             buf=io.StringIO()
             with redirect_stdout(buf):code=att.run()
         self.assertEqual(code,2)
