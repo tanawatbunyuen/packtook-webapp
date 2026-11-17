@@ -113,6 +113,7 @@ def examine(source_metas,local,loader=att.bounded_archive):
         try:
             code=att.handler_from_zip(loader(src))
             result=compare(local,code,name)
+            print("SHARED_MODULE_SOURCE:", "MATCH" if code==local else "DRIFT")
             print("HANDLER_BODY:",result["body"])
             print("CRITICAL_SIGNALS_REMOVED_COUNT:",len(result["removed"]))
             print("CRITICAL_SIGNALS_ADDED_COUNT:",len(result["added"]))
@@ -122,7 +123,7 @@ def examine(source_metas,local,loader=att.bounded_archive):
                 print("CRITICAL_SIGNALS_REMOVED:",",".join(result["removed"]))
             if result["added"]:
                 print("CRITICAL_SIGNALS_ADDED:",",".join(result["added"]))
-            if result["body"]!="EXACT_MATCH" or result["source_options"]!=result["remote_options"]:
+            if code!=local or result["body"]!="EXACT_MATCH" or result["source_options"]!=result["remote_options"]:
                 blocked=True
             if result["remote_options"]!="ENFORCEMENT_TRUE_LITERAL_IN_OPTIONS":
                 blocked=True
