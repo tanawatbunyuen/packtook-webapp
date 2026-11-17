@@ -46,6 +46,21 @@ class Tests(unittest.TestCase):
   with redirect_stdout(buf):m.emit("recordingStatus",r)
   self.assertNotIn("PRIVATE_SECRET_VALUE",buf.getvalue())
   self.assertNotIn("SECRET",buf.getvalue())
+ def test_shorthand_response_fields(self):
+  body="return {plan:a.plan,limit,used,reserved,remaining:creditAvailable(a)};"
+  keys=m.field_signals(body,"usageStatus")
+  self.assertTrue(keys["limit"])
+  self.assertTrue(keys["used"])
+  self.assertTrue(keys["reserved"])
+  self.assertTrue(keys["plan"])
+ def test_short_identifier_not_false_positive(self):
+  keys=m.field_signals("return {limitValue:1,usedUp:2};","usageStatus")
+  self.assertFalse(keys["limit"])
+  self.assertFalse(keys["used"])
+ def test_all_expected_usage_keys_signal(self):
+  body="return {"+",".join(k+":"+"null" if k not in ("limit","used","reserved") else k for k in m.EXPECTED["usageStatus"])+"};"
+  keys=m.field_signals(body,"usageStatus")
+  self.assertTrue(all(keys.values()))
  def test_missing_key_counts(self):
   a=sources()
   r=m.review(a,a,"usageStatus")
