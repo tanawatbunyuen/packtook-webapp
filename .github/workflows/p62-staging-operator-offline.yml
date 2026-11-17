@@ -1,0 +1,26 @@
+name: PACKTOOK P62 Operator Gate Offline
+on:
+  pull_request:
+    branches: [review/p61-staging-source-stability-gate]
+  push:
+    branches: [review/p62-controlled-staging-attestation-operator]
+permissions:
+  contents: read
+jobs:
+  p62-synthetic-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: P62 synthetic operator security checks
+        run: python3 -m unittest -v production/scripts/test-p62-controlled-staging-offline.py
+      - name: No Cloud credentials or source inspections in CI
+        run: |
+          echo 'STAGING_SOURCE_READS=0'
+          echo 'PRODUCTION_WRITES=0'
+          echo 'RELEASE=NO_GO_RELEASE'
