@@ -1,5 +1,8 @@
 name: PACKTOOK P58 Offline AST Regression
 on:
+  pull_request:
+    branches:
+      - review/rr-v7-controlled-staging-device-readiness
   push:
     branches:
       - review/p57-wrapper-dependency-ast-hardening
