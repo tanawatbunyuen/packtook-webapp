@@ -57,6 +57,7 @@ def pinned_source(info):
     bucket,obj,gen=(str(storage.get(k,"")) for k in ("bucket","object","generation"))
     if not BUCKET.fullmatch(bucket) or not OBJECT.fullmatch(obj) or not GENERATION.fullmatch(gen):
         return None
+    if any(part in (".","..") for part in obj.split("/")):return None
     if not obj.endswith(".zip"):return None
     return bucket,obj,gen
 
