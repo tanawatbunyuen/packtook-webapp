@@ -18,9 +18,13 @@ function callable(sf,name){
   const {left,right,operatorToken}=st.expression;
   if(operatorToken.kind!==ts.SyntaxKind.EqualsToken||!ts.isPropertyAccessExpression(left)||
      !ts.isIdentifier(left.expression)||left.expression.text!=="exports"||left.name.text!==name)continue;
-  if(!ts.isCallExpression(right)||right.arguments.length!==2||
-     !ts.isIdentifier(right.expression)||!ts.isIdentifier(right.arguments[0]))fail();
-  found.push({callee:right.expression.text,options:right.arguments[0].text});
+  if(!ts.isCallExpression(right)||right.arguments.length!==2)fail();
+  // Legacy deployments can use literal/spread/dynamic callable options.
+  // Those must be classified as UNGUARDED/DRIFT, not mistaken for a
+  // parser failure. Only an exact guardedCall(options, ...) is guard-eligible.
+  const callee=ts.isIdentifier(right.expression)?right.expression.text:null;
+  const options=ts.isIdentifier(right.arguments[0])?right.arguments[0].text:null;
+  found.push({callee,options});
  }
  if(found.length!==1)fail();
  return found[0];
