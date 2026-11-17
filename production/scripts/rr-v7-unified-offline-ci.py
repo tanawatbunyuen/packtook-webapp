@@ -38,6 +38,7 @@ SCRIPTS=(
  "ast-delta-review",
  "performance-benchmark",
  "ast-statement-security",
+ "callable-wrapper-appcheck",
 )
 
 def suite_and_compiled(names=SCRIPTS):
