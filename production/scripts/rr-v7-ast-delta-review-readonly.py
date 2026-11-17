@@ -41,11 +41,24 @@ def analyze(local,deployed,name,runner=subprocess.run):
             raise ValueError("AST_OPERATION_INVALID")
         if any(type(values[k]) is not int or not (0<=values[k]<=2000) for k in OPS):
             raise ValueError("AST_COUNT_INVALID")
+    for key in ("selectedCurrent","selectedOther"):
+        value=payload.get(key)
+        if not isinstance(value,dict) or set(value)!=set(OPS):
+            raise ValueError("AST_SELECTED_SCOPE_INVALID")
+        if any(type(value[o]) is not int or not (0<=value[o]<=2000) for o in OPS):
+            raise ValueError("AST_SELECTED_COUNT_INVALID")
+    for op in OPS:
+        if (payload["selectedCurrent"][op]+payload["selectedOther"][op]
+              !=counts["SELECTED_HANDLER"][op]):
+            raise ValueError("AST_SELECTED_TOTAL_MISMATCH")
     return payload
 
 def emit(name,report):
     print("FUNCTION:",name)
     print("HANDLER_AST_TOKENS:",report["handler"])
+    for op in OPS:
+        print("AST_CURRENT_HANDLER_"+op+":",report["selectedCurrent"][op])
+        print("AST_OTHER_SELECTED_HANDLERS_"+op+":",report["selectedOther"][op])
     for scope in SCOPES:
         for op in OPS:
             print("AST_"+scope+"_"+op+":",report["counts"][scope][op])
