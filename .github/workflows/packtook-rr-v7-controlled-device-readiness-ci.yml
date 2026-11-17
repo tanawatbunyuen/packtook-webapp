@@ -62,6 +62,8 @@ jobs:
           python3 -m py_compile production/scripts/rr-v7-targeted-handler-logic-readonly.py
           python3 -m unittest -v production/scripts/test-rr-v7-final-logic-delta-classification-readonly.py
           python3 -m py_compile production/scripts/rr-v7-final-logic-delta-classification-readonly.py
+          python3 -m unittest -v production/scripts/test-rr-v7-deployment-delta-attribution-readonly.py
+          python3 -m py_compile production/scripts/rr-v7-deployment-delta-attribution-readonly.py
           echo 'V7_CONTROLLED_DEVICE_READINESS_CI: PASS'
           echo 'REMOTE_HOSTING_CALLS: 0'
           echo 'CAMERA_PERMISSION_REQUESTS: 0'
