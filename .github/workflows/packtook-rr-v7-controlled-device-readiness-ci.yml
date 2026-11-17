@@ -23,6 +23,11 @@ jobs:
           set -Eeuo pipefail
           node --test production/tests/rr-v7-browser-capability-offline.test.cjs | tee /tmp/v7-browser.log
           grep -Fq '# fail 0' /tmp/v7-browser.log
+      - name: Pinned TypeScript AST parser and offline delta regression tests
+        run: |
+          set -Eeuo pipefail
+          npm ci --prefix production/ast-review --ignore-scripts --no-audit --no-fund
+          node --test production/ast-review/test-v7-ast-compare.cjs
       - name: Unified offline regression tests (one process)
         run: |
           set -Eeuo pipefail
