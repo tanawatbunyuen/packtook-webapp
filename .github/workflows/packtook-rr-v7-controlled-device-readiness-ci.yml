@@ -23,53 +23,10 @@ jobs:
           set -Eeuo pipefail
           node --test production/tests/rr-v7-browser-capability-offline.test.cjs | tee /tmp/v7-browser.log
           grep -Fq '# fail 0' /tmp/v7-browser.log
-      - name: Hosting parity security tests
+      - name: Unified offline regression tests (one process)
         run: |
           set -Eeuo pipefail
-          python3 -m unittest -v production/scripts/test-rr-v7-staging-hosting-parity-readonly.py
-          python3 -m py_compile production/scripts/rr-v7-staging-hosting-parity-readonly.py
-          python3 -m unittest -v production/scripts/test-rr-v7-hosting-blocker-diagnostic-readonly.py
-          python3 -m py_compile production/scripts/rr-v7-hosting-blocker-diagnostic-readonly.py
-          python3 -m unittest -v production/scripts/test-rr-v7-staging-hosting-drift-triage-readonly.py
-          python3 -m py_compile production/scripts/rr-v7-staging-hosting-drift-triage-readonly.py
-          python3 -m unittest -v production/scripts/test-rr-v7-staging-semantic-drift-readonly.py
-          python3 -m py_compile production/scripts/rr-v7-staging-semantic-drift-readonly.py
-          python3 -m unittest -v production/scripts/test-rr-v7-targeted-hosting-diff-readonly.py
-          python3 -m py_compile production/scripts/rr-v7-targeted-hosting-diff-readonly.py
-          python3 -m unittest -v production/scripts/test-rr-v7-staging-bridge-security-triage-readonly.py
-          python3 -m py_compile production/scripts/rr-v7-staging-bridge-security-triage-readonly.py
-          python3 -m unittest -v production/scripts/test-rr-v7-staging-backend-appcheck-inventory-readonly.py
-          python3 -m py_compile production/scripts/rr-v7-staging-backend-appcheck-inventory-readonly.py
-          python3 -m unittest -v production/scripts/test-rr-v7-deployed-provenance-inventory-readonly.py
-          python3 -m py_compile production/scripts/rr-v7-deployed-provenance-inventory-readonly.py
-          python3 -m unittest -v production/scripts/test-rr-v7-staging-source-cohort-readonly.py
-          python3 -m py_compile production/scripts/rr-v7-staging-source-cohort-readonly.py
-          python3 -m unittest -v production/scripts/test-rr-v7-build-provenance-readonly.py
-          python3 -m py_compile production/scripts/rr-v7-build-provenance-readonly.py
-          python3 -m unittest -v production/scripts/test-rr-v7-deployed-source-attestation-readonly.py
-          python3 -m py_compile production/scripts/rr-v7-deployed-source-attestation-readonly.py
-          python3 -m unittest -v production/scripts/test-rr-v7-handler-semantic-attestation-readonly.py
-          python3 -m py_compile production/scripts/rr-v7-handler-semantic-attestation-readonly.py
-          python3 -m unittest -v production/scripts/test-rr-v7-scoped-handler-delta-readonly.py
-          python3 -m py_compile production/scripts/rr-v7-scoped-handler-delta-readonly.py
-          python3 -m unittest -v production/scripts/test-rr-v7-narrow-drift-triage-readonly.py
-          python3 -m py_compile production/scripts/rr-v7-narrow-drift-triage-readonly.py
-          python3 -m unittest -v production/scripts/test-rr-v7-helper-impact-readonly.py
-          python3 -m py_compile production/scripts/rr-v7-helper-impact-readonly.py
-          python3 -m unittest -v production/scripts/test-rr-v7-final-contract-review-readonly.py
-          python3 -m py_compile production/scripts/rr-v7-final-contract-review-readonly.py
-          python3 -m unittest -v production/scripts/test-rr-v7-targeted-handler-logic-readonly.py
-          python3 -m py_compile production/scripts/rr-v7-targeted-handler-logic-readonly.py
-          python3 -m unittest -v production/scripts/test-rr-v7-final-logic-delta-classification-readonly.py
-          python3 -m py_compile production/scripts/rr-v7-final-logic-delta-classification-readonly.py
-          python3 -m unittest -v production/scripts/test-rr-v7-deployment-delta-attribution-readonly.py
-          python3 -m py_compile production/scripts/rr-v7-deployment-delta-attribution-readonly.py
-          python3 -m unittest -v production/scripts/test-rr-v7-delta-scope-reconciliation-readonly.py
-          python3 -m py_compile production/scripts/rr-v7-delta-scope-reconciliation-readonly.py
-          python3 -m unittest -v production/scripts/test-rr-v7-one-pass-readonly.py
-          python3 -m py_compile production/scripts/rr-v7-one-pass-readonly.py
           python3 -m unittest -v production/scripts/test-rr-v7-unified-offline-ci.py
-          python3 -m py_compile production/scripts/rr-v7-unified-offline-ci.py
           python3 production/scripts/rr-v7-unified-offline-ci.py
           echo 'V7_CONTROLLED_DEVICE_READINESS_CI: PASS'
           echo 'REMOTE_HOSTING_CALLS: 0'
