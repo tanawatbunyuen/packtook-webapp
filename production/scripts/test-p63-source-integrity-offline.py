@@ -100,4 +100,31 @@ class P63Integrity(unittest.TestCase):
         self.assertEqual(rc,2)
         self.assertIn("P63_SOURCE_STABLE: NOT_VERIFIABLE",output.getvalue())
 
+
+    def test_project_guard_failure_reports_sanitized_stage(self):
+        output=io.StringIO()
+        with patch.object(sys,"argv",["p63","--inspect-source"]),\
+             patch.dict("os.environ",{"P63_ALLOW_STAGING_READ":"YES"},clear=False),\
+             patch.object(p.att,"guard",side_effect=ValueError("SENSITIVE_INTERNAL_ERROR")):
+            with redirect_stdout(output):rc=p.main()
+        self.assertEqual(rc,2)
+        self.assertIn("P63_BLOCKED_STAGE: CLOUD_PROJECT_GUARD",output.getvalue())
+        self.assertNotIn("SENSITIVE_INTERNAL_ERROR",output.getvalue())
+
+    def test_parser_failure_reports_stage_without_raw_error(self):
+        output=io.StringIO()
+        with patch.object(sys,"argv",["p63","--inspect-source"]),\
+             patch.dict("os.environ",{"P63_ALLOW_STAGING_READ":"YES"},clear=False),\
+             patch.object(p.att,"guard"),\
+             patch.object(p,"checked_local",return_value=b"fake local"),\
+             patch.object(p.att,"function_metadata",return_value=metadata()),\
+             patch.object(p.att,"bounded_archive",return_value=b"ZIP"),\
+             patch.object(p.att,"handler_from_zip",return_value=b"source"),\
+             patch.object(p,"inspect",side_effect=ValueError("SENSITIVE_AST_ERROR")):
+            with redirect_stdout(output):rc=p.main()
+        self.assertEqual(rc,2)
+        self.assertIn("P63_BLOCKED_STAGE: SCOPED_AST_ANALYSIS",output.getvalue())
+        self.assertNotIn("SENSITIVE_AST_ERROR",output.getvalue())
+        self.assertIn("RELEASE: NO_GO_RELEASE",output.getvalue())
+
 if __name__=="__main__":unittest.main()
