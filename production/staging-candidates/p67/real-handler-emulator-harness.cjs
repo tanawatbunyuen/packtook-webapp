@@ -30,9 +30,20 @@ function loadRealHandlers(){
  const app=firebaseAdmin.apps.find(x=>x.name==="p67-demo")||
    firebaseAdmin.initializeApp({projectId:PROJECT},"p67-demo");
  const db=firebaseAdmin.firestore(app),auth=firebaseAdmin.auth(app);
+ // Firestore Admin SDK validates that a transaction callback returns a
+ // Promise from the host runtime. The unchanged callback runs inside the VM
+ // and creates a different-realm Promise. Bridge only the SDK boundary.
+ const dbBridge=new Proxy(db,{
+  get(target,key){
+   if(key==="runTransaction")return (callback,options)=>
+     target.runTransaction(async tx=>await callback(tx),options);
+   const value=Reflect.get(target,key,target);
+   return typeof value==="function"?value.bind(target):value;
+  }
+ });
  const admin={
    initializeApp(){return app;},
-   firestore:Object.assign(()=>db,{FieldValue:firebaseAdmin.firestore.FieldValue}),
+   firestore:Object.assign(()=>dbBridge,{FieldValue:firebaseAdmin.firestore.FieldValue}),
    auth:()=>auth
  };
  const source=fs.readFileSync(path.join(ROOT,"functions/index.js"),"utf8");
