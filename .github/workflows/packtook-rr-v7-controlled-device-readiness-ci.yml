@@ -28,6 +28,7 @@ jobs:
           set -Eeuo pipefail
           npm ci --prefix production/ast-review --ignore-scripts --no-audit --no-fund
           node --test production/ast-review/test-v7-ast-compare.cjs
+          node --test production/ast-review/test-v7-ast-statement-security.cjs
       - name: Unified offline regression tests (one process)
         run: |
           set -Eeuo pipefail
