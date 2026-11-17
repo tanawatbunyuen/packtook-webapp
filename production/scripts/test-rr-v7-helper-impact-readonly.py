@@ -22,6 +22,16 @@ class Tests(unittest.TestCase):
   self.assertEqual(v.helper_status(source(),source(),"walletEnabled"),"NOT_VERIFIABLE")
  def test_helper_span_ignores_inline_non_declaration(self):
   self.assertIsNone(v.helper_span(b"// function uid(req) {}\n", "uid"))
+ def test_async_helper_supported(self):
+  a=b"async function ensureAccount(id){\n return id;\n}\nexports.usageStatus=onCall(options,async req=>{\n return 1;\n});"
+  self.assertEqual(v.helper_status(a,a,"ensureAccount"),"EXACT")
+ def test_oneline_helper_supported(self):
+  a=b"async function ownerRef(uid){return own(uid)}\nasync function ensureAccount(uid){return uid}\n"
+  self.assertEqual(v.helper_status(a,a,"ownerRef"),"EXACT")
+ def test_helper_change_exposed_as_drift(self):
+  a=b"async function ownerRef(uid){return own(uid)}\n"
+  b=b"async function ownerRef(uid){return other(uid)}\n"
+  self.assertEqual(v.helper_status(a,b,"ownerRef"),"DRIFT")
  def test_response_exact(self):
   a=source()
   self.assertEqual(v.handler_response_status(a,a,"recordingStatus"),"EXACT")
