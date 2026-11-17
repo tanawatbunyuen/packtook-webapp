@@ -1,0 +1,34 @@
+name: PACKTOOK P64 Staging Callable Remediation Preflight
+on:
+  pull_request:
+    branches: [review/p63-security-source-integrity-and-wrapper-guard]
+  push:
+    branches: [review/p64-staging-callable-remediation-preflight]
+permissions:
+  contents: read
+jobs:
+  p64-offline-review:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: Install pinned AST parser with scripts disabled
+        run: npm ci --prefix production/ast-review --ignore-scripts --no-audit --no-fund
+      - name: P57 P63 and P64 offline guard regressions
+        run: |
+          node --test production/ast-review/test-p57-wrapper-dependency-ast.cjs
+          node --test production/ast-review/test-p63-guarded-call-security.cjs
+          node --test production/ast-review/test-p64-staging-deploy-preflight.cjs
+      - name: Production-bound Staging deploy must remain blocked
+        run: |
+          node production/ast-review/p64-staging-deploy-preflight.cjs < production/functions/index.js | python3 -c 'import json,sys;v=json.load(sys.stdin);assert v["stagingDeployment"]=="BLOCKED_REVIEW_REQUIRED" and v["productionRelease"]=="NO_GO_RELEASE" and v["candidateReadyForDeployment"] is False'
+      - name: Boundary
+        run: |
+          echo 'CLOUD_CALLS=0'
+          echo 'DEPLOY=0'
+          echo 'RELEASE=NO_GO_RELEASE'
