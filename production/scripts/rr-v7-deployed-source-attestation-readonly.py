@@ -128,21 +128,24 @@ def attest(functions,local,loader=bounded_archive):
     print("EFFECTIVE_APP_CHECK_ENFORCEMENT: NOT_PROVEN")
     print("DEPLOYED_RUNTIME_EQUIVALENCE: NOT_PROVEN")
     print("V7_SOURCE_ATTESTATION_GATE: INSPECTION_ONLY")
+    # A mismatch or unreadable archive must be a nonzero exit status.
+    # MATCH_ALL only attests source bytes, never runtime enforcement.
+    return len(statuses)==len(NAMES) and all(x=="MATCH" for x in statuses)
 
 def run():
     parser=argparse.ArgumentParser()
     parser.add_argument("--inspect-source",action="store_true",help="Explicitly authorize RAM-only read of five Staging function source ZIPs")
     args=parser.parse_args()
     try:
-        guard()
+        # Do not even query the active gcloud configuration without explicit opt-in.
         if not args.inspect_source:
             print("V7_SOURCE_ATTESTATION_GATE: BLOCKED_EXPLICIT_INSPECTION_FLAG_REQUIRED")
             return 2
+        guard()
         root=pathlib.Path(__file__).resolve().parents[2]
         local=(root/"functions"/"index.js").read_bytes()
         results={name:function_metadata(name) for name in NAMES}
-        attest(results,local)
-        return 0
+        return 0 if attest(results,local) else 2
     except (ValueError,OSError,subprocess.TimeoutExpired):
         print("V7_SOURCE_ATTESTATION_GATE: BLOCKED_ENVIRONMENT")
         return 2
