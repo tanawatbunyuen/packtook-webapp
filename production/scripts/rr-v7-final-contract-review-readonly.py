@@ -38,10 +38,15 @@ RISK_PATTERNS={
 def field_signals(handler,name):
  expected=EXPECTED[name]
  keys={}
- # A key must occur in a return expression line; lexical hints only.
+ # Lexical return-object hint only. Detect explicit property assignment
+ # and shorthand properties inside one return line.
+ # This is NOT a JS AST and cannot prove actual response shape.
  lines=[x for x in handler.splitlines() if "return {" in x]
  for field in expected:
-  keys[field]=any(re.search(r"(?<![A-Za-z0-9_$])"+re.escape(field)+r"\s*:",line)
+  escaped=re.escape(field)
+  explicit=r"(?<![A-Za-z0-9_$])"+escaped+r"\s*:"
+  shorthand=r"(?:\{|,)\s*"+escaped+r"\s*(?=,|\})"
+  keys[field]=any(bool(re.search(explicit,line) or re.search(shorthand,line))
                   for line in lines)
  return keys
 
