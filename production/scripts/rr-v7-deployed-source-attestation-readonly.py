@@ -104,6 +104,17 @@ def static_app_check_status(source):
     if has_false:return "FALSE_LITERAL_PRESENT"
     return "NO_LITERAL_DECLARATION"
 
+def stable_metadata(before,after):
+    """Fail closed if any target disappeared, changed generation or updated mid-read."""
+    if not isinstance(before,dict) or not isinstance(after,dict):return False
+    for name in NAMES:
+        a,b=before.get(name),after.get(name)
+        if not isinstance(a,dict) or not isinstance(b,dict):return False
+        if pinned_source(a) is None or pinned_source(a)!=pinned_source(b):return False
+        first,second=a.get("updateTime"),b.get("updateTime")
+        if not isinstance(first,str) or not first or first!=second:return False
+    return True
+
 def attest(functions,local,loader=bounded_archive):
     statuses=[]
     for name in NAMES:
@@ -145,7 +156,14 @@ def run():
         root=pathlib.Path(__file__).resolve().parents[2]
         local=(root/"functions"/"index.js").read_bytes()
         results={name:function_metadata(name) for name in NAMES}
-        return 0 if attest(results,local) else 2
+        attested=attest(results,local)
+        # Re-read metadata after archives: a concurrent deploy invalidates
+        # the attestation even if the downloaded bytes matched the branch.
+        results_after={name:function_metadata(name) for name in NAMES}
+        stable=stable_metadata(results,results_after)
+        print("STAGING_SOURCE_REVISION_STABLE:", "YES" if stable else "NOT_VERIFIABLE")
+        print("P61_STAGING_SOURCE_GATE:", "MATCH_STABLE_INSPECTION_ONLY" if attested and stable else "REVIEW_REQUIRED")
+        return 0 if attested and stable else 2
     except (ValueError,OSError,subprocess.TimeoutExpired):
         print("V7_SOURCE_ATTESTATION_GATE: BLOCKED_ENVIRONMENT")
         return 2
