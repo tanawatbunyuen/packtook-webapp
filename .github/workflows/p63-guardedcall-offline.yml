@@ -1,0 +1,31 @@
+name: PACKTOOK P63 GuardedCall Offline Security
+on:
+  pull_request:
+    branches: [review/p62-controlled-staging-attestation-operator]
+  push:
+    branches: [review/p63-security-source-integrity-and-wrapper-guard]
+permissions:
+  contents: read
+jobs:
+  p63-static-guards:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - run: npm ci --prefix production/ast-review --ignore-scripts --no-audit --no-fund
+      - name: P57 and P63 guarded-call regressions
+        run: |
+          node --test production/ast-review/test-p57-wrapper-dependency-ast.cjs
+          node --test production/ast-review/test-p63-guarded-call-security.cjs
+      - name: P63 operator syntax validation
+        run: python3 -m py_compile production/scripts/p63-staging-security-readonly.py
+      - name: Release remains blocked
+        run: |
+          echo 'STAGING_SOURCE_READS=0'
+          echo 'SECURITY_REVIEW=REVIEW_REQUIRED'
+          echo 'RELEASE=NO_GO_RELEASE'
