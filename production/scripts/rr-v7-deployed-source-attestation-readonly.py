@@ -94,10 +94,10 @@ def handler_from_zip(data):
 
 def static_app_check_status(source):
     text=source.decode("utf-8")
-    clean=re.sub(r"/\\*[\\s\\S]*?\\*/|//[^\\n]*","",text)
+    clean=re.sub(r"/\*[\s\S]*?\*/|//[^\n]*","",text)
     # Conservative: only classify literals; never infer effective per-handler configuration.
-    has_true=bool(re.search(r"\\benforceAppCheck\\s*:\\s*true\\b",clean))
-    has_false=bool(re.search(r"\\benforceAppCheck\\s*:\\s*false\\b",clean))
+    has_true=bool(re.search(r"\benforceAppCheck\s*:\s*true\b",clean))
+    has_false=bool(re.search(r"\benforceAppCheck\s*:\s*false\b",clean))
     if has_true and has_false:return "CONFLICTING_STATIC_DECLARATIONS"
     if has_true:return "TRUE_LITERAL_PRESENT_NOT_HANDLER_PROOF"
     if has_false:return "FALSE_LITERAL_PRESENT"
