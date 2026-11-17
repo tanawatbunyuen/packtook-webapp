@@ -10,7 +10,7 @@ spec=importlib.util.spec_from_file_location("astbridge",p)
 m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 
 def payload():
- return {"handler":"EXACT_AST_TOKENS","counts":{s:{o:0 for o in m.OPS} for s in m.SCOPES}}
+ return {"handler":"EXACT_AST_TOKENS","counts":{s:{o:0 for o in m.OPS} for s in m.SCOPES},"selectedCurrent":{o:0 for o in m.OPS},"selectedOther":{o:0 for o in m.OPS}}
 class Tests(unittest.TestCase):
  def test_valid_response(self):
   runner=Mock(return_value=Mock(returncode=0,stdout=json.dumps(payload()),stderr=""))
@@ -32,6 +32,10 @@ class Tests(unittest.TestCase):
  def test_node_failure_sanitized(self):
   with self.assertRaises(ValueError):
    m.analyze(b"",b"","usageStatus",Mock(return_value=Mock(returncode=2,stdout="PRIVATE_SOURCE")))
+ def test_reject_selected_total_mismatch(self):
+  p=payload();p["selectedCurrent"]["MODIFIED"]=1
+  with self.assertRaises(ValueError):
+   m.analyze(b"",b"","usageStatus",Mock(return_value=Mock(returncode=0,stdout=json.dumps(p))))
  def test_five_staging_functions(self):
   self.assertEqual(len(m.att.NAMES),5)
 if __name__=="__main__":unittest.main()
