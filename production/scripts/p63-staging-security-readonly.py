@@ -54,19 +54,26 @@ def main():
     flags=argparse.ArgumentParser()
     flags.add_argument("--inspect-source",action="store_true")
     args=flags.parse_args()
+    stage="OPERATOR_OPT_IN"
     try:
         if not args.inspect_source or os.getenv("P63_ALLOW_STAGING_READ")!="YES":
             print("P63_SECURITY: BLOCKED_EXPLICIT_OPT_IN")
             return 2
+        stage="CLOUD_PROJECT_GUARD"
         att.guard()
+        stage="GIT_SOURCE_INTEGRITY"
         local=checked_local()
         # Fetch metadata for all five targets: P61 stability gate requires 5/5.
+        stage="STAGING_METADATA_BEFORE"
         first={name:att.function_metadata(name) for name in att.NAMES}
         statuses=[]
         for name in NAMES:
+            stage="PINNED_SOURCE_METADATA"
             pin=att.pinned_source(first[name])
             if pin is None:raise ValueError("UNPINNED_SOURCE")
+            stage="STAGING_SOURCE_ARCHIVE"
             remote=att.handler_from_zip(att.bounded_archive(pin))
+            stage="SCOPED_AST_ANALYSIS"
             result=inspect(local,remote)
             flags=result[name]
             print("FUNCTION:",name)
@@ -74,7 +81,9 @@ def main():
             print("DEPLOYED_GUARDED_CALL:",str(flags["deployedGuarded"]).upper())
             print("SCOPED_GUARD_STATE:",result["state"])
             statuses.append(result["state"])
+        stage="STAGING_METADATA_AFTER"
         second={name:att.function_metadata(name) for name in att.NAMES}
+        stage="SOURCE_REVISION_STABILITY"
         stable=att.stable_metadata(first,second)
         print("P63_SOURCE_STABLE:", "YES" if stable else "NOT_VERIFIABLE")
         ok=stable and len(statuses)==2 and all(
@@ -82,6 +91,7 @@ def main():
         print("P63_STATIC_SECURITY:", "MATCH_REVIEW_ONLY" if ok else "REVIEW_REQUIRED")
         return 0 if ok else 2
     except (OSError,ValueError,UnicodeError,subprocess.TimeoutExpired):
+        print("P63_BLOCKED_STAGE:",stage)
         print("P63_SECURITY: NOT_VERIFIABLE")
         return 2
     finally:
