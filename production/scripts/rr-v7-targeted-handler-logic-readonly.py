@@ -55,7 +55,7 @@ def split_top_level(s):
         elif c in "()[]{}":
             if c in "([{":stack.append(c)
             else:
-                if not stack or stack[-1]!="([{ "[")]}".index(c)]:raise ValueError("UNBALANCED_JS")
+                if not stack or stack[-1] != {")":"(","]":"[","}":"{"}[c]:raise ValueError("UNBALANCED_JS")
                 stack.pop()
         elif c=="," and not stack:
             parts.append(s[start:i].strip())
