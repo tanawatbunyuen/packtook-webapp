@@ -48,3 +48,27 @@ test("unrelated source comments are not a security clearance",()=>{
 test("invalid JS fail-closed",()=>{
  assert.throws(()=>check(real,"function ("),/P63_NOT_VERIFIABLE/);
 });
+
+test("legacy direct onCall object-literal options classified as DRIFT, not parser exception",()=>{
+ const altered=mutate("exports.recordingStatus=guardedCall(options,",
+   "exports.recordingStatus=onCall({region,maxInstances:5},");
+ const result=check(real,altered);
+ assert.equal(result.state,"SECURITY_GUARD_DRIFT_REVIEW_REQUIRED");
+ assert.equal(result.recordingStatus.deployedGuarded,false);
+ assert.equal(result.recordingStatus.optionsIdentifierMatch,false);
+ assert.equal(result.release,"NO_GO_RELEASE");
+});
+test("legacy direct onCall spread options classified as DRIFT",()=>{
+ const altered=mutate("exports.usageStatus=guardedCall(options,",
+   "exports.usageStatus=onCall({...options},");
+ const result=check(real,altered);
+ assert.equal(result.state,"SECURITY_GUARD_DRIFT_REVIEW_REQUIRED");
+ assert.equal(result.usageStatus.deployedGuarded,false);
+});
+test("dynamic callable options classified as DRIFT without bypass",()=>{
+ const altered=mutate("exports.recordingStatus=guardedCall(options,",
+   "exports.recordingStatus=onCall(resolveOptions(),");
+ const result=check(real,altered);
+ assert.equal(result.state,"SECURITY_GUARD_DRIFT_REVIEW_REQUIRED");
+ assert.equal(result.recordingStatus.deployedGuarded,false);
+});
