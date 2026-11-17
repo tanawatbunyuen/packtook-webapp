@@ -6,13 +6,22 @@ const {createStagingGate}=require("../p65/staging-authorization.cjs");
 const DEMO="demo-packtook-p66";
 const AUTH="127.0.0.1:9097";
 const FIRESTORE="127.0.0.1:8097";
+function safeFirebaseConfig(){
+ const raw=process.env.FIREBASE_CONFIG;
+ if(!raw)return true;
+ if(raw.length>8192)return false;
+ try{
+  const config=JSON.parse(raw);
+  return !!config&&typeof config==="object"&&config.projectId===DEMO;
+ }catch{return false;}
+}
 function requireEmulators(){
- if(process.env.FIREBASE_AUTH_EMULATOR_HOST!==AUTH||
+ if(!safeFirebaseConfig()||
+    process.env.FIREBASE_AUTH_EMULATOR_HOST!==AUTH||
     process.env.FIRESTORE_EMULATOR_HOST!==FIRESTORE||
     process.env.GCLOUD_PROJECT!==DEMO||
     process.env.GCP_PROJECT && process.env.GCP_PROJECT!==DEMO||
     process.env.GOOGLE_CLOUD_PROJECT && process.env.GOOGLE_CLOUD_PROJECT!==DEMO||
-    process.env.FIREBASE_CONFIG||
     process.env.GOOGLE_APPLICATION_CREDENTIALS||
     process.env.FIREBASE_TOKEN||
     process.env.PACKTOOK_PRODUCTION_PROJECT_ID)
