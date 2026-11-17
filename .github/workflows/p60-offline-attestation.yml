@@ -1,0 +1,32 @@
+name: PACKTOOK P60 Offline Attestation Fail-Closed
+on:
+  pull_request:
+    branches:
+      - review/p57-wrapper-dependency-ast-hardening
+  push:
+    branches:
+      - review/p60-staging-attestation-fail-closed
+permissions:
+  contents: read
+jobs:
+  p60-attestation-offline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Checkout without persisted credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: Existing source attestation unit tests
+        run: python3 -m unittest -v production/scripts/test-rr-v7-deployed-source-attestation-readonly.py
+      - name: P60 fail-closed unit tests
+        run: python3 -m unittest -v production/scripts/test-p60-attestation-fail-closed.py
+      - name: Safety boundaries
+        run: |
+          echo 'STAGING_CALLS=0'
+          echo 'PRODUCTION_WRITES=0'
+          echo 'RELEASE=NO_GO_RELEASE'
