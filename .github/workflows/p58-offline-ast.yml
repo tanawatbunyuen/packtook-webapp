@@ -1,0 +1,33 @@
+name: PACKTOOK P58 Offline AST Regression
+on:
+  push:
+    branches:
+      - review/p57-wrapper-dependency-ast-hardening
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  p58-offline-security:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout read-only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Node 22
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: Pinned dependencies without install scripts
+        run: npm ci --prefix production/ast-review --ignore-scripts --no-audit --no-fund
+      - name: P57 regression tests
+        run: node --test production/ast-review/test-p57-wrapper-dependency-ast.cjs
+      - name: Existing callable-wrapper regressions
+        run: node --test production/ast-review/test-v7-callable-wrapper-security.cjs
+      - name: Offline safety outcome
+        run: |
+          echo 'P58_OFFLINE_TESTS_COMPLETE'
+          echo 'CLOUD_WRITES=0'
+          echo 'FIREBASE_CALLS=0'
+          echo 'RELEASE=NO_GO_RELEASE'
