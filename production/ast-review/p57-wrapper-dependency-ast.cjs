@@ -61,7 +61,7 @@ function inspect(code){
  const guard=col.funcs.get("guardedCall");
  // Require a guarded outer callback with a lease check before dispatch.
  if(!namedCalls(guard,"onCall")||!namedCalls(guard,"isPilotToken")||
-    !namedCalls(guard,"requirePilotLease")||!namedCalls(guard,"add"))fail();
+    !namedCalls(guard,"requirePilotLease")||!member(guard,"PILOT_VALIDATED_REQUESTS","add"))fail();
  const g=text(guard,file);
  if(!/PILOT_VALIDATED_REQUESTS\.add\s*\(\s*req\s*\)/.test(g)||
     !/return\s+handler\s*\(\s*req\s*\)/.test(g))fail();
