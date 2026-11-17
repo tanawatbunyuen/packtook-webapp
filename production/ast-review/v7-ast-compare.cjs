@@ -59,6 +59,8 @@ function compare(a,b,selected) {
   const left=sourceNodes(a),right=sourceNodes(b);
   const counts={};
   for(const scope of SCOPES)counts[scope]={MODIFIED:0,DEPLOYED_ONLY:0,REVIEW_ONLY:0};
+  const current={MODIFIED:0,DEPLOYED_ONLY:0,REVIEW_ONLY:0};
+  const other={MODIFIED:0,DEPLOYED_ONLY:0,REVIEW_ONLY:0};
   for(const key of new Set([...left.keys(),...right.keys()])) {
     const x=left.get(key),y=right.get(key);
     if(x&&y&&x.digest===y.digest)continue;
@@ -68,12 +70,14 @@ function compare(a,b,selected) {
       counts[y.scope].DEPLOYED_ONLY++;
     } else {
       const scope=(x||y).scope;
-      counts[scope][!x?"DEPLOYED_ONLY":!y?"REVIEW_ONLY":"MODIFIED"]++;
+      const op=!x?"DEPLOYED_ONLY":!y?"REVIEW_ONLY":"MODIFIED";
+      counts[scope][op]++;
+      if(scope==="SELECTED_HANDLER") (key==="e:"+selected?current:other)[op]++;
     }
   }
   const k="e:"+selected, aHandler=left.get(k), bHandler=right.get(k);
   const handler=(!aHandler||!bHandler)?"NOT_VERIFIABLE":aHandler.digest===bHandler.digest?"EXACT_AST_TOKENS":"DRIFT_AST_TOKENS";
-  return {handler,counts,ast:"TYPESCRIPT_STATIC_TOKEN_AST_NO_RUNTIME_PROOF"};
+  return {handler,counts,selectedCurrent:current,selectedOther:other,ast:"TYPESCRIPT_STATIC_TOKEN_AST_NO_RUNTIME_PROOF"};
 }
 function execute(input) {
   if(!input || !NAMES.has(input.name)) throw new Error("INVALID_FUNCTION");
