@@ -42,6 +42,8 @@ jobs:
           python3 -m py_compile production/scripts/rr-v7-staging-backend-appcheck-inventory-readonly.py
           python3 -m unittest -v production/scripts/test-rr-v7-deployed-provenance-inventory-readonly.py
           python3 -m py_compile production/scripts/rr-v7-deployed-provenance-inventory-readonly.py
+          python3 -m unittest -v production/scripts/test-rr-v7-staging-source-cohort-readonly.py
+          python3 -m py_compile production/scripts/rr-v7-staging-source-cohort-readonly.py
           echo 'V7_CONTROLLED_DEVICE_READINESS_CI: PASS'
           echo 'REMOTE_HOSTING_CALLS: 0'
           echo 'CAMERA_PERMISSION_REQUESTS: 0'
