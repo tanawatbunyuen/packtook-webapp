@@ -1,0 +1,29 @@
+name: PACKTOOK P61 Controlled Source Stability Offline
+on:
+  pull_request:
+    branches: [review/p60-staging-attestation-fail-closed]
+  push:
+    branches: [review/p61-staging-source-stability-gate]
+permissions:
+  contents: read
+jobs:
+  p61-offline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: All source-attestation regressions
+        run: |
+          python3 -m unittest -v production/scripts/test-rr-v7-deployed-source-attestation-readonly.py
+          python3 -m unittest -v production/scripts/test-p60-attestation-fail-closed.py
+          python3 -m unittest -v production/scripts/test-p61-staging-stability-offline.py
+      - name: No cloud permitted
+        run: |
+          echo 'CLOUD_CALLS=0'
+          echo 'PRODUCTION_WRITES=0'
+          echo 'RELEASE=NO_GO_RELEASE'
