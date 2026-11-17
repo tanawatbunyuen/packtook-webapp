@@ -36,15 +36,20 @@ CHECKS=("return {","throw new HttpsError","uid(req)","ownerRef(","ensureAccount(
 
 def helper_span(source,name):
     s=source.decode("utf-8","strict")
-    # Detect only top-level named 'function helper(...)' with source layout.
-    hits=list(re.finditer(r"(?m)^function\s+"+re.escape(name)+r"\s*\(",s))
+    # Explicit top-level function declaration with optional async keyword.
+    # Stop at next top-level declaration (or EOF); do not parse arbitrary JS.
+    hits=list(re.finditer(
+       r"(?m)^(?:async\s+)?function\s+"+re.escape(name)+r"\s*\(",s))
     if len(hits)!=1:return None
     start=hits[0].start()
-    # Next top-level declaration/export ends a helper region, conservatively.
-    next_decl=re.search(r"(?m)^(?:function\s+\w+\s*\(|exports\.\w+\s*=|const\s+\w+\s*=|let\s+\w+\s*=)",s[start+1:])
-    if next_decl is None:return None
-    end=start+1+next_decl.start()
-    return s[start:end].strip()
+    next_decl=re.search(
+       r"(?m)^(?:(?:async\s+)?function\s+\w+\s*\(|exports\.\w+\s*=|(?:const|let)\s+\w+\s*=)",
+       s[start+1:])
+    end=start+1+next_decl.start() if next_decl else len(s)
+    body=s[start:end].strip()
+    # Confirm the definition terminates at a closing brace before its boundary.
+    if not body.endswith("}"):return None
+    return body
 
 def helper_status(local,remote,name):
     a=helper_span(local,name)
