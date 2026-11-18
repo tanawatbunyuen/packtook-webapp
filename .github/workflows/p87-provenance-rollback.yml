@@ -1,0 +1,45 @@
+name: PACKTOOK P87 Staging Source Provenance and Rollback Review
+on:
+  push:
+    branches: [review/p87-staging-provenance-rollback-inspection]
+  pull_request:
+    branches: [review/p86-selector-rollback-safety-evidence]
+permissions:
+  contents: read
+jobs:
+  p87-offline-review:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: P87 synthetic pinned-source metadata and project guard tests
+        run: |
+          python3 -m py_compile production/scripts/p87-source-provenance-readonly.py
+          python3 production/scripts/test-p87-source-provenance-readonly.py
+          if python3 production/scripts/p87-source-provenance-readonly.py > /tmp/p87-default.txt; then exit 2; fi
+          grep -q 'P87_EXPLICIT_OPERATOR_OPT_IN_REQUIRED' /tmp/p87-default.txt
+      - name: P87 fail-closed rollout and rollback evidence negative tests
+        run: node --test production/ast-review/test-p87-provenance-gate.cjs
+      - name: Require P87 checks unverified and NO_GO_RELEASE
+        run: |
+          node production/ast-review/p87-provenance-gate.cjs > /tmp/p87.json
+          node - <<'NODE'
+          const x=require("/tmp/p87.json");
+          if(x.state!=="PROVENANCE_AND_ROLLBACK_REVIEW_REQUIRED"||
+             x.verifiedCount!==0||x.requiredCount!==12||
+             x.deployment!=="BLOCKED"||x.priorKnownGoodRestore!=="NOT_PROVEN"||
+             x.release!=="NO_GO_RELEASE")process.exit(2);
+          console.log("P87_ROLLBACK_PROVENANCE_EVIDENCE=0_OF_12_VERIFIED");
+          console.log("P87_STAGING_DEPLOY=BLOCKED");
+          NODE
+      - name: CI must not access live Cloud
+        run: |
+          echo 'P87_CLOUD_CALLS=0'
+          echo 'P87_CLOUD_WRITES=0'
+          echo 'P87_DEPLOY=0'
+          echo 'P87_RELEASE=NO_GO_RELEASE'
