@@ -1,0 +1,21 @@
+{
+  "schema": "P84_OWNER_P83_OBSERVATION_V1",
+  "project": "packtook-staging",
+  "functions": [
+    "recordingStatus",
+    "usageStatus",
+    "reserveCredit",
+    "finalizeCredit",
+    "recoverStaleVideoReservation"
+  ],
+  "p83MetadataStable": true,
+  "p83AllSourceGenerationsPresent": true,
+  "p83AllRuntimeIdentitiesPresent": true,
+  "p83CodebaseLabelsPresent": false,
+  "p83RuntimeIdentitiesShared": true,
+  "rollbackRestorable": "NOT_VERIFIED",
+  "codebaseOwnership": "NOT_VERIFIED",
+  "backendAppCheck": "NOT_PROVEN",
+  "leastPrivilegeIam": "NOT_VERIFIED",
+  "deployPerformed": false
+}

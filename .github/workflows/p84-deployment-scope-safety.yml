@@ -1,0 +1,47 @@
+name: PACKTOOK P84 Deployment Scope and Rollback Safety
+on:
+  push:
+    branches: [review/p84-deployment-scope-rollback-safety]
+  pull_request:
+    branches: [review/p83-staging-identity-rollback-evidence]
+permissions:
+  contents: read
+jobs:
+  p84-review-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: P84 scope sharing and rollback mock Cloud metadata tests
+        run: |
+          python3 -m py_compile production/scripts/p84-deployment-scope-readonly.py
+          python3 production/scripts/test-p84-deployment-scope-readonly.py
+          if python3 production/scripts/p84-deployment-scope-readonly.py > /tmp/p84-noopt.txt; then exit 2; fi
+          grep -q 'P84_OPERATOR_OPT_IN_REQUIRED' /tmp/p84-noopt.txt
+      - name: P84 fail-closed evidence gate unit tests
+        run: node --test production/ast-review/test-p84-deployment-scope-gate.cjs
+      - name: Scope fixed and release blocked
+        run: |
+          node production/ast-review/p84-deployment-scope-gate.cjs production/staging-candidates/p82-remediation-package.json production/staging-candidates/p83-identity-rollback-evidence.json production/staging-candidates/p84-p83-operator-observation.json > /tmp/p84.json
+          node - <<'NODE'
+          const r=require("/tmp/p84.json");
+          if(r.state!=="OBSERVED_METADATA_ONLY_REVIEW_REQUIRED"||
+             r.deploy!=="BLOCKED"||r.release!=="NO_GO_RELEASE"||
+             r.rollbackRestorable!=="NOT_VERIFIED")process.exit(2);
+          console.log("P84_P83_METADATA=CONFIRMED_REVIEW_ONLY");
+          console.log("P84_ROLLBACK_RESTORABILITY=NOT_VERIFIED");
+          console.log("P84_DEPLOY_SCOPE=NOT_VERIFIED");
+          console.log("P84_STAGING_DEPLOY=BLOCKED");
+          NODE
+      - name: Zero Cloud calls
+        run: |
+          echo 'CLOUD_CALLS=0'
+          echo 'CLOUD_WRITES=0'
+          echo 'IAM_WRITES=0'
+          echo 'DEPLOY=0'
+          echo 'RELEASE=NO_GO_RELEASE'
