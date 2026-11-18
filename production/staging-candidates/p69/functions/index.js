@@ -4,6 +4,7 @@
  * Real Firebase onCall transport and explicit App Check enforcement.
  */
 const admin=require("firebase-admin");
+const {FieldValue}=require("firebase-admin/firestore");
 const {onCall,HttpsError}=require("firebase-functions/v2/https");
 const {createStagingGate}=require("./staging-authorization.cjs");
 const {createCreditHandlers}=require("./credit-handlers.cjs");
@@ -91,7 +92,7 @@ exports.p69RecordingStatus=protect(async (id,data)=>{
 // Credit functions are intentionally NEW-NAME, review-only candidate callables.
 // They cannot replace the currently deployed Staging endpoint without
 // an owner-approved migration, rollback and independent security review.
-const credit=createCreditHandlers({db,FieldValue:admin.firestore.FieldValue,HttpsError});
+const credit=createCreditHandlers({db,FieldValue,HttpsError});
 exports.p70ReserveCredit=protect((id,d,ctx)=>credit.reserve(id,d,ctx));
 exports.p70FinalizeCredit=protect((id,d,ctx)=>credit.finalize(id,d,ctx));
 exports.p70RecoverStaleVideoReservation=protect((id,d,ctx)=>credit.recover(id,d,ctx));
