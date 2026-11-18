@@ -1,0 +1,18 @@
+{
+  "schema": "P83_DEPLOYMENT_EVIDENCE_V1",
+  "project": "packtook-staging",
+  "checks": {
+    "statusFunctionsMappedToCodebase": "NOT_VERIFIED",
+    "creditFunctionsMappedToCodebase": "NOT_VERIFIED",
+    "runtimeServiceIdentityReviewed": "NOT_VERIFIED",
+    "iamLeastPrivilegeIndependentlyApproved": "NOT_VERIFIED",
+    "pinnedSourceGenerationCaptured": "NOT_VERIFIED",
+    "rollbackSourceAccessible": "NOT_VERIFIED",
+    "rollbackRestoreDrillPassed": "NOT_VERIFIED",
+    "noUnrelatedFunctionsInDeployScope": "NOT_VERIFIED",
+    "backendAppCheckEnforcementProven": "NOT_VERIFIED",
+    "sourceSemanticCompatibilityReviewed": "NOT_VERIFIED",
+    "monitoringAndRollbackTriggersApproved": "NOT_VERIFIED",
+    "ownerScopedStagingDeployApproval": "NOT_VERIFIED"
+  }
+}
