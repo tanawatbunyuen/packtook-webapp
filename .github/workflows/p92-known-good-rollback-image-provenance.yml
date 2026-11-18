@@ -1,0 +1,47 @@
+name: PACKTOOK P92 Known-good Rollback Image Provenance Offline
+on:
+  push:
+    branches: [review/p92-known-good-rollback-provenance]
+  pull_request:
+    branches: [review/p91-staging-revision-image-lineage]
+permissions:
+  contents: read
+jobs:
+  p92-hermetic-provenance:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: P92 hermetic image digest and scope tests
+        run: |
+          python3 -m py_compile production/scripts/p92-image-digest-provenance-readonly.py
+          python3 production/scripts/test-p92-image-digest-provenance-readonly.py
+          if python3 production/scripts/p92-image-digest-provenance-readonly.py > /tmp/p92-default.txt; then exit 2; fi
+          grep -q 'P92_EXPLICIT_OPERATOR_OPT_IN_REQUIRED' /tmp/p92-default.txt
+      - name: P92 evidence matrix and negative cases
+        run: node --test production/ast-review/test-p92-image-provenance-evidence-gate.cjs
+      - name: No false known-good image or restoration proof
+        run: |
+          node production/ast-review/p92-image-provenance-evidence-gate.cjs > /tmp/p92.json
+          node - <<'NODE'
+          const r=require("/tmp/p92.json");
+          if(r.state!=="DIGEST_CLASSIFICATION_INCOMPLETE"||
+             r.inspectedCount!==0||
+             r.knownGoodImage!=="NOT_SELECTED"||
+             r.imageAvailable!=="NOT_VERIFIED"||
+             r.rollback!=="NOT_VERIFIED"||
+             r.deploy!=="BLOCKED"||r.release!=="NO_GO_RELEASE")process.exit(2);
+          console.log("P92_P91_LINEAGE=20_AND_21_DISTINCT_IMAGE_REFERENCES");
+          console.log("P92_LIVE_DIGEST_CLASSIFICATION=NOT_CHECKED");
+          console.log("P92_KNOWN_GOOD_ROLLBACK=NOT_VERIFIED");
+          NODE
+          echo 'P92_CLOUD_CALLS=0'
+          echo 'P92_CLOUD_WRITES=0'
+          echo 'P92_DEPLOY=0'
+          echo 'P92_TRAFFIC_CHANGES=0'
+          echo 'P92_RELEASE=NO_GO_RELEASE'

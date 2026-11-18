@@ -1,0 +1,30 @@
+{
+  "schema": "P92_IMAGE_PROVENANCE_EVIDENCE_V1",
+  "project": "packtook-staging",
+  "p91Counts": {
+    "recordingStatus": 20,
+    "usageStatus": 21
+  },
+  "p91CurrentRevisionPresent": {
+    "recordingStatus": true,
+    "usageStatus": true
+  },
+  "p91UniqueImageReferences": {
+    "recordingStatus": 20,
+    "usageStatus": 21
+  },
+  "p92DigestClassification": {
+    "recordingStatus": "NOT_CHECKED",
+    "usageStatus": "NOT_CHECKED"
+  },
+  "verifiedPriorKnownGoodImage": false,
+  "imageRegistryRetrievability": "NOT_VERIFIED",
+  "immutableSourceToRevisionMapping": "NOT_VERIFIED",
+  "sourceToGitCommit": "NOT_VERIFIED",
+  "rollbackDryRun": "NOT_PERFORMED",
+  "appCheckRuntime": "NOT_PROVEN",
+  "IAMLeastPrivilege": "NOT_VERIFIED",
+  "deployment": false,
+  "trafficChanges": false,
+  "release": "NO_GO_RELEASE"
+}
