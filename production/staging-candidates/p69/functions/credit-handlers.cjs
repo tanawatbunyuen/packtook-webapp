@@ -118,7 +118,9 @@ function createCreditHandlers({db,FieldValue,HttpsError,clock=Date.now}){
    if(!validLease(control,clock())||!control.invitedUids.includes(id)||control.sessionId!==session)
     bad("permission-denied","Staging invitation changed");
    if(!aSnap.exists||!rSnap.exists)bad("not-found","Reservation not found");
-   const a=aSnap.data(),r=rSnap.data(),lock=acc.collection("barcodeLocks").doc(key(r.barcode));
+   const a=aSnap.data(),r=rSnap.data();
+   if(!Object.hasOwn(LIMITS,a.plan))bad("failed-precondition","Unknown plan");
+   const lock=acc.collection("barcodeLocks").doc(key(r.barcode));
    const kSnap=await tx.get(lock);
    if(r.status!=="reserved"){
     if(r.status===(success?"completed":"failed"))return {status:r.status,idempotent:true};
@@ -169,6 +171,7 @@ function createCreditHandlers({db,FieldValue,HttpsError,clock=Date.now}){
     bad("permission-denied","Staging invitation changed");
    if(!aSnap.exists||!rSnap.exists)bad("not-found","Reservation not found");
    const a=aSnap.data(),r=rSnap.data();
+   if(!Object.hasOwn(LIMITS,a.plan))bad("failed-precondition","Unknown plan");
    if(r.status==="failed"&&r.recoveryReason==="manual_stale_recovery")
     return {status:"failed",idempotent:true};
    if(r.status!=="reserved")bad("failed-precondition","Already finalized");
