@@ -28,7 +28,8 @@ test("P70 live Firestore credit/recovery transactional invariants",async t=>{
  const app=admin.initializeApp({projectId:"demo-packtook-p69"},"p70-credit-test");
  const db=admin.firestore(app),{HttpsError}=appRequire("firebase-functions/v2/https");
  const {createCreditHandlers}=require("./functions/credit-handlers.cjs");
- const svc=createCreditHandlers({db,FieldValue:admin.firestore.FieldValue,HttpsError});
+ const {FieldValue}=appRequire("firebase-admin/firestore");
+ const svc=createCreditHandlers({db,FieldValue,HttpsError});
  const acc=db.collection("accounts").doc(uid),lease=db.doc("pilotControls/p65");
  const ctx={session};
  const state=async()=>{const d=(await acc.get()).data();return [d.creditWalletRemaining,d.reserved,d.used];};
