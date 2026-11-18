@@ -19,7 +19,7 @@ PROJECT="packtook-staging"
 REGION="asia-southeast1"
 NAMES=("recordingStatus","usageStatus")
 ROOT=Path(__file__).resolve().parent
-DIGEST=re.compile(r"^\\S+@sha256:[0-9a-fA-F]{64}$")
+DIGEST=re.compile(r"^\S+@sha256:[0-9a-fA-F]{64}$")
 MAX_BYTES=250000
 
 def load_previous():
