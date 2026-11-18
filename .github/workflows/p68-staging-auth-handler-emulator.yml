@@ -1,0 +1,54 @@
+name: PACKTOOK P68 Staging Auth Real Handler Bridge
+on:
+  pull_request:
+    branches: [review/p67-real-handler-emulator-integration]
+  push:
+    branches: [review/p68-staging-authorization-real-handler-bridge]
+permissions:
+  contents: read
+jobs:
+  p68-emulator-bridge:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      CI: "true"
+      GCLOUD_PROJECT: demo-packtook-p67
+      GCP_PROJECT: demo-packtook-p67
+      GOOGLE_CLOUD_PROJECT: demo-packtook-p67
+      FIREBASE_AUTH_EMULATOR_HOST: "127.0.0.1:9098"
+      FIRESTORE_EMULATOR_HOST: "127.0.0.1:8098"
+    steps:
+      - name: Checkout without write credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Node 22
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: Java 21 for local Firestore
+        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install pinned dependencies
+        run: |
+          npm ci --prefix production/functions --ignore-scripts --no-audit --no-fund
+          npm ci --prefix production/ast-review --ignore-scripts --no-audit --no-fund
+      - name: Install Firebase CLI for local emulator only
+        run: npm install --global firebase-tools@14.27.0 --ignore-scripts --no-audit --no-fund
+      - name: P65 Auth synthetic and P68 App Check static preflight
+        run: |
+          node --test production/staging-candidates/p65/test-staging-authorization.cjs
+          node --test production/ast-review/test-p68-appcheck-preflight.cjs
+      - name: P68 real handler P65 lease integration in demo emulators
+        run: firebase emulators:exec --only auth,firestore --project demo-packtook-p67 --config production/staging-candidates/p67/firebase.json "node production/staging-candidates/p68/test-staging-real-handler-integration.cjs"
+      - name: Always keep release closed
+        if: always()
+        run: |
+          echo 'CALLABLE_TRANSPORT=MOCKED_NOT_PROVEN'
+          echo 'BACKEND_APP_CHECK=NOT_PROVEN'
+          echo 'LIVE_STAGING_WRITES=0'
+          echo 'PRODUCTION_WRITES=0'
+          echo 'DEPLOY=0'
+          echo 'RELEASE=NO_GO_RELEASE'
