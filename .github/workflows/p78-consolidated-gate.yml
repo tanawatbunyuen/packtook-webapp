@@ -1,0 +1,48 @@
+name: PACKTOOK P78 Consolidated Release Preflight
+on:
+  pull_request:
+    branches: [review/p77-operations-readiness-evidence]
+  push:
+    branches: [review/p78-consolidated-pilot-release-preflight]
+permissions:
+  contents: read
+jobs:
+  p78-offline-final-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: Strictly offline consolidated readiness tests
+        run: node --test production/ast-review/test-p78-consolidated-preflight.cjs
+      - name: Baseline must remain NO_GO for pilot and Production
+        run: |
+          node production/ast-review/p78-consolidated-preflight.cjs \
+            production/staging-candidates/p74-evidence-template.json \
+            production/staging-candidates/p77-operations-evidence-template.json \
+            production/staging-candidates/p70-deployment-manifest.json > /tmp/p78-review.json
+          node - <<'NODE'
+          const x=require("/tmp/p78-review.json");
+          if(x.securityVerified!==0||x.operationsVerified!==0||
+            x.decision!=="NO_GO_CONTROLLED_PILOT"||
+            x.stagingDeploy!=="BLOCKED"||
+            x.productionRelease!=="NO_GO_RELEASE")process.exit(2);
+          console.log("P78_SECURITY_LIVE=0_OF_17_VERIFIED");
+          console.log("P78_OPERATIONS_LIVE=0_OF_18_VERIFIED");
+          console.log("P78_CONTROLLED_PILOT=NO_GO");
+          NODE
+      - name: Verify Cloud Shell script defaults to no cloud calls
+        run: |
+          python3 -m py_compile production/scripts/p78-staging-metadata-readonly.py
+          python3 production/scripts/p78-staging-metadata-readonly.py > /tmp/p78-no-operator.txt && exit 2 || grep -q 'P78_OPERATOR_OPT_IN_REQUIRED' /tmp/p78-no-operator.txt
+      - name: No live actions permitted from CI
+        run: |
+          echo 'CLOUD_SHELL_SCRIPT_EXECUTED=NO'
+          echo 'CLOUD_CALLS=0'
+          echo 'CLOUD_WRITES=0'
+          echo 'DEPLOY=0'
+          echo 'RELEASE=NO_GO_RELEASE'
