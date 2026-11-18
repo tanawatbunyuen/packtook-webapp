@@ -86,6 +86,9 @@ function createCreditHandlers({db,FieldValue,HttpsError,clock=Date.now}){
    if(pending===Number.MAX_SAFE_INTEGER||used===Number.MAX_SAFE_INTEGER)
     bad("failed-precondition","Credit counter overflow");
    if(limit!==null&&remaining<=0)bad("resource-exhausted","Credits exhausted");
+   if(overridden&&approvalSnap.data().requestId&&
+      !validOp(approvalSnap.data().requestId))
+    bad("failed-precondition","Duplicate request ID requires review");
    // All Firestore reads are above this line.
    tx.create(rec,{barcode:code,status:"reserved",period:p,createdAt:FieldValue.serverTimestamp(),
     file:null,overrideOf:overridden?kSnap.data().operationId:null,approvalId:overridden?d.approvalId:null});
@@ -94,6 +97,13 @@ function createCreditHandlers({db,FieldValue,HttpsError,clock=Date.now}){
     createdAt:FieldValue.serverTimestamp()});
    if(overridden){
     tx.update(overrideRef,{status:"consumed",consumedBy:op,consumedAt:FieldValue.serverTimestamp()});
+    // Production reserveCredit also marks the related duplicate request as
+    // consumed when the approval references its original request.
+    const linkedRequest=approvalSnap.data().requestId;
+    if(linkedRequest){
+     tx.update(acc.collection("duplicateRequests").doc(linkedRequest),
+      {status:"consumed",consumedBy:op});
+    }
    }
    tx.update(acc,{period:p,used,reserved:pending+1,
     ...(wallet(a)&&limit!==null?{creditWalletRemaining:remaining-1}:{}),
