@@ -1,0 +1,24 @@
+{
+  "schema": "P77_OPERATIONS_EVIDENCE_V1",
+  "project": "packtook-staging",
+  "evidence": {
+    "cloudBillingBudgetAlerts": "NOT_VERIFIED",
+    "cloudBillingSpendingCapPolicy": "NOT_VERIFIED",
+    "functionsFailureRateAlerts": "NOT_VERIFIED",
+    "functionsLatencyAndAvailabilityAlerts": "NOT_VERIFIED",
+    "firestoreQuotaAndErrorAlerts": "NOT_VERIFIED",
+    "omiseTestProviderReadProbe": "NOT_VERIFIED",
+    "omisePaymentSettlementReconciliation": "NOT_VERIFIED",
+    "omiseWebhookSignatureVerification": "NOT_VERIFIED",
+    "paymentRefundDisputeRunbook": "NOT_VERIFIED",
+    "creditLedgerReconciliation": "NOT_VERIFIED",
+    "backupRestoreDryRun": "NOT_VERIFIED",
+    "immutableRollbackRevision": "NOT_VERIFIED",
+    "incidentOwnerEscalation": "NOT_VERIFIED",
+    "incidentResponseDrill": "NOT_VERIFIED",
+    "pdpaConsentAndPrivacyReview": "NOT_VERIFIED",
+    "dataRetentionAndDeletionPolicy": "NOT_VERIFIED",
+    "videoPrivacyAccessReview": "NOT_VERIFIED",
+    "supportAndCustomerCommsRunbook": "NOT_VERIFIED"
+  }
+}
