@@ -5,6 +5,7 @@
  */
 const crypto=require("node:crypto");
 const {validLease}=require("./staging-authorization.cjs");
+const {planState,available:creditAvailable,pending:pendingReservations}=require("./p72-account-semantics.cjs");
 const OP=/^[A-Za-z0-9_-]{16,100}$/;
 const STALE_MS=30*60*1000;
 const LIMITS=Object.freeze({Free:20,Starter:50,Basic:300,Growth:1500,Business:5000,Pro:null});
@@ -62,7 +63,8 @@ function createCreditHandlers({db,FieldValue,HttpsError,clock=Date.now}){
    const a=aSnap.data(),limit=LIMITS[a.plan];
    if(!Object.hasOwn(LIMITS,a.plan))bad("failed-precondition","Invalid plan");
    if(!(a.devices||[]).some(x=>x.id===device))bad("permission-denied","Device not registered");
-   if(a.plan!=="Free"&&(!a.planExpiresAt||Date.parse(a.planExpiresAt)<=clock()))
+   const sub=planState(a,clock());
+   if(["expired","invalid","unconfigured"].includes(sub))
     bad("permission-denied","Subscription invalid or expired");
    if(rSnap.exists){
     const previous=rSnap.data();
@@ -80,9 +82,11 @@ function createCreditHandlers({db,FieldValue,HttpsError,clock=Date.now}){
       bad("failed-precondition","Previous recording not completed");
    }
    if(!overridden&&d.approvalId)bad("failed-precondition","Override not required");
-   const pending=wallet(a)||a.period===p?count(a,"reserved"):0;
+   const pending=pendingReservations(a,clock());
    const used=a.period===p?count(a,"used"):0;
-   const remaining=available(a,p);
+   let remaining;
+   try{remaining=creditAvailable(a,clock());}
+   catch(e){bad("failed-precondition","Credit counters or balance need review");}
    if(pending===Number.MAX_SAFE_INTEGER||used===Number.MAX_SAFE_INTEGER)
     bad("failed-precondition","Credit counter overflow");
    if(limit!==null&&remaining<=0)bad("resource-exhausted","Credits exhausted");
