@@ -1,0 +1,56 @@
+name: PACKTOOK P72 Remaining Semantic Parity Remediation
+on:
+  pull_request:
+    branches: [review/p71-credit-semantic-parity-review]
+  push:
+    branches: [review/p72-semantic-parity-remediation]
+permissions:
+  contents: read
+jobs:
+  p72-parity:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CI: "true"
+      GCLOUD_PROJECT: demo-packtook-p69
+      GCP_PROJECT: demo-packtook-p69
+      GOOGLE_CLOUD_PROJECT: demo-packtook-p69
+      FIREBASE_AUTH_EMULATOR_HOST: "127.0.0.1:9199"
+      FIRESTORE_EMULATOR_HOST: "127.0.0.1:8199"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install candidate SDKs and local Emulator CLI
+        run: |
+          npm install --prefix production/staging-candidates/p69/functions --ignore-scripts --no-audit --no-fund
+          npm install --global firebase-tools@14.27.0 --ignore-scripts --no-audit --no-fund
+      - name: P72 local account and static parity matrix
+        run: |
+          node --test production/staging-candidates/p69/functions/test-p72-account-semantics.cjs
+          node --test production/ast-review/test-p72-parity-evidence.cjs
+          node production/ast-review/p72-parity-evidence.cjs production/functions/index.js production/staging-candidates/p69/functions/credit-handlers.cjs production/staging-candidates/p69/functions/index.js production/staging-candidates/p69/functions/p72-account-semantics.cjs > /tmp/p72-evidence.json
+          node - <<'NODE'
+          const data=require("/tmp/p72-evidence.json");
+          if(data.scopedStaticParity!=="MATCH_CANDIDATE"||data.semanticParity!=="REVIEW_REQUIRED"||data.release!=="NO_GO_RELEASE")process.exit(2);
+          console.log("P72_SCOPED_STATIC_PARITY=MATCH_CANDIDATE");
+          console.log("P72_FULL_SEMANTIC_PARITY=REVIEW_REQUIRED");
+          NODE
+      - name: Real demo Firestore Emulator P70 P71 P72 regressions
+        run: firebase emulators:exec --only auth,firestore --project demo-packtook-p69 --config production/staging-candidates/p69/firebase.json "node production/staging-candidates/p69/test-p70-credit-emulator.cjs && node production/staging-candidates/p69/test-p71-semantic-parity-emulator.cjs && node production/staging-candidates/p69/test-p72-account-credit-emulator.cjs"
+      - name: Keep all deployment gates closed
+        if: always()
+        run: |
+          echo 'STAGING_WRITES=0'
+          echo 'PRODUCTION_WRITES=0'
+          echo 'DEPLOY=0'
+          echo 'BACKEND_APP_CHECK=NOT_PROVEN'
+          echo 'SEMANTIC_PARITY=REVIEW_REQUIRED'
+          echo 'RELEASE=NO_GO_RELEASE'
