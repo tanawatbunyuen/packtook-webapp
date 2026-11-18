@@ -1,0 +1,63 @@
+{
+  "schema": "P82_REMEDIATION_PACKAGE_V1",
+  "project": "packtook-staging",
+  "region": "asia-southeast1",
+  "phase": "OFFLINE_REVIEW_ONLY",
+  "sourceBranch": "review/p82-staging-remediation-package-preflight",
+  "scope": {
+    "existingCallableNames": [
+      "recordingStatus",
+      "usageStatus"
+    ],
+    "allowedChanges": [
+      "authorization_guard_source_candidate"
+    ],
+    "creditCallableNamesUnaffected": [
+      "reserveCredit",
+      "finalizeCredit",
+      "recoverStaleVideoReservation"
+    ],
+    "cloudChangesPermitted": false,
+    "replacementRegistered": false
+  },
+  "candidate": {
+    "entrypoint": "production/staging-candidates/p81/legacy-status-live-gate-candidate.cjs",
+    "supportingModules": [
+      "production/staging-candidates/p75/legacy-status-guard-candidate.cjs",
+      "production/staging-candidates/p69/functions/staging-authorization.cjs",
+      "production/staging-candidates/p69/functions/p72-account-semantics.cjs"
+    ],
+    "sourceHashes": "CALCULATED_IN_CI_NOT_PUBLISHED_AS_RELEASE_ARTIFACT"
+  },
+  "runtimeEvidence": {
+    "p80GuardDrift": "CONFIRMED_BOTH",
+    "fiveFunctionMetadata": "STABLE_METADATA_ONLY",
+    "deployedAppCheck": "NOT_PROVEN",
+    "deployedIamLeastPrivilege": "NOT_VERIFIED",
+    "rollbackImmutableRevision": "NOT_RECORDED",
+    "deployIdentity": "NOT_APPROVED",
+    "frontendCompatibility": "NOT_PROVEN"
+  },
+  "approvals": {
+    "ownerDeploymentApproval": "NOT_GRANTED",
+    "independentSecurityReview": "NOT_COMPLETE",
+    "operatorChangeTicket": "NOT_OPEN",
+    "monitoringAndIncidentCoverage": "NOT_VERIFIED"
+  },
+  "prerequisites": {
+    "exactStagingCodebaseAndRuntimeMapping": "NOT_VERIFIED",
+    "immutableKnownGoodRollback": "NOT_VERIFIED",
+    "realAppCheckNegativeAndPositiveTestPlan": "NOT_COMPLETED",
+    "stagingOnlyDeployProcedure": "NOT_APPROVED"
+  },
+  "deployAllowed": false,
+  "actionsForbidden": [
+    "firebase deploy",
+    "gcloud functions deploy",
+    "gcloud run deploy",
+    "gcloud iam",
+    "gcloud secrets"
+  ],
+  "postDeployAttestationRequired": true,
+  "release": "NO_GO_RELEASE"
+}
