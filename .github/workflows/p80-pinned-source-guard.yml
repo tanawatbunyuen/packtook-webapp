@@ -1,0 +1,33 @@
+name: PACKTOOK P80 Pinned Source Guard Attestation Offline
+on:
+  pull_request:
+    branches: [review/p79-staging-revision-stability-preflight]
+  push:
+    branches: [review/p80-staging-pinned-source-guard-attestation]
+permissions:
+  contents: read
+jobs:
+  p80-source-readonly:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: Offline P80 fixtures and local no-opt-in guard
+        run: |
+          python3 -m py_compile production/scripts/p80-staging-guard-source-readonly.py
+          python3 production/scripts/test-p80-staging-guard-readonly.py
+          if python3 production/scripts/p80-staging-guard-source-readonly.py --inspect-source > /tmp/p80-unapproved.txt; then exit 2; fi
+          grep -q 'P80_EXPLICIT_STAGING_SOURCE_OPT_IN_REQUIRED' /tmp/p80-unapproved.txt
+      - name: No Cloud access and no deployment
+        run: |
+          echo 'P80_CLOUD_CALLS=0'
+          echo 'P80_STAGING_WRITES=0'
+          echo 'P80_PRODUCTION_WRITES=0'
+          echo 'P80_APP_CHECK=NOT_PROVEN'
+          echo 'P80_DEPLOY=0'
+          echo 'RELEASE=NO_GO_RELEASE'
