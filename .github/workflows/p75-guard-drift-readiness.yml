@@ -1,0 +1,51 @@
+name: PACKTOOK P75 Staging Guard Drift Remediation Readiness
+on:
+  pull_request:
+    branches: [review/p74-staging-backend-security-evidence]
+  push:
+    branches: [review/p75-staging-guard-drift-remediation-readiness]
+permissions:
+  contents: read
+jobs:
+  p75-offline-readiness:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Checkout without persistent credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Node 22
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: Test P75 legacy guard implementation candidate
+        run: node --test production/staging-candidates/p75/test-legacy-status-guard-candidate.cjs
+      - name: Test P75 readiness gate and intentional denial cases
+        run: node --test production/ast-review/test-p75-staging-readiness.cjs
+      - name: Validate blocked manifest and scoped source candidate
+        run: |
+          node production/ast-review/p75-staging-readiness.cjs \
+            production/staging-candidates/p74-evidence-template.json \
+            production/staging-candidates/p70-deployment-manifest.json \
+            production/staging-candidates/p69/functions/index.js \
+            production/staging-candidates/p75/legacy-status-guard-candidate.cjs > /tmp/p75-review.json
+          node - <<'NODE'
+          const x=require("/tmp/p75-review.json");
+          if(x.state!=="REVIEW_CANDIDATE_ONLY"||x.unresolvedEvidenceCount!==17||
+              x.stageDeployment!=="BLOCKED"||x.guardDrift!=="UNRESOLVED"||
+              x.release!=="NO_GO_RELEASE")process.exit(2);
+          console.log("P75_STATIC_WRAPPER=REVIEW_ONLY");
+          console.log("P75_RUNTIME_GUARD_DRIFT=UNRESOLVED");
+          console.log("P75_LIVE_SECURITY_EVIDENCE=NOT_VERIFIED");
+          console.log("P75_STAGING_DEPLOY=BLOCKED");
+          NODE
+      - name: No Cloud credentials, deploy or IAM writes
+        run: |
+          echo 'CLOUD_CALLS=0'
+          echo 'CLOUD_WRITES=0'
+          echo 'STAGING_DEPLOY=0'
+          echo 'PRODUCTION_DEPLOY=0'
+          echo 'IAM_WRITES=0'
+          echo 'APP_CHECK_RUNTIME=NOT_PROVEN'
+          echo 'RELEASE=NO_GO_RELEASE'
