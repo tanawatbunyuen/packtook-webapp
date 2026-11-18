@@ -1,0 +1,13 @@
+{
+  "schema": "P81_OPERATOR_ATTESTATION_V1",
+  "project": "packtook-staging",
+  "source": "P80_PINNED_SOURCE_OPERATOR_RESULT",
+  "recordingStatus": "DRIFT_REVIEW_REQUIRED",
+  "usageStatus": "DRIFT_REVIEW_REQUIRED",
+  "allFiveRevisionStable": true,
+  "appCheck": "NOT_PROVEN",
+  "iamLeastPrivilege": "NOT_VERIFIED",
+  "cloudWrites": 0,
+  "deploy": 0,
+  "release": "NO_GO_RELEASE"
+}
