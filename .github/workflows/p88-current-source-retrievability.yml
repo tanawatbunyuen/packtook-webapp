@@ -1,0 +1,43 @@
+name: PACKTOOK P88 Current Pinned Source Readability Offline
+on:
+  push:
+    branches: [review/p88-staging-source-retrievability-evidence]
+  pull_request:
+    branches: [review/p87-staging-provenance-rollback-inspection]
+permissions:
+  contents: read
+jobs:
+  p88-offline-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: P88 synthetic current-source archive readability tests
+        run: |
+          python3 -m py_compile production/scripts/p88-current-source-retrievability-readonly.py
+          python3 production/scripts/test-p88-current-source-retrievability-readonly.py
+          if python3 production/scripts/p88-current-source-retrievability-readonly.py --inspect-current-source --function recordingStatus > /tmp/p88-default.txt; then exit 2; fi
+          grep -q 'P88_EXPLICIT_OPERATOR_OPT_IN_REQUIRED' /tmp/p88-default.txt
+      - name: P88 evidence gate regression tests
+        run: node --test production/ast-review/test-p88-current-source-evidence-gate.cjs
+      - name: Enforce no live source inspection or deploy from CI
+        run: |
+          node production/ast-review/p88-current-source-evidence-gate.cjs > /tmp/p88.json
+          node - <<'NODE'
+          const x=require("/tmp/p88.json");
+          if(x.state!=="INSPECTION_INCOMPLETE"||x.checkedCount!==0||
+             x.previousVersionRestorable!=="NOT_VERIFIED"||
+             x.deployment!=="BLOCKED"||x.release!=="NO_GO_RELEASE")process.exit(2);
+          console.log("P88_LIVE_ARCHIVES=0_OF_2_CHECKED");
+          console.log("P88_KNOWN_GOOD_ROLLBACK=NOT_VERIFIED");
+          console.log("P88_STAGING_DEPLOY=BLOCKED");
+          NODE
+          echo 'CLOUD_CALLS=0'
+          echo 'CLOUD_WRITES=0'
+          echo 'DEPLOY=0'
+          echo 'RELEASE=NO_GO_RELEASE'
