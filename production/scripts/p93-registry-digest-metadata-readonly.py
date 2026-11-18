@@ -39,6 +39,8 @@ def image_digest(image):
     if not isinstance(image,str) or len(image)>2048:return None
     m=DIGEST_RE.fullmatch(image)
     if not m:return None
+    name_path=image.split("@sha256:",1)[0].split("/",3)[-1]
+    if any(segment in (".","..") for segment in name_path.split("/")):return None
     return m.group(1).lower()
 
 def registry_status(image,read=cli):
