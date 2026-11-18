@@ -1,0 +1,24 @@
+{
+  "schema": "P87_PROVENANCE_EVIDENCE_V1",
+  "project": "packtook-staging",
+  "baseline": "P84_OWNER_RESULT",
+  "statusGuardDrift": "CONFIRMED_UNREMEDIATED",
+  "sourcePinAcrossScopes": "NOT_SHARED",
+  "runtimeIdentitiesShared": true,
+  "checks": {
+    "pinnedSourceGenerationReadable": "NOT_VERIFIED",
+    "priorKnownGoodSourceIdentified": "NOT_VERIFIED",
+    "priorKnownGoodRuntimeRevisionIdentified": "NOT_VERIFIED",
+    "deployedSourceToGitCommitMapped": "NOT_VERIFIED",
+    "currentFiveFunctionRuntimeMappingReviewed": "NOT_VERIFIED",
+    "stagingBetaCodebaseOwnershipIndependentlyVerified": "NOT_VERIFIED",
+    "rollbackSourceDependenciesReproducible": "NOT_VERIFIED",
+    "rollbackRestoreDryRunPassed": "NOT_VERIFIED",
+    "creditFunctionsNoImpactVerified": "NOT_VERIFIED",
+    "backendAppCheckRuntimeVerified": "NOT_VERIFIED",
+    "leastPrivilegeIAMIndependentlyReviewed": "NOT_VERIFIED",
+    "ownerApprovedStagingChangeWindow": "NOT_VERIFIED"
+  },
+  "stagingDeployAllowed": false,
+  "release": "NO_GO_RELEASE"
+}
