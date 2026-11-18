@@ -1,0 +1,28 @@
+{
+  "schema": "P86_ROLLBACK_EVIDENCE_V1",
+  "project": "packtook-staging",
+  "functions": [
+    "recordingStatus",
+    "usageStatus",
+    "reserveCredit",
+    "finalizeCredit",
+    "recoverStaleVideoReservation"
+  ],
+  "fields": {
+    "fiveFunctionRevisionInventory": "NOT_VERIFIED",
+    "statusFunctionSourceGenerations": "NOT_VERIFIED",
+    "creditFunctionSourceGenerations": "NOT_VERIFIED",
+    "sourceGenerationReadability": "NOT_VERIFIED",
+    "previousSourceDependenciesCaptured": "NOT_VERIFIED",
+    "runtimeServiceIdentityBindingsReviewed": "NOT_VERIFIED",
+    "rollbackBuildReproducibility": "NOT_VERIFIED",
+    "isolatedStagingRestoreDryRun": "NOT_VERIFIED",
+    "statusFunctionsAfterRestoreParity": "NOT_VERIFIED",
+    "creditFunctionsUnaffectedReattestation": "NOT_VERIFIED",
+    "operationalRollbackTriggers": "NOT_VERIFIED",
+    "operatorAndOwnerChangeApproval": "NOT_VERIFIED"
+  },
+  "completedRestore": false,
+  "stagingDeployAllowed": false,
+  "productionRelease": "NO_GO_RELEASE"
+}
