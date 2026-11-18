@@ -1,0 +1,54 @@
+name: PACKTOOK P69 Real Callable Transport Preflight
+on:
+  pull_request:
+    branches: [review/p68-staging-authorization-real-handler-bridge]
+  push:
+    branches: [review/p69-staging-callable-transport-candidate]
+permissions:
+  contents: read
+jobs:
+  p69-transport-demo:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      CI: "true"
+      GCLOUD_PROJECT: demo-packtook-p69
+      GCP_PROJECT: demo-packtook-p69
+      GOOGLE_CLOUD_PROJECT: demo-packtook-p69
+      FIREBASE_AUTH_EMULATOR_HOST: "127.0.0.1:9199"
+      FIRESTORE_EMULATOR_HOST: "127.0.0.1:8199"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install P69 candidate packages
+        run: npm install --prefix production/staging-candidates/p69/functions --ignore-scripts --no-audit --no-fund
+      - name: Install pinned Firebase CLI for demo emulator only
+        run: npm install --global firebase-tools@14.27.0 --ignore-scripts --no-audit --no-fund
+      - name: Check real candidate source and forbid Production references
+        run: |
+          node --check production/staging-candidates/p69/functions/index.js
+          node - <<'NODE'
+          const fs=require("node:fs");
+          const src=fs.readFileSync("production/staging-candidates/p69/functions/index.js","utf8");
+          if(src.includes("packtookProductionBeta:true") || src.includes("PACKTOOK_PRODUCTION_PROJECT_ID"))process.exit(2);
+          console.log("PRODUCTION_BETA_SHIM=ABSENT");
+          NODE
+      - name: Invoke actual Firebase Callable Transport in local emulators
+        run: firebase emulators:exec --only auth,firestore,functions --project demo-packtook-p69 --config production/staging-candidates/p69/firebase.json "node production/staging-candidates/p69/test-callable-transport.cjs"
+      - name: Preserve no-deploy gate
+        if: always()
+        run: |
+          echo 'PRODUCTION_WRITES=0'
+          echo 'STAGING_WRITES=0'
+          echo 'CLOUD_DEPLOY=0'
+          echo 'APP_CHECK_BACKEND=NOT_PROVEN'
+          echo 'P69_STAGING_DEPLOY=BLOCKED'
+          echo 'RELEASE=NO_GO_RELEASE'
