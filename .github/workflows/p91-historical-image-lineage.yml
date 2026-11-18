@@ -1,0 +1,44 @@
+name: PACKTOOK P91 Staging Historical Image Lineage
+on:
+  push:
+    branches: [review/p91-staging-revision-image-lineage]
+  pull_request:
+    branches: [review/p90-staging-revision-candidate-inventory]
+permissions:
+  contents: read
+jobs:
+  p91-hermetic-review:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: P91 safe revision image lineage synthetic tests
+        run: |
+          python3 -m py_compile production/scripts/p91-staging-image-lineage-readonly.py
+          python3 production/scripts/test-p91-staging-image-lineage-readonly.py
+          if python3 production/scripts/p91-staging-image-lineage-readonly.py > /tmp/p91-default.txt; then exit 2; fi
+          grep -q 'P91_EXPLICIT_OPERATOR_OPT_IN_REQUIRED' /tmp/p91-default.txt
+      - name: P91 evidence gate negative tests
+        run: node --test production/ast-review/test-p91-image-lineage-gate.cjs
+      - name: Require no automatic rollback version selection
+        run: |
+          node production/ast-review/p91-image-lineage-gate.cjs > /tmp/p91.json
+          node - <<'NODE'
+          const x=require("/tmp/p91.json");
+          if(x.state!=="LIVE_LINEAGE_INCOMPLETE"||
+             x.checkedCount!==0||x.knownGoodImage!=="NOT_SELECTED"||
+             x.rollbackRestorable!=="NOT_VERIFIED"||
+             x.deploy!=="BLOCKED"||x.release!=="NO_GO_RELEASE")process.exit(2);
+          console.log("P91_OWNER_HISTORY=20_AND_21");
+          console.log("P91_IMAGE_LINEAGE=NOT_CHECKED_LIVE");
+          console.log("P91_DEPLOY=BLOCKED");
+          NODE
+          echo 'P91_CLOUD_CALLS=0'
+          echo 'P91_CLOUD_WRITES=0'
+          echo 'P91_TRAFFIC_CHANGES=0'
+          echo 'P91_RELEASE=NO_GO_RELEASE'

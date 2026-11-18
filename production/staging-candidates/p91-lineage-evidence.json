@@ -1,0 +1,22 @@
+{
+  "schema": "P91_LINEAGE_EVIDENCE_V1",
+  "project": "packtook-staging",
+  "baseline": "P90_OPERATOR_RESULT",
+  "historyCounts": {
+    "recordingStatus": 20,
+    "usageStatus": 21
+  },
+  "lineage": {
+    "recordingStatus": "NOT_CHECKED",
+    "usageStatus": "NOT_CHECKED"
+  },
+  "currentPinnedSourcesReadable": true,
+  "priorKnownGoodImage": "NOT_VERIFIED",
+  "sourceToGitCommit": "NOT_VERIFIED",
+  "liveAppCheck": "NOT_PROVEN",
+  "rollbackRestorable": "NOT_VERIFIED",
+  "deploySelector": "NOT_VERIFIED",
+  "deployment": false,
+  "trafficChanged": false,
+  "release": "NO_GO_RELEASE"
+}
