@@ -1,0 +1,48 @@
+name: PACKTOOK P74 Backend App Check IAM Evidence Review
+on:
+  pull_request:
+    branches: [review/p73-api-contract-edge-matrix]
+  push:
+    branches: [review/p74-staging-backend-security-evidence]
+permissions:
+  contents: read
+jobs:
+  p74-readonly-evidence:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: Install pinned AST dependencies
+        run: npm ci --prefix production/ast-review --ignore-scripts --no-audit --no-fund
+      - name: P74 offline evidence and source negative tests
+        run: |
+          node --test production/ast-review/test-p74-security-evidence.cjs
+          node --test production/ast-review/test-p74-static-source-options.cjs
+      - name: Source option audit remains fail-closed
+        run: |
+          node production/ast-review/p74-static-source-options.cjs production/functions/index.js production/staging-candidates/p69/functions/index.js > /tmp/p74-source.json
+          node production/ast-review/p74-security-evidence.cjs < production/staging-candidates/p74-evidence-template.json > /tmp/p74-evidence.json
+          node - <<'NODE'
+          const s=require("/tmp/p74-source.json");
+          const e=require("/tmp/p74-evidence.json");
+          if(s.candidateAppCheck!=="EXPLICIT_TRUE"||s.backendAppCheck!=="NOT_PROVEN"||
+            s.stagingDeploy!=="BLOCKED"||e.verifiedCount!==0||
+            e.stagingDeploy!=="BLOCKED"||e.release!=="NO_GO_RELEASE")process.exit(2);
+          console.log("P74_CANDIDATE_SOURCE_APP_CHECK=EXPLICIT_TRUE");
+          console.log("P74_LIVE_APP_CHECK=NOT_PROVEN");
+          console.log("P74_LIVE_IAM=NOT_VERIFIED");
+          console.log("P74_STAGING_DEPLOY=BLOCKED");
+          NODE
+      - name: Zero cloud permissions and no deployment
+        run: |
+          echo 'GITHUB_TOKEN_PERMISSION=contents_read'
+          echo 'GOOGLE_CREDENTIALS=NOT_CONFIGURED'
+          echo 'CLOUD_CALLS=0'
+          echo 'CLOUD_WRITES=0'
+          echo 'DEPLOY=0'
+          echo 'RELEASE=NO_GO_RELEASE'
