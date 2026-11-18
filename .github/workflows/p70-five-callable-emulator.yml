@@ -1,0 +1,57 @@
+name: PACKTOOK P70 Five Callable Demo Emulator Matrix
+on:
+  pull_request:
+    branches: [review/p69-staging-callable-transport-candidate]
+  push:
+    branches: [review/p70-five-callable-staging-runtime-candidate]
+permissions:
+  contents: read
+jobs:
+  p70-demo-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CI: "true"
+      GCLOUD_PROJECT: demo-packtook-p69
+      GCP_PROJECT: demo-packtook-p69
+      GOOGLE_CLOUD_PROJECT: demo-packtook-p69
+      FIREBASE_AUTH_EMULATOR_HOST: "127.0.0.1:9199"
+      FIRESTORE_EMULATOR_HOST: "127.0.0.1:8199"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install Firebase SDK in isolated candidate only
+        run: npm install --prefix production/staging-candidates/p69/functions --ignore-scripts --no-audit --no-fund
+      - name: Firebase CLI for local Emulator only
+        run: npm install --global firebase-tools@14.27.0 --ignore-scripts --no-audit --no-fund
+      - name: Static review boundary: no production shim and exactly five candidate exports
+        run: |
+          node --check production/staging-candidates/p69/functions/index.js
+          node --check production/staging-candidates/p69/functions/credit-handlers.cjs
+          node - <<'NODE'
+          const fs=require("fs");
+          const s=fs.readFileSync("production/staging-candidates/p69/functions/index.js","utf8");
+          const names=["p69UsageStatus","p69RecordingStatus","p70ReserveCredit","p70FinalizeCredit","p70RecoverStaleVideoReservation"];
+          for(const name of names)if(!s.includes("exports."+name+"=protect("))process.exit(2);
+          if(s.includes("packtookProductionBeta:true")||s.includes("PACKTOOK_PRODUCTION_PROJECT_ID"))process.exit(2);
+          console.log("P70_FIVE_GUARDED_EXPORTS=TRUE");
+          NODE
+      - name: Test five callable transport and actual Firestore transaction matrix
+        run: firebase emulators:exec --only auth,firestore,functions --project demo-packtook-p69 --config production/staging-candidates/p69/firebase.json "node production/staging-candidates/p69/test-callable-transport.cjs && node production/staging-candidates/p69/test-p70-credit-emulator.cjs"
+      - name: Release gate
+        if: always()
+        run: |
+          echo 'CLOUD_DEPLOY=0'
+          echo 'REAL_STAGING_WRITES=0'
+          echo 'PRODUCTION_WRITES=0'
+          echo 'BACKEND_APP_CHECK=NOT_PROVEN'
+          echo 'STAGING_DEPLOY=BLOCKED_REVIEW_REQUIRED'
+          echo 'PRODUCTION_RELEASE=NO_GO_RELEASE'
