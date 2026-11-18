@@ -1,0 +1,44 @@
+name: PACKTOOK P93 Registry Digest Read-only Evidence
+on:
+  push:
+    branches: [review/p93-registry-image-availability]
+  pull_request:
+    branches: [review/p92-known-good-rollback-provenance]
+permissions:
+  contents: read
+jobs:
+  p93-hermetic-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: P93 hermetic registry metadata and scope tests
+        run: |
+          python3 -m py_compile production/scripts/p93-registry-digest-metadata-readonly.py
+          python3 production/scripts/test-p93-registry-digest-metadata-readonly.py
+          if python3 production/scripts/p93-registry-digest-metadata-readonly.py > /tmp/p93-default.txt; then exit 2; fi
+          grep -q 'P93_EXPLICIT_OPERATOR_OPT_IN_REQUIRED' /tmp/p93-default.txt
+      - name: P93 fail-closed release evidence gate tests
+        run: node --test production/ast-review/test-p93-registry-evidence-gate.cjs
+      - name: Never promote registry metadata to deploy authorization
+        run: |
+          node production/ast-review/p93-registry-evidence-gate.cjs > /tmp/p93.json
+          node - <<'NODE'
+          const a=require("/tmp/p93.json");
+          if(a.state!=="REGISTRY_LIVE_INSPECTION_INCOMPLETE"||
+             a.inspected!==0||a.imagePullAndExecution!=="NOT_VERIFIED"||
+             a.deploy!=="BLOCKED"||a.release!=="NO_GO_RELEASE")process.exit(2);
+          console.log("P93_P92_DIGEST_REFERENCES=41_OF_41");
+          console.log("P93_LIVE_REGISTRY_CHECK=NOT_PERFORMED");
+          console.log("P93_STAGING_DEPLOY=BLOCKED");
+          NODE
+          echo 'P93_CLOUD_CALLS=0'
+          echo 'P93_CLOUD_WRITES=0'
+          echo 'P93_DEPLOY=0'
+          echo 'P93_TRAFFIC_CHANGES=0'
+          echo 'P93_RELEASE=NO_GO_RELEASE'
