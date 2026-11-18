@@ -1,0 +1,56 @@
+name: PACKTOOK P76 Synthetic E2E Payment and Credit Emulator
+on:
+  pull_request:
+    branches: [review/p75-staging-guard-drift-remediation-readiness]
+  push:
+    branches: [review/p76-e2e-payment-credit-emulator-readiness]
+permissions:
+  contents: read
+jobs:
+  p76-synthetic-e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      CI: "true"
+      GCLOUD_PROJECT: demo-packtook-p69
+      GCP_PROJECT: demo-packtook-p69
+      GOOGLE_CLOUD_PROJECT: demo-packtook-p69
+      FIREBASE_AUTH_EMULATOR_HOST: "127.0.0.1:9199"
+      FIRESTORE_EMULATOR_HOST: "127.0.0.1:8199"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install candidate SDK and local Firebase CLI
+        run: |
+          npm install --prefix production/staging-candidates/p69/functions --ignore-scripts --no-audit --no-fund
+          npm install --global firebase-tools@14.27.0 --ignore-scripts --no-audit --no-fund
+      - name: Assert synthetic provider fixture is not imported into deployed runtime candidate
+        run: |
+          node --check production/staging-candidates/p76/synthetic-billing-fixture.cjs
+          node --check production/staging-candidates/p76/test-p76-synthetic-e2e.cjs
+          node - <<'NODE'
+          const fs=require("fs"),p="production/staging-candidates/p69/functions/index.js";
+          if(fs.readFileSync(p,"utf8").includes("synthetic-billing-fixture"))process.exit(2);
+          console.log("TEST_PROVIDER_NOT_IN_RUNTIME=TRUE");
+          NODE
+      - name: Real Auth and Firestore demo Emulator synthetic E2E
+        run: firebase emulators:exec --only auth,firestore --project demo-packtook-p69 --config production/staging-candidates/p69/firebase.json "node production/staging-candidates/p76/test-p76-synthetic-e2e.cjs"
+      - name: Preserve NO_GO and no cloud writes
+        if: always()
+        run: |
+          echo 'PAYMENT_PROVIDER=LOCAL_SYNTHETIC_ONLY'
+          echo 'VIDEO_CAMERA=NOT_TESTED'
+          echo 'LIVE_OMISE=NOT_TESTED'
+          echo 'CALLABLE_TRANSPORT=NOT_TESTED'
+          echo 'CLOUD_CALLS=0'
+          echo 'CLOUD_WRITES=0'
+          echo 'DEPLOY=0'
+          echo 'RELEASE=NO_GO_RELEASE'
