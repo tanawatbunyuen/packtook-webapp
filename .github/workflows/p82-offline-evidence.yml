@@ -1,0 +1,47 @@
+name: PACKTOOK P82 Offline Staging Security Evidence Gate
+on:
+  push:
+    branches: [review/p82-staging-security-evidence-gate]
+  pull_request:
+    branches: [review/p81-offline-source-audit]
+permissions:
+  contents: read
+jobs:
+  p82-offline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Offline fixture matrix
+        run: |
+          python3 -m py_compile production/scripts/p82-evidence-gate.py production/scripts/test-p82-evidence-gate.py
+          python3 production/scripts/test-p82-evidence-gate.py
+      - name: Replay synthetic P80 observed drift (NO CLOUD)
+        run: |
+          cat > /tmp/p82-p80-fixture.txt <<'EOF'
+          FUNCTION=recordingStatus
+            GUARDED_SOURCE=DRIFT_REVIEW_REQUIRED
+          FUNCTION=usageStatus
+            GUARDED_SOURCE=DRIFT_REVIEW_REQUIRED
+          P80_ALL_FIVE_REVISION_STABLE=YES
+          P80_GUARD_SOURCE_GATE=REVIEW_REQUIRED
+          P80_BACKEND_APP_CHECK=NOT_PROVEN
+          P80_IAM_LEAST_PRIVILEGE=NOT_VERIFIED
+          P80_CLOUD_WRITES=0
+          P80_DEPLOY=0
+          P80_RELEASE=NO_GO_RELEASE
+          P80_EXIT_CODE=2
+          P80_DIAGNOSTIC_COMPLETE
+          EOF
+          python3 production/scripts/p82-evidence-gate.py --p80-output /tmp/p82-p80-fixture.txt > /tmp/p82-report.txt
+          grep -q '^P82_SOURCE_GUARD=REVIEW_REQUIRED$' /tmp/p82-report.txt
+          grep -q '^P82_DEPLOYED_APP_CHECK=NOT_PROVEN$' /tmp/p82-report.txt
+          grep -q '^P82_IAM_LEAST_PRIVILEGE=NOT_VERIFIED$' /tmp/p82-report.txt
+          grep -q '^P82_RELEASE=NO_GO_RELEASE$' /tmp/p82-report.txt
+      - name: Enforce no cloud changes
+        run: |
+          echo 'P82_CLOUD_WRITES=0'
+          echo 'P82_DEPLOY=0'
+          echo 'P82_RELEASE=NO_GO_RELEASE'
