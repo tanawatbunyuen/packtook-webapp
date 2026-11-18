@@ -1,0 +1,45 @@
+name: PACKTOOK P83 Staging Identity Rollback Readiness
+on:
+  push:
+    branches: [review/p83-staging-identity-rollback-evidence]
+  pull_request:
+    branches: [review/p82-staging-remediation-package-preflight]
+permissions:
+  contents: read
+jobs:
+  p83-offline-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: P83 source and metadata fake-gcloud offline tests
+        run: |
+          python3 -m py_compile production/scripts/p83-staging-identity-rollback-readonly.py
+          python3 production/scripts/test-p83-staging-identity-rollback-readonly.py
+          if python3 production/scripts/p83-staging-identity-rollback-readonly.py > /tmp/p83-default.txt; then exit 2; fi
+          grep -q 'P83_OPERATOR_OPT_IN_REQUIRED' /tmp/p83-default.txt
+      - name: P83 12-field IAM and rollback readiness gate tests
+        run: node --test production/ast-review/test-p83-identity-rollback-gate.cjs
+      - name: Verify no actual deployment authorization
+        run: |
+          node production/ast-review/p83-identity-rollback-gate.cjs production/staging-candidates/p83-identity-rollback-evidence.json production/staging-candidates/p82-remediation-package.json > /tmp/p83-evidence.json
+          node - <<'NODE'
+          const x=require("/tmp/p83-evidence.json");
+          if(x.state!=="ROLLBACK_AND_IDENTITY_REVIEW_REQUIRED"||
+             x.verifiedCount!==0||x.requiredCount!==12||
+             x.stagedDeploy!=="BLOCKED"||x.release!=="NO_GO_RELEASE")process.exit(2);
+          console.log("P83_IDENTITY_ROLLBACK_EVIDENCE=0_OF_12_VERIFIED");
+          console.log("P83_STAGING_DEPLOY=BLOCKED");
+          NODE
+      - name: No Cloud Calls and no privileges
+        run: |
+          echo 'CLOUD_CALLS=0'
+          echo 'CLOUD_WRITES=0'
+          echo 'IAM_WRITES=0'
+          echo 'DEPLOY=0'
+          echo 'RELEASE=NO_GO_RELEASE'
