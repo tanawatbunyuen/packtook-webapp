@@ -1,0 +1,13 @@
+{
+  "name": "packtook-p69-staging-candidate",
+  "private": true,
+  "version": "0.0.1",
+  "main": "index.js",
+  "engines": {
+    "node": "22"
+  },
+  "dependencies": {
+    "firebase-admin": "13.6.0",
+    "firebase-functions": "6.4.0"
+  }
+}
