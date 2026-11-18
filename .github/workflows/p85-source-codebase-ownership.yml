@@ -1,0 +1,40 @@
+name: PACKTOOK P85 Repository Codebase Ownership and Scope Audit
+on:
+  push:
+    branches: [review/p85-source-codebase-ownership-audit]
+  pull_request:
+    branches: [review/p84-deployment-scope-rollback-safety]
+permissions:
+  contents: read
+jobs:
+  p85-offline-codebase:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: P85 codebase and callable ownership negative tests
+        run: node --test production/ast-review/test-p85-repository-codebase-ownership.cjs
+      - name: Confirm no deploy claim from checked-out source
+        run: |
+          node production/ast-review/p85-repository-codebase-ownership.cjs > /tmp/p85.json
+          node - <<'NODE'
+          const r=require("/tmp/p85.json");
+          if(r.state!=="CHECKED_OUT_REPOSITORY_OWNERSHIP_VERIFIED_ONLY"||
+             r.repositoryCodebaseForTargets!=="beta"||
+             r.safeFirebaseCliSelector!=="NOT_VERIFIED"||
+             r.deploy!=="BLOCKED"||r.release!=="NO_GO_RELEASE")process.exit(2);
+          console.log("P85_REPOSITORY_SOURCE_CODEBASE=beta");
+          console.log("P85_STATUS_AND_CREDIT_SHARED_CODEBASE=YES");
+          console.log("P85_LIVE_DEPLOY_OWNERSHIP=NOT_VERIFIED");
+          NODE
+      - name: No Cloud Calls or deployment
+        run: |
+          echo 'CLOUD_CALLS=0'
+          echo 'IAM_WRITES=0'
+          echo 'DEPLOY=0'
+          echo 'RELEASE=NO_GO_RELEASE'
