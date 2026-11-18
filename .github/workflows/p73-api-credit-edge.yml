@@ -1,0 +1,57 @@
+name: PACKTOOK P73 API Contract and Credit Edge Matrix
+on:
+  pull_request:
+    branches: [review/p72-semantic-parity-remediation]
+  push:
+    branches: [review/p73-api-contract-edge-matrix]
+permissions:
+  contents: read
+jobs:
+  p73-api-and-credit-edge:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CI: "true"
+      GCLOUD_PROJECT: demo-packtook-p69
+      GCP_PROJECT: demo-packtook-p69
+      GOOGLE_CLOUD_PROJECT: demo-packtook-p69
+      FIREBASE_AUTH_EMULATOR_HOST: "127.0.0.1:9199"
+      FIRESTORE_EMULATOR_HOST: "127.0.0.1:8199"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install isolated Firebase candidate deps
+        run: npm install --prefix production/staging-candidates/p69/functions --ignore-scripts --no-audit --no-fund
+      - name: Install local Firebase Emulator CLI
+        run: npm install --global firebase-tools@14.27.0 --ignore-scripts --no-audit --no-fund
+      - name: Static API mapping contract audit and mutation tests
+        run: |
+          node --test production/ast-review/test-p73-api-contract-audit.cjs
+          node production/ast-review/p73-api-contract-audit.cjs production/functions/index.js production/staging-candidates/p69/functions/index.js production/staging-candidates/p69/functions/p72-account-semantics.cjs production/staging-candidates/p69/functions/credit-handlers.cjs > /tmp/p73-audit.json
+          node - <<'NODE'
+          const data=require("/tmp/p73-audit.json");
+          if(!data.usageFieldNamesMatch||!data.recordingFieldNamesPresent||
+            !data.staticExportNamesMatch||data.fullSemanticParity!=="REVIEW_REQUIRED"||
+            data.productionRelease!=="NO_GO_RELEASE")process.exit(2);
+          console.log("P73_API_STATIC_CONTRACT=MATCH_CANDIDATE");
+          console.log("P73_RUNTIME_PARITY=REVIEW_REQUIRED");
+          NODE
+      - name: Real Emulator edge cases plus P70-P72 regressions
+        run: firebase emulators:exec --only auth,firestore --project demo-packtook-p69 --config production/staging-candidates/p69/firebase.json "node production/staging-candidates/p69/test-p70-credit-emulator.cjs && node production/staging-candidates/p69/test-p71-semantic-parity-emulator.cjs && node production/staging-candidates/p69/test-p72-account-credit-emulator.cjs && node production/staging-candidates/p69/test-p73-edge-emulator.cjs"
+      - name: Explicit release boundary
+        if: always()
+        run: |
+          echo 'CLOUD_WRITES=0'
+          echo 'DEPLOY=0'
+          echo 'STAGING_GUARD_DRIFT=OPEN'
+          echo 'BACKEND_APP_CHECK=NOT_PROVEN'
+          echo 'CLIENT_END_TO_END=NOT_PROVEN'
+          echo 'RELEASE=NO_GO_RELEASE'
