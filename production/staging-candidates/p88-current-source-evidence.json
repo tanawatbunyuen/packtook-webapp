@@ -1,0 +1,14 @@
+{
+  "schema": "P88_OPERATOR_CURRENT_SOURCE_V1",
+  "project": "packtook-staging",
+  "functions": {
+    "recordingStatus": "NOT_CHECKED",
+    "usageStatus": "NOT_CHECKED"
+  },
+  "knownGoodPriorRevision": "NOT_VERIFIED",
+  "restoreDryRun": "NOT_VERIFIED",
+  "sourceToCommitParity": "NOT_VERIFIED",
+  "backendAppCheck": "NOT_PROVEN",
+  "safeDeploySelector": "NOT_VERIFIED",
+  "deployPerformed": false
+}
