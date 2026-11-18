@@ -20,7 +20,8 @@ function audit(prod,candidate,semantics,credits){
  const exactExports=candidateNames.every(n=>candidate.includes("exports."+n+"=protect("));
  const productionNames=Object.keys(TARGETS).every(n=>prod.includes("exports."+n+"=guardedCall("));
  const usageKeys=KEYS.every(k=>new RegExp("\\b"+k+":").test(semantics));
- const prodKeys=KEYS.every(k=>new RegExp("\\b"+k+":").test(prod));
+ const prodUsage=prod.split("exports.usageStatus=guardedCall(")[1]?.split("exports.reserveCredit=guardedCall(")[0]||"";
+ const prodKeys=KEYS.every(k=>new RegExp("\\b"+k+"\\b").test(prodUsage));
  const recordingKeys=RECORDING.every(k=>new RegExp("\\b"+k+":").test(candidate));
  const configuredAppCheck=/enforceAppCheck:true/.test(candidate);
  const preProvisionOnly=!/ensureAccount\(/.test(candidate)&&!/\.create\(\{plan:"Free"/.test(candidate);
