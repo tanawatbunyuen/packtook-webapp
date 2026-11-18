@@ -1,0 +1,23 @@
+{
+  "schema": "P74_EVIDENCE_V1",
+  "project": "packtook-staging",
+  "observations": {
+    "backendAppCheckEnforced": "NOT_VERIFIED",
+    "negativeInvalidAppCheckDenied": "NOT_VERIFIED",
+    "negativeMissingAppCheckDenied": "NOT_VERIFIED",
+    "authIdTokenEnforced": "NOT_VERIFIED",
+    "stagingProjectIdentity": "NOT_VERIFIED",
+    "runtimeServiceIdentity": "NOT_VERIFIED",
+    "leastPrivilegeIamReviewed": "NOT_VERIFIED",
+    "iamBindingsReviewed": "NOT_VERIFIED",
+    "secretsBindingsReviewed": "NOT_VERIFIED",
+    "sourceArchivePinned": "NOT_VERIFIED",
+    "sourceRevisionStable": "NOT_VERIFIED",
+    "fiveFunctionConfigReviewed": "NOT_VERIFIED",
+    "pilotClosed": "NOT_VERIFIED",
+    "publicSignupClosed": "NOT_VERIFIED",
+    "monitoringAlertingReviewed": "NOT_VERIFIED",
+    "rollbackRevisionRecorded": "NOT_VERIFIED",
+    "ownerApproval": "NOT_VERIFIED"
+  }
+}
