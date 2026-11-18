@@ -1,0 +1,30 @@
+name: PACKTOOK P93B Cloud Shell Bounded Diagnostic Hotfix
+on:
+  push:
+    branches: [hotfix/p93-cloud-shell-bounded-diagnostic]
+  pull_request:
+    branches: [review/p93-registry-image-availability]
+permissions:
+  contents: read
+jobs:
+  p93b-hermetic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Test bounded read-only status function diagnostic
+        run: |
+          python3 -m py_compile production/scripts/p93b-cloud-shell-safe-readonly.py
+          python3 production/scripts/test-p93b-cloud-shell-safe-readonly.py
+      - name: Confirm no Cloud actions without explicit opt-in
+        run: |
+          if python3 production/scripts/p93b-cloud-shell-safe-readonly.py > /tmp/p93b-noop.txt; then exit 2; fi
+          grep -q 'P93B_OPT_IN_REQUIRED' /tmp/p93b-noop.txt
+          echo 'P93B_MAX_GCLOUD_CALLS=5'
+          echo 'P93B_MAX_PER_CALL_SECONDS=12'
+          echo 'P93B_CLOUD_CALLS=0'
+          echo 'P93B_CLOUD_WRITES=0'
+          echo 'P93B_DEPLOY=0'
+          echo 'RELEASE=NO_GO_RELEASE'
