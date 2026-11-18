@@ -1,0 +1,45 @@
+name: PACKTOOK P89 Staging Revision History Read-Only Preflight
+on:
+  push:
+    branches: [review/p89-rollback-history-evidence-preflight]
+  pull_request:
+    branches: [review/p88-staging-source-retrievability-evidence]
+permissions:
+  contents: read
+jobs:
+  p89-offline-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: P89 fake Cloud Run history scope and safety tests
+        run: |
+          python3 -m py_compile production/scripts/p89-staging-revision-history-readonly.py
+          python3 production/scripts/test-p89-staging-revision-history-readonly.py
+          if python3 production/scripts/p89-staging-revision-history-readonly.py > /tmp/p89-noopt.txt; then exit 2; fi
+          grep -q 'P89_EXPLICIT_OPERATOR_OPT_IN_REQUIRED' /tmp/p89-noopt.txt
+      - name: P89 provenance interpretation and rollback fail-closed tests
+        run: node --test production/ast-review/test-p89-history-evidence-gate.cjs
+      - name: No false restored status
+        run: |
+          node production/ast-review/p89-history-evidence-gate.cjs > /tmp/p89.json
+          node - <<'NODE'
+          const r=require("/tmp/p89.json");
+          if(r.state!=="HISTORY_CHECK_INCOMPLETE"||
+             r.currentSourceReadability!=="2_OF_2_P88_CONFIRMED"||
+             r.revisionHistoryInspected!==0||
+             r.rollback!=="NOT_VERIFIED"||r.stagingDeploy!=="BLOCKED"||
+             r.release!=="NO_GO_RELEASE")process.exit(2);
+          console.log("P89_CURRENT_SOURCE=2_OF_2_READABLE");
+          console.log("P89_HISTORY=NOT_CHECKED");
+          console.log("P89_KNOWN_GOOD_ROLLBACK=NOT_VERIFIED");
+          NODE
+          echo 'P89_CLOUD_CALLS=0'
+          echo 'P89_WRITES=0'
+          echo 'P89_DEPLOY=0'
+          echo 'RELEASE=NO_GO_RELEASE'
