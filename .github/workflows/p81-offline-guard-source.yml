@@ -1,0 +1,28 @@
+name: PACKTOOK P81 Offline Guard Source Audit
+on:
+  push:
+    branches: [review/p81-offline-source-audit]
+  pull_request:
+    branches: [review/p80-staging-pinned-source-guard-attestation]
+permissions:
+  contents: read
+jobs:
+  p81-offline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Compile and run offline fixtures
+        run: |
+          python3 -m py_compile production/scripts/p81-offline-source-audit.py production/scripts/test-p81-offline-source-audit.py
+          python3 production/scripts/test-p81-offline-source-audit.py
+      - name: Audit reviewed production source (not deployed source)
+        run: |
+          python3 production/scripts/p81-offline-source-audit.py --source production/functions/index.js
+      - name: Enforce no release or cloud changes
+        run: |
+          echo 'P81_CLOUD_WRITES=0'
+          echo 'P81_DEPLOY=0'
+          echo 'P81_RELEASE=NO_GO_RELEASE'
