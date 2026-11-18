@@ -1,0 +1,27 @@
+name: PACKTOOK P93C Registry Failure Diagnosis Offline
+on:
+  push:
+    branches: [hotfix/p93c-registry-failure-classification]
+  pull_request:
+    branches: [hotfix/p93-cloud-shell-bounded-diagnostic]
+permissions:
+  contents: read
+jobs:
+  p93c-hermetic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Test metadata-only registry failure classifications
+        run: |
+          python3 -m py_compile production/scripts/p93c-registry-failure-readonly.py
+          python3 production/scripts/test-p93c-registry-failure-readonly.py
+      - name: Ensure no Cloud access without opt-in
+        run: |
+          if python3 production/scripts/p93c-registry-failure-readonly.py > /tmp/p93c-default.txt; then exit 2; fi
+          grep -q 'P93C_OPT_IN_REQUIRED' /tmp/p93c-default.txt
+          echo 'P93C_CLOUD_CALLS=0'
+          echo 'P93C_CLOUD_WRITES=0'
+          echo 'P93C_RELEASE=NO_GO_RELEASE'
