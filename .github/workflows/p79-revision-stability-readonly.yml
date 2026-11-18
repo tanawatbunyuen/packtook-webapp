@@ -1,0 +1,33 @@
+name: PACKTOOK P79 Staging Revision Stability Offline Tests
+on:
+  pull_request:
+    branches: [review/p78-consolidated-pilot-release-preflight]
+  push:
+    branches: [review/p79-staging-revision-stability-preflight]
+permissions:
+  contents: read
+jobs:
+  p79-readonly-preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: P79 offline fake-gcloud stability and project-guard tests
+        run: |
+          python3 -m py_compile production/scripts/p79-staging-revision-readonly.py
+          python3 production/scripts/test-p79-staging-revision-readonly.py
+          node --test production/ast-review/test-p79-staging-readonly.cjs
+      - name: No operator opt-in means no cloud calls
+        run: |
+          if python3 production/scripts/p79-staging-revision-readonly.py > /tmp/p79-safe.txt; then exit 2; fi
+          grep -q 'P79_EXPLICIT_OPERATOR_OPT_IN_REQUIRED' /tmp/p79-safe.txt
+          echo 'CLOUD_CALLS=0'
+          echo 'CLOUD_WRITES=0'
+          echo 'DEPLOY=0'
+          echo 'APP_CHECK_BACKEND=NOT_PROVEN'
+          echo 'RELEASE=NO_GO_RELEASE'
