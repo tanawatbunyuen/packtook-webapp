@@ -8,6 +8,7 @@ const {FieldValue}=require("firebase-admin/firestore");
 const {onCall,HttpsError}=require("firebase-functions/v2/https");
 const {createStagingGate}=require("./staging-authorization.cjs");
 const {createCreditHandlers}=require("./credit-handlers.cjs");
+const {usageResponse}=require("./p72-account-semantics.cjs");
 admin.initializeApp();
 const db=admin.firestore();
 const auth=admin.auth();
@@ -60,25 +61,10 @@ function protect(handler){
   }
  });
 }
-function periodId(){return new Date().toISOString().slice(0,7)}
-function walletEnabled(a){return a.creditWalletV1===true}
-function nonnegative(v){return Number.isSafeInteger(v)&&v>=0}
-const limits={Free:20,Starter:50,Basic:300,Growth:1500,Business:5000,Pro:null};
-function readAccount(a){
- if(!a||typeof a!=="object"||!Object.hasOwn(limits,a.plan))throw new HttpsError("failed-precondition","Account plan needs review");
- const used=a.period===periodId()?a.used??0:0;
- const reserved=a.reserved??0;
- if(!nonnegative(used)||!nonnegative(reserved))throw new HttpsError("failed-precondition","Credit counters need review");
- const limit=limits[a.plan];
- const remaining=limit===null?null:walletEnabled(a)?a.creditWalletRemaining:
-  Math.max(0,limit-used-reserved);
- if(remaining!==null&&!nonnegative(remaining))throw new HttpsError("failed-precondition","Credit balance needs review");
- return {plan:a.plan,limit,used,reserved,remaining,walletEnabled:walletEnabled(a)};
-}
 exports.p69UsageStatus=protect(async id=>{
  const snap=await db.collection("accounts").doc(id).get();
  if(!snap.exists)throw new HttpsError("failed-precondition","Account not provisioned");
- return readAccount(snap.data());
+ return usageResponse(snap.data());
 });
 exports.p69RecordingStatus=protect(async (id,data)=>{
  const op=data?.operationId;
