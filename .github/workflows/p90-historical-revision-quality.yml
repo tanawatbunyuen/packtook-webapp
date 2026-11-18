@@ -1,0 +1,44 @@
+name: PACKTOOK P90 Historical Revision Quality Offline
+on:
+  push:
+    branches: [review/p90-staging-revision-candidate-inventory]
+  pull_request:
+    branches: [review/p89-rollback-history-evidence-preflight]
+permissions:
+  contents: read
+jobs:
+  p90-offline-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: P90 offline revision quality mock provider tests
+        run: |
+          python3 -m py_compile production/scripts/p90-staging-revision-quality-readonly.py
+          python3 production/scripts/test-p90-staging-revision-quality-readonly.py
+          if python3 production/scripts/p90-staging-revision-quality-readonly.py > /tmp/p90-default.txt; then exit 2; fi
+          grep -q 'P90_OPERATOR_OPT_IN_REQUIRED' /tmp/p90-default.txt
+      - name: P90 historical counts no-rollback evidence matrix
+        run: node --test production/ast-review/test-p90-revision-candidate-gate.cjs
+      - name: No false candidate selection or release
+        run: |
+          node production/ast-review/p90-revision-candidate-gate.cjs > /tmp/p90.json
+          node - <<'NODE'
+          const x=require("/tmp/p90.json");
+          if(x.state!=="HISTORY_COUNTS_CONFIRMED_ONLY"||
+             x.recordingStatusVisible!==20||x.usageStatusVisible!==21||
+             x.knownGoodCandidate!=="NOT_SELECTED"||x.rollback!=="NOT_VERIFIED"||
+             x.deploy!=="BLOCKED"||x.release!=="NO_GO_RELEASE")process.exit(2);
+          console.log("P90_OWNER_VISIBLE_REVISIONS=20_AND_21");
+          console.log("P90_KNOWN_GOOD_REVISION=NOT_SELECTED");
+          console.log("P90_ROLLBACK=NOT_VERIFIED");
+          NODE
+          echo 'P90_CLOUD_CALLS=0'
+          echo 'P90_WRITES=0'
+          echo 'P90_DEPLOY=0'
+          echo 'RELEASE=NO_GO_RELEASE'

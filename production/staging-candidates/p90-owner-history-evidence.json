@@ -1,0 +1,17 @@
+{
+  "schema": "P90_OWNER_REVISION_OBSERVATION_V1",
+  "project": "packtook-staging",
+  "observedAt": "P89_OWNER_READ_ONLY",
+  "visibleRevisionCounts": {
+    "recordingStatus": 20,
+    "usageStatus": 21
+  },
+  "currentPinnedSourcesReadable": true,
+  "knownGoodPriorRevision": "NOT_VERIFIED",
+  "priorSourceGenerationMapping": "NOT_VERIFIED",
+  "safeDeploySelector": "NOT_VERIFIED",
+  "candidateSelected": false,
+  "trafficChanged": false,
+  "deployPerformed": false,
+  "release": "NO_GO_RELEASE"
+}
