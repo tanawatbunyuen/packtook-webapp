@@ -1,0 +1,44 @@
+name: PACKTOOK P86 Selector and Rollback Safety Offline
+on:
+  push:
+    branches: [review/p86-selector-rollback-safety-evidence]
+  pull_request:
+    branches: [review/p85-source-codebase-ownership-audit]
+permissions:
+  contents: read
+jobs:
+  p86-review-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: P86 selector and rollback negative tests
+        run: node --test production/ast-review/test-p86-selector-rollback.cjs
+      - name: Require no selected deployment and no claimed restorable rollback
+        run: |
+          node production/ast-review/p86-selector-risk-matrix.cjs > /tmp/p86-selector.json
+          node production/ast-review/p86-rollback-evidence.cjs > /tmp/p86-rollback.json
+          node - <<'NODE'
+          const a=require("/tmp/p86-selector.json"), b=require("/tmp/p86-rollback.json");
+          if(a.state!=="OFFLINE_SELECTOR_RISK_MATRIX_PREPARED"||
+             a.candidateSelector!=="NOT_SELECTED"||a.safeSelectorVerified!==false||
+             a.stagingDeploy!=="BLOCKED"||a.release!=="NO_GO_RELEASE"||
+             b.state!=="ROLLBACK_NOT_VERIFIED"||b.verifiedCount!==0||
+             b.requiredCount!==12||b.deploy!=="BLOCKED"||
+             b.restorableRollback!=="NOT_VERIFIED")process.exit(2);
+          console.log("P86_SELECTOR_RISK=REVIEW_REQUIRED");
+          console.log("P86_ROLLBACK_EVIDENCE=0_OF_12_VERIFIED");
+          console.log("P86_SAFE_SELECTOR=NOT_VERIFIED");
+          console.log("P86_STAGING_DEPLOY=BLOCKED");
+          NODE
+      - name: No Google Cloud use or deployment
+        run: |
+          echo 'CLOUD_CALLS=0'
+          echo 'IAM_WRITES=0'
+          echo 'DEPLOY=0'
+          echo 'RELEASE=NO_GO_RELEASE'
