@@ -1,0 +1,19 @@
+{
+  "schema": "P89_STAGING_HISTORY_EVIDENCE_V1",
+  "project": "packtook-staging",
+  "currentArchiveReadable": {
+    "recordingStatus": true,
+    "usageStatus": true
+  },
+  "history": {
+    "recordingStatus": "NOT_CHECKED",
+    "usageStatus": "NOT_CHECKED"
+  },
+  "sourceGenerationToPreviousRevision": "NOT_VERIFIED",
+  "previousRevisionSecurityReviewed": "NOT_VERIFIED",
+  "restoreDrillPerformed": false,
+  "backendAppCheck": "NOT_PROVEN",
+  "iamLeastPrivilege": "NOT_VERIFIED",
+  "deployment": false,
+  "release": "NO_GO_RELEASE"
+}
