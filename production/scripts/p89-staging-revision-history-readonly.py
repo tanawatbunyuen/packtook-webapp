@@ -49,7 +49,16 @@ def revision_summary(raw,service):
         if not isinstance(metadata,dict):raise ValueError("P89_BAD_REVISION_METADATA")
         raw_name=metadata.get("name") or item.get("name")
         if not isinstance(raw_name,str) or not raw_name:raise ValueError("P89_REVISION_NAME_UNKNOWN")
-        last=raw_name.rsplit("/",1)[-1]
+        if "/" in raw_name:
+            prefixes=(
+                f"projects/{PROJECT}/locations/{REGION}/revisions/",
+                f"projects/{PROJECT}/locations/{REGION}/services/{service}/revisions/"
+            )
+            valid_prefix=next((p for p in prefixes if raw_name.startswith(p)),None)
+            if valid_prefix is None:raise ValueError("P89_UNTRUSTED_REVISION_PATH")
+            last=raw_name[len(valid_prefix):]
+        else:
+            last=raw_name
         if not re.fullmatch(r"[a-z0-9-]{1,120}",last):
             raise ValueError("P89_INVALID_REVISION_IDENTIFIER")
         if last in names:raise ValueError("P89_DUPLICATE_REVISION")
