@@ -1,0 +1,38 @@
+name: PACKTOOK P77 Operational Evidence Readiness
+on:
+  pull_request:
+    branches: [review/p76-e2e-payment-credit-emulator-readiness]
+  push:
+    branches: [review/p77-operations-readiness-evidence]
+permissions:
+  contents: read
+jobs:
+  p77-offline-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: Negative tests for readiness evidence
+        run: node --test production/ast-review/test-p77-operating-readiness.cjs
+      - name: Validate template is blocked even though CI passes
+        run: |
+          node production/ast-review/p77-operating-readiness.cjs < production/staging-candidates/p77-operations-evidence-template.json > /tmp/p77-report.json
+          node - <<'NODE'
+          const x=require("/tmp/p77-report.json");
+          if(x.verifiedCount!==0||x.outstandingCount!==18||
+            x.controlledPilot!=="BLOCKED"||x.productionRelease!=="NO_GO_RELEASE")process.exit(2);
+          console.log("P77_OPERATIONS_EVIDENCE=18_NOT_VERIFIED");
+          console.log("P77_CONTROLLED_PILOT=BLOCKED");
+          NODE
+      - name: Evidence is offline, no payment or cloud calls
+        run: |
+          echo 'OMISE_PROVIDER_CALLS=0'
+          echo 'FIREBASE_CLOUD_CALLS=0'
+          echo 'STAGING_WRITES=0'
+          echo 'DEPLOY=0'
+          echo 'RELEASE=NO_GO_RELEASE'
