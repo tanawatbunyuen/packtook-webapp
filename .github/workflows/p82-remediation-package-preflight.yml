@@ -1,0 +1,43 @@
+name: PACKTOOK P82 Staging Guard Remediation Package Preflight
+on:
+  push:
+    branches: [review/p82-staging-remediation-package-preflight]
+  pull_request:
+    branches: [review/p81-confirmed-staging-guard-drift-remediation]
+permissions:
+  contents: read
+jobs:
+  p82-offline-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: P82 package and fail-closed mutation tests
+        run: node --test production/ast-review/test-p82-remediation-package-preflight.cjs
+      - name: P81 authorization regression
+        run: node --test production/staging-candidates/p81/test-legacy-status-live-gate-candidate.cjs
+      - name: Require candidate-only, NOT DEPLOYED, NO_GO release state
+        run: |
+          node production/ast-review/p82-remediation-package-preflight.cjs > /tmp/p82-report.json
+          node - <<'NODE'
+          const x=require("/tmp/p82-report.json");
+          if(x.state!=="PACKAGE_REVIEW_CANDIDATE_VALIDATED"||
+             x.stagedRemediation!=="NOT_DEPLOYED"||x.deployment!=="BLOCKED"||
+             x.release!=="NO_GO_RELEASE"||x.immutableDeployedRollback!=="NOT_VERIFIED")process.exit(2);
+          console.log("P82_SOURCE_BUNDLE=OFFLINE_INTEGRITY_VALIDATED");
+          console.log("P82_SCOPE=EXACT_TWO_STATUS_CALLABLES");
+          console.log("P82_ROLLBACK=NOT_VERIFIED");
+          console.log("P82_STAGING_DEPLOY=BLOCKED");
+          NODE
+      - name: Zero cloud access
+        run: |
+          echo 'GOOGLE_CLOUD_CALLS=0'
+          echo 'CLOUD_WRITES=0'
+          echo 'IAM_WRITES=0'
+          echo 'STAGING_DEPLOY=0'
+          echo 'RELEASE=NO_GO_RELEASE'
