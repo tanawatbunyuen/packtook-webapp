@@ -1,0 +1,26 @@
+{
+  "schema": "P93_REGISTRY_EVIDENCE_V1",
+  "project": "packtook-staging",
+  "p92DigestPinnedCount": {
+    "recordingStatus": 20,
+    "usageStatus": 21
+  },
+  "currentRevisionPresent": {
+    "recordingStatus": true,
+    "usageStatus": true
+  },
+  "registry": {
+    "recordingStatus": "NOT_CHECKED",
+    "usageStatus": "NOT_CHECKED"
+  },
+  "knownGoodPriorImage": "NOT_VERIFIED",
+  "imagePullAndExecution": "NOT_VERIFIED",
+  "sourceToGitCommit": "NOT_VERIFIED",
+  "testedRollback": "NOT_PERFORMED",
+  "backendAppCheck": "NOT_PROVEN",
+  "leastPrivilegeIAM": "NOT_VERIFIED",
+  "safeDeploySelector": "NOT_VERIFIED",
+  "stagingDeploy": false,
+  "trafficChange": false,
+  "release": "NO_GO_RELEASE"
+}
