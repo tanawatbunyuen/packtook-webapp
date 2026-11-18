@@ -6,6 +6,7 @@
 const admin=require("firebase-admin");
 const {onCall,HttpsError}=require("firebase-functions/v2/https");
 const {createStagingGate}=require("./staging-authorization.cjs");
+const {createCreditHandlers}=require("./credit-handlers.cjs");
 admin.initializeApp();
 const db=admin.firestore();
 const auth=admin.auth();
@@ -48,7 +49,7 @@ function protect(handler){
    const g=gate();
    const id=await g.assertAuthorized(req);
    if(g.uid(req)!==id)throw new Error("P69_UID_INCONSISTENT");
-   return await handler(id,req.data||{});
+   return await handler(id,req.data||{}, {session:req.auth.token.p65Session});
   }catch(e){
    if(e instanceof HttpsError)throw e;
    if(e?.name==="StagingAuthorizationError")
@@ -87,6 +88,10 @@ exports.p69RecordingStatus=protect(async (id,data)=>{
  const r=snap.data();
  return {recordingId:op,status:r.status,barcode:r.barcode,period:r.period,file:r.file??null};
 });
-// No reserve/finalize/recovery exports: those remain the already tested P67/P68
-// source callbacks and require separate full Staging-specific authorization
-// integration before any production-like callable can be published.
+// Credit functions are intentionally NEW-NAME, review-only candidate callables.
+// They cannot replace the currently deployed Staging endpoint without
+// an owner-approved migration, rollback and independent security review.
+const credit=createCreditHandlers({db,FieldValue:admin.firestore.FieldValue,HttpsError});
+exports.p70ReserveCredit=protect((id,d,ctx)=>credit.reserve(id,d,ctx));
+exports.p70FinalizeCredit=protect((id,d,ctx)=>credit.finalize(id,d,ctx));
+exports.p70RecoverStaleVideoReservation=protect((id,d,ctx)=>credit.recover(id,d,ctx));
