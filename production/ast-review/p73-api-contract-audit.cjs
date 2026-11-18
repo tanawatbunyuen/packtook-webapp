@@ -19,7 +19,8 @@ function audit(prod,candidate,semantics,credits){
  const candidateNames=Object.values(TARGETS);
  const exactExports=candidateNames.every(n=>candidate.includes("exports."+n+"=protect("));
  const productionNames=Object.keys(TARGETS).every(n=>prod.includes("exports."+n+"=guardedCall("));
- const usageKeys=KEYS.every(k=>new RegExp("\\b"+k+":").test(semantics));
+ const usageBody=semantics.split("function usageResponse(")[1]?.split("return {")[1]?.split("};")[0]||"";
+ const usageKeys=KEYS.every(k=>new RegExp("\\b"+k+"\\s*(?::|[,}])").test(usageBody));
  const prodUsage=prod.split("exports.usageStatus=guardedCall(")[1]?.split("exports.reserveCredit=guardedCall(")[0]||"";
  const prodKeys=KEYS.every(k=>new RegExp("\\b"+k+"\\b").test(prodUsage));
  const recordingKeys=RECORDING.every(k=>new RegExp("\\b"+k+":").test(candidate));
