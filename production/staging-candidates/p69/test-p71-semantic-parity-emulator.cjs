@@ -70,7 +70,8 @@ test("P71 duplicate-approval request bookkeeping and credit boundary parity",asy
    assert.equal((await acc.get()).data().creditWalletRemaining,4);
   });
   await t.test("Pro plan remains unlimited without creditWalletRemaining mutation",async()=>{
-   await acc.update({plan:"Pro",creditWalletV1:true,creditWalletRemaining:4});
+   await acc.update({plan:"Pro",creditWalletV1:true,creditWalletRemaining:4,
+     planExpiresAt:new Date(Date.now()+24*60*60*1000).toISOString()});
    const r=await svc.reserve(uid,{
     operationId:"p71_operation0000003",barcode:"P71-UNLIMITED",
     deviceId:device},ctx);
