@@ -1,9 +1,9 @@
 name: PACKTOOK P69 Real Callable Transport Preflight
 on:
   pull_request:
-    branches: [review/p68-staging-authorization-real-handler-bridge]
+    branches: [review/p68-staging-authorization-real-handler-bridge, review/p69-staging-callable-transport-candidate]
   push:
-    branches: [review/p69-staging-callable-transport-candidate]
+    branches: [review/p69-staging-callable-transport-candidate, review/p70-five-callable-staging-runtime-candidate]
 permissions:
   contents: read
 jobs:
@@ -42,7 +42,7 @@ jobs:
           console.log("PRODUCTION_BETA_SHIM=ABSENT");
           NODE
       - name: Invoke actual Firebase Callable Transport in local emulators
-        run: firebase emulators:exec --only auth,firestore,functions --project demo-packtook-p69 --config production/staging-candidates/p69/firebase.json "node production/staging-candidates/p69/test-callable-transport.cjs"
+        run: firebase emulators:exec --only auth,firestore,functions --project demo-packtook-p69 --config production/staging-candidates/p69/firebase.json "node production/staging-candidates/p69/test-callable-transport.cjs && node production/staging-candidates/p69/test-p70-credit-emulator.cjs"
       - name: Preserve no-deploy gate
         if: always()
         run: |
