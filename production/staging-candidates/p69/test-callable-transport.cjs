@@ -41,6 +41,11 @@ test("P69 actual callable transport via local Functions Emulator (negative matri
  await t.test("anonymous recordingStatus rejected at real onCall transport",async()=>{
   assertDenied(await call("p69RecordingStatus",{}, {operationId:"p69_order000000001"}));
  });
+ for(const name of ["p70ReserveCredit","p70FinalizeCredit","p70RecoverStaleVideoReservation"]){
+  await t.test("anonymous "+name+" rejected at real Callable transport",async()=>{
+   assertDenied(await call(name));
+  });
+ }
  const token=await signup();
  await t.test("signed-in but missing App Check token cannot read usage",async()=>{
   assertDenied(await call("p69UsageStatus",{authorization:"Bearer "+token}));
@@ -48,6 +53,11 @@ test("P69 actual callable transport via local Functions Emulator (negative matri
  await t.test("signed-in but missing App Check token cannot read recording",async()=>{
   assertDenied(await call("p69RecordingStatus",{authorization:"Bearer "+token},{operationId:"p69_order000000001"}));
  });
+ for(const name of ["p70ReserveCredit","p70FinalizeCredit","p70RecoverStaleVideoReservation"]){
+  await t.test("authenticated but missing App Check cannot call "+name,async()=>{
+   assertDenied(await call(name,{authorization:"Bearer "+token}));
+  });
+ }
  await t.test("invalid bearer token cannot read usage",async()=>{
   assertDenied(await call("p69UsageStatus",{authorization:"Bearer invalid"}));
  });

@@ -1,0 +1,23 @@
+{
+  "id": "P70",
+  "environment": "packtook-staging",
+  "approvalStatus": "NOT_APPROVED",
+  "deployAllowed": false,
+  "sourceDirectory": "production/staging-candidates/p69/functions",
+  "productionFirebaseConfigModified": false,
+  "stagingDeploymentPerformed": false,
+  "candidateCallableNames": [
+    "p69UsageStatus",
+    "p69RecordingStatus",
+    "p70ReserveCredit",
+    "p70FinalizeCredit",
+    "p70RecoverStaleVideoReservation"
+  ],
+  "replacementOfExistingCallables": false,
+  "requiresOwnerApproval": true,
+  "requiresDeploymentIdentityReview": true,
+  "requiresBackendAppCheckProof": true,
+  "requiresCreditSemanticParityReview": true,
+  "requiresImmutableArchiveAndRollbackPlan": true,
+  "productionRelease": "NO_GO_RELEASE"
+}
