@@ -1,0 +1,41 @@
+name: PACKTOOK P81 Confirmed Staging Guard Drift Candidate
+on:
+  pull_request:
+    branches: [review/p80-staging-pinned-source-guard-attestation]
+  push:
+    branches: [review/p81-confirmed-staging-guard-drift-remediation]
+permissions:
+  contents: read
+jobs:
+  p81-guard-remediation-review:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: Review-only guarded existing-name callable tests
+        run: node --test production/staging-candidates/p81/test-legacy-status-live-gate-candidate.cjs
+      - name: Confirm operator source drift and forbid release-state promotion
+        run: |
+          node --test production/ast-review/test-p81-confirmed-drift-gate.cjs
+          node production/ast-review/p81-confirmed-drift-gate.cjs production/staging-candidates/p81/p80-operator-drift-evidence.json production/staging-candidates/p81/legacy-status-live-gate-candidate.cjs > /tmp/p81-status.json
+          node - <<'NODE'
+          const x=require("/tmp/p81-status.json");
+          if(x.state!=="GUARD_DRIFT_CONFIRMED_CANDIDATE_ONLY"||
+             x.deployedGuardStatus!=="UNREMEDIATED"||
+             x.stagingDeploy!=="BLOCKED"||
+             x.release!=="NO_GO_RELEASE")process.exit(2);
+          console.log("P81_EXISTING_STATUS_GUARD_CANDIDATE=PREPARED_NOT_DEPLOYED");
+          console.log("P81_STAGING_GUARD_DRIFT=CONFIRMED_UNREMEDIATED");
+          NODE
+      - name: No Google Cloud calls
+        run: |
+          echo 'CLOUD_CALLS=0'
+          echo 'CLOUD_WRITES=0'
+          echo 'DEPLOY=0'
+          echo 'APP_CHECK_BACKEND=NOT_PROVEN'
+          echo 'RELEASE=NO_GO_RELEASE'
