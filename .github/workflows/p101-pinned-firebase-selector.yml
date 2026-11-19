@@ -1,0 +1,54 @@
+name: PACKTOOK P101 Pinned Firebase CLI Selector Parser Offline
+on:
+  push:
+    branches: [review/p101-pinned-firebase-cli-filter-parser]
+  pull_request:
+    branches: [review/p100-exact-status-selector-offline-gate]
+permissions:
+  contents: read
+jobs:
+  p101-pinned-parser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: Install exact published Firebase CLI for parser-only tests
+        run: |
+          mkdir -p "$RUNNER_TEMP/p101-cli"
+          npm install --prefix "$RUNNER_TEMP/p101-cli" --no-save --no-audit --no-fund --ignore-scripts --loglevel=error firebase-tools@15.29.0
+          node -p "require(process.env.RUNNER_TEMP+'/p101-cli/node_modules/firebase-tools/package.json').version"
+      - name: Check real pinned parser behavior without Firebase Cloud access
+        env:
+          P101_FIREBASE_TOOLS_ROOT: ${{ runner.temp }}/p101-cli
+        run: |
+          node --test production/ast-review/test-p101-pinned-cli-parser.cjs
+          node production/ast-review/p101-pinned-cli-parser.cjs > /tmp/p101.json
+          node - <<'NODE'
+          const s=require("/tmp/p101.json");
+          if(s.firebaseCliVersion!=="15.29.0"||
+             s.offlineSyntheticSelectorCheck!=="PASS"||
+             s.targetedIds.length!==2||
+             s.prefixFilterRisk!=="EXISTS_REQUIRES_FULL_LIVE_INVENTORY"||
+             s.actualDeployedInventory!=="NOT_VERIFIED"||
+             s.deletionPlan!=="NOT_VERIFIED"||s.deploy!==0||
+             s.release!=="NO_GO_RELEASE")process.exit(2);
+          console.log("P101_PINNED_CLI_PARSER=PASS_15_29_0");
+          console.log("P101_PREFIX_MATCHING_RISK=CONFIRMED");
+          console.log("P101_FULL_DEPLOY_PLANNER=NOT_EXECUTED");
+          NODE
+      - name: Revalidate P100 and P99 safety baselines
+        run: |
+          node --test production/ast-review/test-p100-exact-status-selector-gate.cjs
+          node --test production/ast-review/test-p99-legacy-account-deploy-gate.cjs
+      - name: No Cloud requests or deployments
+        run: |
+          echo 'P101_CLOUD_CALLS=0'
+          echo 'P101_CLOUD_WRITES=0'
+          echo 'P101_DEPLOY=0'
+          echo 'P101_TRAFFIC_CHANGES=0'
+          echo 'P101_RELEASE=NO_GO_RELEASE'
