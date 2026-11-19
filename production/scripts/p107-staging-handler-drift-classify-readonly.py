@@ -58,7 +58,7 @@ def classify(body,fn):
 def similarity_class(left,right):
  if left is None or right is None:return "NOT_COMPARABLE"
  # Ratio is a coarse diagnostic only; whitespace/comments can skew it.
- ratio=difflib.SequenceMatcher(a=left,b=right,autojunk=False).ratio()
+ ratio=difflib.SequenceMatcher(a=left[:12000],b=right[:12000],autojunk=True).ratio()
  return ("OVER_90_PERCENT_TEXT" if ratio>=0.9 else
          "50_TO_90_PERCENT_TEXT" if ratio>=0.5 else
          "UNDER_50_PERCENT_TEXT")
@@ -131,7 +131,7 @@ def main():
    print("P107_ARCHIVED_ENSURE_ACCOUNT="+("YES" if summary["archived"]["usesEnsureAccount"] else "NO"))
    print("P107_GIT_ENSURE_ACCOUNT="+("YES" if summary["git"]["usesEnsureAccount"] else "NO"))
    print("P107_ARCHIVED_OUTPUT_FIELDS="+summary["archived"]["outputFieldPresence"])
-   print("P107_TEXT_SIMILARITY_BUCKET="+summary["textSimilarity"])
+   print("P107_FIRST_12K_TEXT_SIMILARITY_BUCKET="+summary["textSimilarity"])
    print("P107_HANDLER_TEXT_MATCH="+("YES" if summary["handlerTextMatch"] else "NO"))
   print("P107_SECURITY_GUARD_EFFECTIVENESS=NOT_PROVEN")
   print("P107_SOURCE_TO_RUNNING_REVISION=NOT_VERIFIED")
