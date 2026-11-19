@@ -3,10 +3,10 @@ on:
   push:
     branches:
       - review/p113-appcheck-client-candidate
-  workflow_dispatch:
   pull_request:
     branches:
       - review/p112-appcheck-client-readiness-gate
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
@@ -35,17 +35,8 @@ jobs:
           set -e
           cat p112-gate.log
           test "$status" -eq 1
-          grep -q '^BLOCK STAGING_SITE_KEY_PROVISIONED
-      - name: Run P113 mocked App Check behavioral tests
-        run: node audit/p113-appcheck-client-regression.cjs
- p112-gate.log
-          grep -q '^P112_RESULT=NO_GO_STAGING
-      - name: Run P113 mocked App Check behavioral tests
-        run: node audit/p113-appcheck-client-regression.cjs
- p112-gate.log
-          grep -q '^P112_COUNTS=10/11
-      - name: Run P113 mocked App Check behavioral tests
-        run: node audit/p113-appcheck-client-regression.cjs
- p112-gate.log
+          grep -Fq "BLOCK STAGING_SITE_KEY_PROVISIONED" p112-gate.log
+          grep -Fq "P112_RESULT=NO_GO_STAGING" p112-gate.log
+          grep -Fq "P112_COUNTS=10/11" p112-gate.log
       - name: Run P113 mocked App Check behavioral tests
         run: node audit/p113-appcheck-client-regression.cjs
