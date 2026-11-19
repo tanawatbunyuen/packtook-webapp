@@ -4,6 +4,9 @@ on:
     branches:
       - review/p115-staging-readonly-runtime-preflight
   workflow_dispatch:
+  pull_request:
+    branches:
+      - review/p113-appcheck-client-candidate
 permissions:
   contents: read
 jobs:
