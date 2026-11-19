@@ -23,7 +23,7 @@ function analyze({source=fs.readFileSync(path.join(ROOT,"functions/index.js"),"u
   source.includes("live.customClaims?.packtookProductionBeta!==true")&&
   source.includes('ref.create({plan:"Free"'));
  const usageStart=source.indexOf("exports.usageStatus=");
- const usageEnd=usageStart<0?-1:source.indexOf("\\n});",usageStart);
+ const usageEnd=usageStart<0?-1:source.indexOf("\n});",usageStart);
  const usage=usageEnd<0?"":source.slice(usageStart,usageEnd+4);
  check("P99_USAGE_CALLS_ENSURE_ACCOUNT",usage.includes("exports.usageStatus=guardedCall")&&
   usage.includes("const id=uid(req),ref=await ensureAccount(id),snap=await ref.get()"));
