@@ -1,0 +1,29 @@
+name: PACKTOOK P104 Staging Build Provenance Offline
+on:
+  push:
+    branches: [review/p104-staging-build-provenance-readonly]
+  pull_request:
+    branches: [review/p103-staging-codebase-metadata-attribution]
+permissions:
+  contents: read
+jobs:
+  hermetic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Test five-function source provenance and Staging guards
+        run: |
+          python3 -m py_compile production/scripts/p104-build-provenance-readonly.py
+          python3 production/scripts/test-p104-build-provenance-readonly.py
+      - name: Confirm default execution performs no Cloud requests
+        run: |
+          if python3 production/scripts/p104-build-provenance-readonly.py >/tmp/p104-noop; then exit 2; fi
+          grep -q 'P104_EXPLICIT_OPERATOR_OPT_IN_REQUIRED' /tmp/p104-noop
+          echo 'P104_HERMETIC_SOURCE_PROVENANCE=PASS'
+          echo 'P104_LIVE_STAGING_PROVENANCE=NOT_CHECKED'
+          echo 'P104_CLOUD_CALLS=0'
+          echo 'P104_DEPLOY=0'
+          echo 'P104_RELEASE=NO_GO_RELEASE'
