@@ -39,16 +39,20 @@ test("P96 credit original handler fingerprints exist but cannot certify deployed
  assert.equal(x.evidence.selectorTargeting,"NOT_VERIFIED");
 });
 for(const [name,change,expected] of [
- ["missing usage wallet calculation",x=>{x.original=x.original.replace("walletStartingCredits:","walletStartingCreditChanged:");},"CURRENT_USAGE_CONTRACT_UNKNOWN"],
- ["missing candidate injection",x=>{x.candidateSource=x.candidateSource.replace("usageResponse,","usageOutput,");},"CANDIDATE_USAGE_RESPONSE_DEPENDENCY_MISSING"],
+ ["missing usage wallet calculation",x=>{x.original=x.original.replace(extract(x.original,"usageStatus"),extract(x.original,"usageStatus").replace("walletStartingCredits:","walletStartingCreditChanged:"));},"CURRENT_USAGE_CONTRACT_UNKNOWN"],
+ ["missing candidate injection",x=>{x.candidateSource=x.candidateSource.replaceAll("usageResponse","usageOutput");},"CANDIDATE_USAGE_RESPONSE_DEPENDENCY_MISSING"],
  ["missing client-status safeguard",x=>{x.candidateSource=x.candidateSource.replace("enforceAppCheck:true","enforceAppCheck:false");},"CANDIDATE_EXPORTS_NOT_RESTRICTED"],
  ["registered candidate into live exports",x=>{x.original+='\ncreateP81LegacyHandlers(db);';},"P81_NOT_ISOLATED"],
  ["changed recording owner reference",x=>{x.original=x.original.replace("ownerRef(id)).collection(\"recordings\")","own(id)).collection(\"recordings\")");},"RECORDING_ACCOUNT_PATH_DIFFERENCE_NOT_DETECTED"],
  ["codebase beta missing",x=>{x.config={...x.config,functions:[{source:"functions",codebase:"other"}]};},"BETA_CODEBASE_UNMAPPED"],
- ["missing credit export",x=>{x.original=x.original.replace("exports.reserveCredit=","exports.changedReserveCredit=");},"CREDIT_EXPORT_MISSING"]
+ ["missing credit export",x=>{x.original=x.original.replace("exports.reserveCredit=","exports.changedReserveCredit=");},"P96_DUPLICATE_OR_MISSING_EXPORT_reserveCredit"]
 ]){
  test("P96 fail-close if "+name,()=>{
   const x=input();change(x);
+  if(name==="missing credit export"){
+    assert.throws(()=>audit(x),/P96_DUPLICATE_OR_MISSING_EXPORT_reserveCredit/);
+    return;
+  }
   const r=audit(x);
   assert.equal(r.offlineSourceVerified,false,name);
   assert.ok(r.findings.includes(expected),JSON.stringify(r.findings));
