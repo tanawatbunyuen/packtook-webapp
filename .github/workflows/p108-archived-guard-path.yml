@@ -1,0 +1,30 @@
+name: PACKTOOK P108 Archived Guard Path Offline Analysis
+on:
+  push:
+    branches: [review/p108-archived-guard-path-readonly]
+  pull_request:
+    branches: [review/p107-staging-handler-drift-classification]
+permissions:
+  contents: read
+jobs:
+  hermetic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: P108 synthetic source ZIP guard and indirect result classifier
+        run: |
+          python3 -m py_compile production/scripts/p108-archived-guard-path-readonly.py
+          python3 production/scripts/test-p108-archived-guard-path-readonly.py
+      - name: No implicit Cloud reads or writes
+        run: |
+          if python3 production/scripts/p108-archived-guard-path-readonly.py >/tmp/p108-noop; then exit 2; fi
+          grep -q 'P108_EXPLICIT_OPERATOR_OPT_IN_REQUIRED' /tmp/p108-noop
+          echo 'P108_OFFLINE_CLASSIFICATION=PASS'
+          echo 'P108_LIVE_STAGING_CLASSIFICATION=NOT_CHECKED'
+          echo 'P108_CLOUD_CALLS=0'
+          echo 'P108_CLOUD_WRITES=0'
+          echo 'P108_DEPLOY=0'
+          echo 'P108_RELEASE=NO_GO_RELEASE'
