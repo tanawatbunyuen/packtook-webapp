@@ -18,18 +18,32 @@ async function download(relative){
  if(target.origin!==host)throw new Error("NON_STAGING_ORIGIN");
  const ctrl=new AbortController(), timer=setTimeout(()=>ctrl.abort(),7000);
  try{
-  const res=await fetch(target,{method:"GET",redirect:"manual",signal:ctrl.signal,headers:{"Accept":"text/plain,text/html,*/*"}});
-  if(res.status>=300&&res.status<400)return {outcome:"REDIRECT_UNVERIFIED",status:res.status};
-  const size=Number(res.headers.get("content-length")||0);
-  if(size>1048576)return {outcome:"BODY_TOO_LARGE",status:res.status};
-  const buf=Buffer.from(await res.arrayBuffer());
-  if(buf.length>1048576)return {outcome:"BODY_TOO_LARGE",status:res.status};
-  return {outcome:res.ok?"OK":"HTTP_ERROR",status:res.status,buf};
+  let next=target;
+  const visited=new Set();
+  let redirects=0;
+  while(true){
+   if(next.origin!==host||next.protocol!=="https:")return {outcome:"REDIRECT_BLOCKED_CROSS_ORIGIN",redirects};
+   if(visited.has(next.href))return {outcome:"REDIRECT_LOOP",redirects};
+   visited.add(next.href);
+   const res=await fetch(next,{method:"GET",redirect:"manual",signal:ctrl.signal,headers:{"Accept":"text/plain,text/html,*/*"}});
+   if([301,302,303,307,308].includes(res.status)){
+    const location=res.headers.get("location");
+    if(!location||redirects>=3)return {outcome:"REDIRECT_UNVERIFIED",status:res.status,redirects};
+    next=new URL(location,next);
+    redirects++;
+    continue;
+   }
+   const size=Number(res.headers.get("content-length")||0);
+   if(size>1048576)return {outcome:"BODY_TOO_LARGE",status:res.status,redirects};
+   const buf=Buffer.from(await res.arrayBuffer());
+   if(buf.length>1048576)return {outcome:"BODY_TOO_LARGE",status:res.status,redirects};
+   return {outcome:res.ok?"OK":"HTTP_ERROR",status:res.status,buf,redirects,finalPath:next.pathname};
+  }
  }catch(err){return {outcome:"TRANSPORT_ERROR",detail:err?.name||"unknown"}}
  finally{clearTimeout(timer)}
 }
 (async()=>{
- console.log("P115_MODE=STAGING_HOSTING_ANONYMOUS_READ_ONLY");
+ console.log("P116_MODE=STAGING_HOSTING_ANONYMOUS_READ_ONLY");
  console.log("P115_TARGET="+host);
  let matched=0, drift=0, unavailable=0;
  for(const [remote,local] of files){
@@ -41,9 +55,10 @@ async function download(relative){
   else{state="HOSTED_SOURCE_DIFFERS";drift++;}
   console.log("P115_FILE="+remote+" STATE="+state+" HTTP="+(result.status??"N/A")+
    " REVIEW_SHA256="+sha(current)+
-   " HOST_SHA256="+(result.buf?sha(result.buf):"N/A"));
+   " HOST_SHA256="+(result.buf?sha(result.buf):"N/A")+
+   " REDIRECTS="+(result.redirects??0)+" FINAL_PATH="+(result.finalPath??"N/A"));
  }
  console.log("P115_MATCHED="+matched+" P115_DRIFT="+drift+" P115_UNAVAILABLE="+unavailable);
- console.log("P115_DECISION=NO_GO_RUNTIME_NOT_ATTESTED");
+ console.log("P116_DECISION=NO_GO_RUNTIME_NOT_ATTESTED");
  console.log("P115_PRODUCTION_WRITES=0 P115_STAGING_WRITES=0");
 })().catch(e=>{console.error("P115_PROBE_INTERNAL_ERROR",e.message);process.exitCode=1});
