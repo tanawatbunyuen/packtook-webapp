@@ -1,0 +1,29 @@
+name: P117 Staging Deploy NO_GO Evidence Gate
+on:
+  push:
+    branches:
+      - review/p117-staging-deploy-readiness-gate
+  pull_request:
+    branches:
+      - review/p116-staging-redirect-provenance
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-no-go-attestation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and evidence parse
+        run: |
+          node --check audit/p117-staging-deploy-gate.cjs
+          node -e "JSON.parse(require('fs').readFileSync('audit/p117-staging-evidence.json','utf8'))"
+      - name: Execute fail-closed deployment evidence gate
+        run: |
+          node audit/p117-staging-deploy-gate.cjs | tee p117-gate.log
+          grep -Fq 'P117_DECISION=NO_GO_STAGING' p117-gate.log
+          grep -Fq 'P117_CLOUD_CALLS=0 P117_DEPLOYMENTS=0' p117-gate.log
