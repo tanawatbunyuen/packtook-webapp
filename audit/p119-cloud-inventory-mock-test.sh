@@ -19,7 +19,11 @@ else
 fi
 MOCK
 chmod +x "$tmp/gcloud"
-PATH="$tmp:$PATH" bash "$root/audit/p119-staging-cloud-inventory-readonly.sh" > "$tmp/out"
+if ! PATH="$tmp:$PATH" bash "$root/audit/p119-staging-cloud-inventory-readonly.sh" > "$tmp/out"; then
+  cat "$tmp/out"
+  echo "P119_MOCK_RUN_FAILED" >&2
+  exit 1
+fi
 grep -Fq "P119_FUNCTIONS_LISTED=2" "$tmp/out"
 grep -Fq "P119_FUNCTION=recordingStatus" "$tmp/out"
 grep -Fq "P119_FUNCTION=usageStatus" "$tmp/out"
