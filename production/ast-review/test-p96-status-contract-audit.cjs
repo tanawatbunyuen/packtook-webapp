@@ -39,7 +39,7 @@ test("P96 credit original handler fingerprints exist but cannot certify deployed
  assert.equal(x.evidence.selectorTargeting,"NOT_VERIFIED");
 });
 for(const [name,change,expected] of [
- ["missing usage wallet calculation",x=>{x.original=x.original.replace(extract(x.original,"usageStatus"),extract(x.original,"usageStatus").replace("walletStartingCredits:","walletStartingCreditChanged:"));},"CURRENT_USAGE_CONTRACT_UNKNOWN"],
+ ["missing usage wallet calculation",x=>{x.original=x.original.replace(extract(x.original,"usageStatus"),extract(x.original,"usageStatus").replaceAll("walletStartingCredits","walletStartingCreditChanged"));},"CURRENT_USAGE_CONTRACT_UNKNOWN"],
  ["missing candidate injection",x=>{x.candidateSource=x.candidateSource.replaceAll("usageResponse","usageOutput");},"CANDIDATE_USAGE_RESPONSE_DEPENDENCY_MISSING"],
  ["missing client-status safeguard",x=>{x.candidateSource=x.candidateSource.replace("enforceAppCheck:true","enforceAppCheck:false");},"CANDIDATE_EXPORTS_NOT_RESTRICTED"],
  ["registered candidate into live exports",x=>{x.original+='\ncreateP81LegacyHandlers(db);';},"P81_NOT_ISOLATED"],
