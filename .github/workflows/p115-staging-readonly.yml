@@ -1,0 +1,21 @@
+name: P115 Staging Readonly Hosting Preflight
+on:
+  push:
+    branches:
+      - review/p115-staging-readonly-runtime-preflight
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  staging-hosting-readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check P115 probe syntax
+        run: node --check audit/p115-staging-hosting-readonly.cjs
+      - name: Compare staging hosted assets without mutations
+        run: node audit/p115-staging-hosting-readonly.cjs
