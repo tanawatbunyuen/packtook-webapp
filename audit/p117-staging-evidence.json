@@ -1,0 +1,17 @@
+{
+  "project_id": "packtook-staging",
+  "p116_run_id": 44559986676,
+  "p116_drift_count": 3,
+  "p116_source_match_count": 0,
+  "hosted_source_matches_candidate": false,
+  "backend_codebase_owner_verified": false,
+  "status_revisions_verified": false,
+  "appcheck_registration_verified": false,
+  "staging_e2e_verified": false,
+  "rollback_and_monitoring_approved": false,
+  "public_signup_closed_verified": false,
+  "owner_staging_deploy_approval": false,
+  "production_deploy_authorized": false,
+  "source": "Read-only GitHub Actions P116 source provenance; unknown state encoded as false until independently verified",
+  "recorded_at": "2026-11-19"
+}
