@@ -1,0 +1,30 @@
+name: PACKTOOK P102 Redacted Staging Function Inventory Offline Tests
+on:
+  push:
+    branches: [review/p102-staging-function-inventory-readonly]
+  pull_request:
+    branches: [review/p101-pinned-firebase-cli-filter-parser]
+permissions:
+  contents: read
+jobs:
+  p102-hermetic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: P102 mock function inventory and fail-closed tests
+        run: |
+          python3 -m py_compile production/scripts/p102-staging-function-inventory-readonly.py
+          python3 production/scripts/test-p102-staging-function-inventory-readonly.py
+      - name: Ensure no real Cloud requests from CI
+        run: |
+          if python3 production/scripts/p102-staging-function-inventory-readonly.py > /tmp/p102-noop.txt; then exit 2; fi
+          grep -q 'P102_EXPLICIT_OPERATOR_OPT_IN_REQUIRED' /tmp/p102-noop.txt
+          echo 'P102_HERMETIC_INVENTORY=PASS'
+          echo 'P102_LIVE_STAGING_INVENTORY=NOT_CHECKED'
+          echo 'P102_CLOUD_CALLS=0'
+          echo 'P102_CLOUD_WRITES=0'
+          echo 'P102_DEPLOY=0'
+          echo 'P102_RELEASE=NO_GO_RELEASE'
