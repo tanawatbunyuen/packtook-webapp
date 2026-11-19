@@ -1,0 +1,30 @@
+name: PACKTOOK P106 Source ZIP to Git Parity Offline
+on:
+  push:
+    branches: [review/p106-staging-status-source-parity-readonly]
+  pull_request:
+    branches: [review/p105-unlabeled-codebase-cli-grouping]
+permissions:
+  contents: read
+jobs:
+  p106-hermetic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Synthetic ZIP parity and metadata fail-close tests
+        run: |
+          python3 -m py_compile production/scripts/p106-staging-status-source-parity-readonly.py
+          python3 production/scripts/test-p106-staging-status-source-parity-readonly.py
+      - name: Ensure explicit opt-in before Cloud reads
+        run: |
+          if python3 production/scripts/p106-staging-status-source-parity-readonly.py > /tmp/p106-noop; then exit 2; fi
+          grep -q 'P106_EXPLICIT_OPERATOR_OPT_IN_REQUIRED' /tmp/p106-noop
+          echo 'P106_HERMETIC_SOURCE_PARITY=PASS'
+          echo 'P106_LIVE_STAGING_PARITY=NOT_CHECKED'
+          echo 'P106_CLOUD_CALLS=0'
+          echo 'P106_CLOUD_WRITES=0'
+          echo 'P106_DEPLOY=0'
+          echo 'P106_RELEASE=NO_GO_RELEASE'
