@@ -1,0 +1,29 @@
+name: PACKTOOK P107 Redacted Staging Handler Drift Classification
+on:
+  push:
+    branches: [review/p107-staging-handler-drift-classification]
+  pull_request:
+    branches: [review/p106-staging-status-source-parity-readonly]
+permissions:
+  contents: read
+jobs:
+  p107-hermetic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: P107 hermetic status handler ZIP drift and source-stability tests
+        run: |
+          python3 -m py_compile production/scripts/p107-staging-handler-drift-classify-readonly.py
+          python3 production/scripts/test-p107-staging-handler-drift-classify-readonly.py
+      - name: P107 explicit opt-in means no Cloud calls in CI
+        run: |
+          if python3 production/scripts/p107-staging-handler-drift-classify-readonly.py >/tmp/p107-noop; then exit 2; fi
+          grep -q P107_EXPLICIT_OPERATOR_OPT_IN_REQUIRED /tmp/p107-noop
+          echo 'P107_LIVE_STAGING_CLASSIFICATION=NOT_CHECKED'
+          echo 'P107_CLOUD_CALLS=0'
+          echo 'P107_CLOUD_WRITES=0'
+          echo 'P107_DEPLOY=0'
+          echo 'P107_RELEASE=NO_GO_RELEASE'
