@@ -1,0 +1,46 @@
+name: PACKTOOK P105 Pinned CLI Unlabeled Codebase Grouping
+on:
+  push:
+    branches: [review/p105-unlabeled-codebase-cli-grouping]
+  pull_request:
+    branches: [review/p104-staging-build-provenance-readonly]
+permissions:
+  contents: read
+jobs:
+  p105-hermetic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: Install exact Firebase CLI package for offline helper tests
+        run: |
+          mkdir -p "$RUNNER_TEMP/p105-cli"
+          npm install --prefix "$RUNNER_TEMP/p105-cli" --no-save --no-audit --no-fund --ignore-scripts --loglevel=error firebase-tools@15.29.0
+      - name: P105 inspect compiled codebase grouping only
+        env:
+          P105_FIREBASE_TOOLS_ROOT: ${{ runner.temp }}/p105-cli
+        run: |
+          node --test production/ast-review/test-p105-unlabeled-codebase-cli-grouping.cjs
+          node production/ast-review/p105-unlabeled-codebase-cli-grouping.cjs > /tmp/p105.json
+          node - <<'NODE'
+          const d=require("/tmp/p105.json");
+          if(d.cliVersion!=="15.29.0"||d.groupedByNameWithFullWant!=="FIVE_OF_FIVE_SYNTHETIC"||
+             d.groupedByNameWithStatusWant!=="TWO_OF_TWO_SYNTHETIC"||
+             d.creditFunctionsSelected!==0||d.actualDeletePlan!=="NOT_EXECUTED"||
+             d.deployedOwnership!=="NOT_VERIFIED"||d.release!=="NO_GO_RELEASE")process.exit(2);
+          console.log("P105_CLI_NAME_BASED_GROUPING=PASS_SYNTHETIC");
+          console.log("P105_CREDIT_FUNCTION_SELECTION=ZERO_SYNTHETIC");
+          console.log("P105_FULL_DEPLOY_PLANNER=NOT_EXECUTED");
+          NODE
+      - name: No Cloud interactions or deployment
+        run: |
+          echo 'P105_CLOUD_CALLS=0'
+          echo 'P105_CLOUD_WRITES=0'
+          echo 'P105_DEPLOY=0'
+          echo 'P105_TRAFFIC_CHANGES=0'
+          echo 'P105_RELEASE=NO_GO_RELEASE'
