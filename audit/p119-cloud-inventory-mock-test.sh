@@ -12,7 +12,7 @@ if [[ "$args" == *" functions list "* ]]; then
  printf '[{"name":"projects/packtook-staging/locations/asia-southeast1/functions/usageStatus"},{"name":"projects/packtook-staging/locations/asia-southeast1/functions/recordingStatus"}]\n'
 elif [[ "$args" == *" functions describe recordingStatus "* || "$args" == *" functions describe usageStatus "* ]]; then
  [[ "$args" == *" --v2 "* && "$args" == *" --region=asia-southeast1 "* ]] || exit 93
- name="3"
+ name="$3"
  printf '{"name":"projects/packtook-staging/locations/asia-southeast1/functions/%s","state":"ACTIVE","buildConfig":{"runtime":"nodejs22","entryPoint":"%s","source":{"storageSource":{}}},"labels":{"firebase-functions-codebase":"default"}}\n' "$name" "$name"
 else
  echo "MOCK_REFUSED_UNAPPROVED_GCLOUD_COMMAND" >&2;exit 94
