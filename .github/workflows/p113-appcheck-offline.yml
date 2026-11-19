@@ -4,6 +4,9 @@ on:
     branches:
       - review/p113-appcheck-client-candidate
   workflow_dispatch:
+  pull_request:
+    branches:
+      - review/p112-appcheck-client-readiness-gate
 permissions:
   contents: read
 jobs:
