@@ -1,0 +1,23 @@
+name: P120 Staging Inventory Drift Offline Mock
+on:
+  push:
+    branches:
+      - review/p120-staging-inventory-drift-evidence
+  pull_request:
+    branches:
+      - review/p119-staging-cloud-inventory-operator
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inventory-drift-offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Bash scripts
+        run: |
+          bash -n audit/p120-staging-inventory-drift-readonly.sh
+          bash -n audit/p120-inventory-drift-mock-test.sh
+      - name: Test no-write staging inventory collector
+        run: bash audit/p120-inventory-drift-mock-test.sh
