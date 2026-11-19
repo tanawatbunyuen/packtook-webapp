@@ -14,7 +14,8 @@ const limits={Free:20,Starter:50,Basic:300,Growth:1500,Business:5000,Pro:null};
 const pricesTHB={Free:0,Starter:199,Basic:299,Growth:599,Business:1290,Pro:1990};
 const deviceLimits={Free:1,Starter:1,Basic:1,Growth:3,Business:5,Pro:10};
 const region="asia-southeast1";
-const options={region,maxInstances:20,timeoutSeconds:30}; // Enable enforceAppCheck:true after configuring web App Check.
+const options={region,maxInstances:20,timeoutSeconds:30}; // Legacy callable options unchanged; P111 status-only App Check candidate.
+const statusOptions={...options,enforceAppCheck:true};
 function uid(req){if(!req.auth)throw new HttpsError("unauthenticated","Please sign in");if(req.auth.token.email_verified!==true)throw new HttpsError("permission-denied","Verify your email");return req.auth.uid}
 function data(req){return req.data&&typeof req.data==="object"?req.data:{}}
 function validOp(id){return typeof id==="string"&&/^[a-zA-Z0-9_-]{16,100}$/.test(id)}
@@ -82,7 +83,7 @@ async function ensureAccount(id){
  catch(e){if(e.code!==6&&e.code!=="already-exists")throw e}
  return ref;
 }
-exports.usageStatus=onCall(options,async req=>{
+exports.usageStatus=onCall(statusOptions,async req=>{
  const id=uid(req),ref=await ensureAccount(id),snap=await ref.get();
  if(!snap.exists)throw new HttpsError("failed-precondition","Account not provisioned");
  const a=snap.data(),limit=limits[a.plan];if(limit===undefined)throw new HttpsError("failed-precondition","Invalid plan");
@@ -186,7 +187,7 @@ exports.recoverStaleVideoReservation=onCall(options,async req=>{
   return {status:"failed",creditReturned:counted,period:r.period};
  });
 });
-exports.recordingStatus=onCall(options,async req=>{
+exports.recordingStatus=onCall(statusOptions,async req=>{
  const id=uid(req),op=data(req).operationId;
  if(!validOp(op))throw new HttpsError("invalid-argument","Invalid operation ID");
  const snap=await (await ownerRef(id)).collection("recordings").doc(op).get();
