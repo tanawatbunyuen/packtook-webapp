@@ -22,8 +22,11 @@ function analyze({source=fs.readFileSync(path.join(ROOT,"functions/index.js"),"u
   source.includes("async function ensureAccount(id)")&&
   source.includes("live.customClaims?.packtookProductionBeta!==true")&&
   source.includes('ref.create({plan:"Free"'));
- check("P99_USAGE_CALLS_ENSURE_ACCOUNT",source.includes("exports.usageStatus=guardedCall")&&
-  source.includes("const id=uid(req),ref=await ensureAccount(id),snap=await ref.get()"));
+ const usageStart=source.indexOf("exports.usageStatus=");
+ const usageEnd=usageStart<0?-1:source.indexOf("\\n});",usageStart);
+ const usage=usageEnd<0?"":source.slice(usageStart,usageEnd+4);
+ check("P99_USAGE_CALLS_ENSURE_ACCOUNT",usage.includes("exports.usageStatus=guardedCall")&&
+  usage.includes("const id=uid(req),ref=await ensureAccount(id),snap=await ref.get()"));
  check("P99_CANDIDATE_NOT_ISOLATED",!source.includes("createP98GuardedStatusHandlers")&&
   !source.includes("guarded-status-integration-candidate.cjs"));
  check("P99_CANDIDATE_READONLY_MISSING",candidate.includes("createP81LegacyHandlers")&&
