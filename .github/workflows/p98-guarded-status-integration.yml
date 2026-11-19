@@ -1,0 +1,48 @@
+name: PACKTOOK P98 Guarded Status Integration Offline
+on:
+  push:
+    branches: [review/p98-guarded-status-integration-candidate]
+  pull_request:
+    branches: [review/p97-status-contract-fixture-parity]
+permissions:
+  contents: read
+jobs:
+  p98-hermetic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: P98 guarded integration offline synthetic tests
+        run: node --test production/staging-candidates/p98/test-guarded-status-integration-candidate.cjs
+      - name: P97 original source parity regression
+        run: node --test production/staging-candidates/p97/test-status-contract-parity.cjs
+      - name: P81 and P96 authorization and source-scope regressions
+        run: |
+          node --test production/staging-candidates/p81/test-legacy-status-live-gate-candidate.cjs
+          node --test production/ast-review/test-p96-status-contract-audit.cjs
+      - name: Original exports and credit boundaries unchanged
+        run: |
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const original=fs.readFileSync('production/functions/index.js','utf8');
+          const config=JSON.parse(fs.readFileSync('production/firebase.json','utf8'));
+          const candidates=['createP98GuardedStatusHandlers','guarded-status-integration-candidate.cjs','status-contract-projection.cjs'];
+          if(candidates.some(x=>original.includes(x)))process.exit(2);
+          const beta=(Array.isArray(config.functions)?config.functions:[]).some(x=>x.codebase==='beta'&&x.source==='functions');
+          if(!beta)process.exit(2);
+          for(const name of ['recordingStatus','usageStatus','reserveCredit','finalizeCredit','recoverStaleVideoReservation'])
+            if(!original.includes('exports.'+name+'='))process.exit(2);
+          console.log('P98_CANDIDATE_UNREGISTERED=YES');
+          console.log('P98_CREDIT_EXPORT_BOUNDARY=UNCHANGED_SOURCE');
+          console.log('P98_STAGING_DEPLOY=BLOCKED');
+          NODE
+          echo 'P98_CLOUD_CALLS=0'
+          echo 'P98_CLOUD_WRITES=0'
+          echo 'P98_DEPLOY=0'
+          echo 'P98_TRAFFIC_CHANGES=0'
+          echo 'P98_RELEASE=NO_GO_RELEASE'
