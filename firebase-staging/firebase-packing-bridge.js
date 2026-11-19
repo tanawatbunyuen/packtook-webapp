@@ -1,9 +1,18 @@
 import {initializeApp} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
 import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 import {getFunctions,httpsCallable} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-functions.js";
-import {firebaseConfig} from "./firebase-v4-config.js";
+import {initializeAppCheck,ReCaptchaEnterpriseProvider} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app-check.js";
+import {firebaseConfig,recaptchaEnterpriseSiteKey} from "./firebase-v4-config.js";
 const app=initializeApp(firebaseConfig),auth=getAuth(app),functions=getFunctions(app,"asia-southeast1");
+// App Check initialization is synchronous and precedes protected callable requests.
+// Missing staging site key blocks only the protected status endpoints; never bypasses App Check.
+const appCheckReady=typeof recaptchaEnterpriseSiteKey==="string"&&recaptchaEnterpriseSiteKey.trim().length>0;
+if(appCheckReady)initializeAppCheck(app,{provider:new ReCaptchaEnterpriseProvider(recaptchaEnterpriseSiteKey.trim()),isTokenAutoRefreshEnabled:true});
 const api=name=>httpsCallable(functions,name);
+const protectedApi=name=>{
+ if(!appCheckReady)throw Error("PACKTOOK Staging App Check is not configured");
+ return api(name);
+};
 const deviceKey="packtook-device-v4";
 const deviceId=()=>{let id=localStorage.getItem(deviceKey);if(!id||!/^[a-zA-Z0-9_-]{16,100}$/.test(id)){id=crypto.randomUUID();localStorage.setItem(deviceKey,id)}return id};
 let user=null;
@@ -18,8 +27,8 @@ window.PACKTOOK_FIREBASE={
  onUser(cb){listeners.add(cb);cb(user);return()=>listeners.delete(cb)},
  async login(email,password){const result=await signInWithEmailAndPassword(auth,email,password);if(!result.user.emailVerified){await signOut(auth);throw Error("กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ")}return result.user},
  async logout(){await signOut(auth)},
- async usage(){return (await api("usageStatus")({})).data},
- async recordingStatus(operationId){return (await api("recordingStatus")({operationId})).data},
+ async usage(){return (await protectedApi("usageStatus")({})).data},
+ async recordingStatus(operationId){return (await protectedApi("recordingStatus")({operationId})).data},
  async pendingVideoReservations(){return (await api("pendingVideoReservations")({})).data},
  async recoverStaleVideoReservation(operationId){return (await api("recoverStaleVideoReservation")({operationId,confirmNoVideo:true})).data},
  async inviteOperator(email){return (await api("inviteOperator")({email})).data},
