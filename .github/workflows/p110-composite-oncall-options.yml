@@ -1,0 +1,30 @@
+name: PACKTOOK P110 Composite onCall Options Offline Gate
+on:
+  push:
+    branches: [review/p110-oncall-composite-options-analysis]
+  pull_request:
+    branches: [review/p109-archived-uid-options-audit]
+permissions:
+  contents: read
+jobs:
+  p110-hermetic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Test composite onCall options with synthetic Staging archives
+        run: |
+          python3 -m py_compile production/scripts/p110-composite-oncall-options-readonly.py
+          python3 production/scripts/test-p110-composite-oncall-options-readonly.py
+      - name: Confirm Cloud calls require operator opt-in
+        run: |
+          if python3 production/scripts/p110-composite-oncall-options-readonly.py > /tmp/p110-noop; then exit 2; fi
+          grep -q P110_EXPLICIT_OPERATOR_OPT_IN_REQUIRED /tmp/p110-noop
+          echo 'P110_HERMETIC_COMPOSITE_OPTIONS=PASS'
+          echo 'P110_LIVE_STAGING_OPTIONS=NOT_CHECKED'
+          echo 'P110_CLOUD_CALLS=0'
+          echo 'P110_CLOUD_WRITES=0'
+          echo 'P110_DEPLOY=0'
+          echo 'P110_RELEASE=NO_GO_RELEASE'
