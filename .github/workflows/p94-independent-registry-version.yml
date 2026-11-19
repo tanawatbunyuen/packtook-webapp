@@ -1,0 +1,28 @@
+name: PACKTOOK P94 Independent Registry Version Diagnostic
+on:
+  push:
+    branches: [review/p94-independent-registry-version-lookup]
+  pull_request:
+    branches: [hotfix/p93d-registry-404-resolution]
+permissions:
+  contents: read
+jobs:
+  p94-offline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: P94 independent metadata triage hermetic
+        run: |
+          python3 -m py_compile production/scripts/p94-independent-version-lookup-readonly.py
+          python3 production/scripts/test-p94-independent-version-lookup-readonly.py
+      - name: Confirm no accidental Cloud requests
+        run: |
+          if python3 production/scripts/p94-independent-version-lookup-readonly.py > /tmp/p94-noop.txt; then exit 2; fi
+          grep -q 'P94_OPERATOR_OPT_IN_REQUIRED' /tmp/p94-noop.txt
+          echo 'P94_CLOUD_CALLS=0'
+          echo 'P94_CLOUD_WRITES=0'
+          echo 'P94_DEPLOY=0'
+          echo 'P94_RELEASE=NO_GO_RELEASE'
