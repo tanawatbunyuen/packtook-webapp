@@ -26,7 +26,26 @@ jobs:
           node --check audit/p113-appcheck-client-regression.cjs
       - name: Run P111 backend regression
         run: node audit/p111-status-appcheck-candidate.test.cjs
-      - name: Run P112 source readiness
-        run: node audit/p112-appcheck-client-readiness.cjs
+      - name: Verify P112 fail-closed gate (unprovisioned site key)
+        shell: bash
+        run: |
+          set +e
+          node audit/p112-appcheck-client-readiness.cjs > p112-gate.log 2>&1
+          status=$?
+          set -e
+          cat p112-gate.log
+          test "$status" -eq 1
+          grep -q '^BLOCK STAGING_SITE_KEY_PROVISIONED
+      - name: Run P113 mocked App Check behavioral tests
+        run: node audit/p113-appcheck-client-regression.cjs
+ p112-gate.log
+          grep -q '^P112_RESULT=NO_GO_STAGING
+      - name: Run P113 mocked App Check behavioral tests
+        run: node audit/p113-appcheck-client-regression.cjs
+ p112-gate.log
+          grep -q '^P112_COUNTS=10/11
+      - name: Run P113 mocked App Check behavioral tests
+        run: node audit/p113-appcheck-client-regression.cjs
+ p112-gate.log
       - name: Run P113 mocked App Check behavioral tests
         run: node audit/p113-appcheck-client-regression.cjs
