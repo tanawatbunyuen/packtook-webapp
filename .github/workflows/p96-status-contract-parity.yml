@@ -1,0 +1,44 @@
+name: PACKTOOK P96 Status API Contract Parity Audit
+on:
+  push:
+    branches: [review/p96-status-handler-contract-gap-audit]
+  pull_request:
+    branches: [review/p95-source-first-recovery-preflight]
+permissions:
+  contents: read
+jobs:
+  p96-hermetic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: P96 original handler contract and failure mutation tests
+        run: node --test production/ast-review/test-p96-status-contract-audit.cjs
+      - name: P81 isolated Staging Auth and App Check candidate negative tests
+        run: node --test production/staging-candidates/p81/test-legacy-status-live-gate-candidate.cjs
+      - name: P96 stop false equivalence or release assumptions
+        run: |
+          node production/ast-review/p96-status-contract-audit.cjs > /tmp/p96.json
+          node - <<'NODE'
+          const x=require("/tmp/p96.json");
+          if(x.offlineSourceVerified!==true||x.findings.length!==0||
+             x.evidence.usageResponseParity!=="NOT_VERIFIED"||
+             x.evidence.recordingAccountPathParity!=="NOT_VERIFIED"||
+             x.evidence.appCheckBackend!=="NOT_PROVEN"||
+             x.evidence.selectorTargeting!=="NOT_VERIFIED"||
+             x.candidateStatus!=="UNREGISTERED_REVIEW_ONLY"||
+             x.stagingDeploy!=="BLOCKED"||x.productionRelease!=="NO_GO_RELEASE")process.exit(2);
+          console.log("P96_ORIGINAL_STATUS_CONTRACTS=INSPECTED");
+          console.log("P96_CANDIDATE_API_PARITY=NOT_VERIFIED");
+          console.log("P96_CREDIT_FUNCTIONS=EXCLUDED_3_OF_3");
+          console.log("P96_STAGING_DEPLOY=BLOCKED");
+          NODE
+          echo 'P96_CLOUD_CALLS=0'
+          echo 'P96_CLOUD_WRITES=0'
+          echo 'P96_DEPLOY=0'
+          echo 'P96_RELEASE=NO_GO_RELEASE'
