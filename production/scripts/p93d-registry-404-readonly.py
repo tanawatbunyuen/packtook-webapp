@@ -8,6 +8,7 @@ Does not print image URI, digest, repo name, raw errors or credentials.
 Never authorizes rollback, IAM edits, registry writes or deployment.
 """
 import argparse
+from functools import lru_cache
 import importlib.util
 from pathlib import Path
 import re
@@ -19,6 +20,7 @@ REGION="asia-southeast1"
 ROOT=Path(__file__).resolve().parent
 REPO=re.compile(r"^[a-z][a-z0-9_-]{0,62}$")
 
+@lru_cache(maxsize=1)
 def load_p93c():
     spec=importlib.util.spec_from_file_location("p93d_p93c",ROOT/"p93c-registry-failure-readonly.py")
     mod=importlib.util.module_from_spec(spec)
