@@ -41,8 +41,8 @@ def build_summary(name,raw):
         raise ValueError("P104_INVALID_ENTRYPOINT")
     svc=service.get("service")
     # Cloud Run service name is often shorter than Cloud Functions resource path.
-    service_valid=isinstance(svc,str) and svc.startswith(
-        f"projects/{PROJECT}/locations/{REGION}/services/") and len(svc)>75
+    service_prefix=f"projects/{PROJECT}/locations/{REGION}/services/"
+    service_valid=isinstance(svc,str) and svc.startswith(service_prefix) and len(svc)>len(service_prefix)
     source=build.get("source")
     signature=None
     if isinstance(source,dict):
