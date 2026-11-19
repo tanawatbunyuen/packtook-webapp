@@ -1,0 +1,27 @@
+name: P118 Status Selector Isolation Gate
+on:
+  push:
+    branches:
+      - review/p118-status-selector-isolation
+  pull_request:
+    branches:
+      - review/p117-staging-deploy-readiness-gate
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-selector-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and inventory contract
+        run: |
+          node --check audit/p118-status-selector-isolation.cjs
+          node audit/p118-status-selector-isolation.cjs | tee p118.log
+          grep -Fq 'P118_CHECKS=17/17' p118.log
+          grep -Fq 'P118_DECISION=NO_GO_CLOUD_RUNTIME_UNVERIFIED' p118.log
+          grep -Fq 'P118_DEPLOY_EXECUTED=NO P118_CLOUD_CALLS=0' p118.log
