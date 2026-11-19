@@ -21,7 +21,9 @@ check("CLIENT_INITIALIZES_ENTERPRISE",/initializeAppCheck\s*\(/.test(bridge)&&/n
 check("CLIENT_AUTO_REFRESH",/isTokenAutoRefreshEnabled\s*:\s*true/.test(bridge));
 check("CLIENT_HAS_STAGING_SITE_KEY_BINDING",/recaptchaEnterpriseSiteKey/.test(config)&&/recaptchaEnterpriseSiteKey/.test(bridge));
 check("CLIENT_BRIDGE_LOADED",/firebase-packing-bridge\.js/.test(html));
-check("CLIENT_STATUS_CALLS_PRESENT",/api\(["']usageStatus["']\)/.test(bridge)&&/api\(["']recordingStatus["']\)/.test(bridge));
+check("CLIENT_STATUS_CALLS_PROTECTED",/protectedApi\(["']usageStatus["']\)/.test(bridge)&&/protectedApi\(["']recordingStatus["']\)/.test(bridge));
+const siteKey = config.match(/export const recaptchaEnterpriseSiteKey\s*=\s*["']([^"']*)["']/);
+check("STAGING_SITE_KEY_PROVISIONED",Boolean(siteKey?.[1]?.trim()));
 check("BACKEND_LEGACY_OPTIONS_UNCHANGED",/const options=\{region,maxInstances:20,timeoutSeconds:30\};/.test(backend));
 const failed=checks.filter(x=>x.critical&&!x.passed);
 console.log("P112_RESULT="+(failed.length?"NO_GO_STAGING":"SOURCE_READY_RUNTIME_UNVERIFIED"));
