@@ -1,0 +1,29 @@
+name: PACKTOOK P93D Registry 404 Read-only Triage
+on:
+  push:
+    branches: [hotfix/p93d-registry-404-resolution]
+  pull_request:
+    branches: [hotfix/p93c-registry-failure-classification]
+permissions:
+  contents: read
+jobs:
+  hermetic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: P93D scope, source-metadata and Registry 404 tests
+        run: |
+          python3 -m py_compile production/scripts/p93d-registry-404-readonly.py
+          python3 production/scripts/test-p93d-registry-404-readonly.py
+      - name: Reject implicit Cloud operations
+        run: |
+          if python3 production/scripts/p93d-registry-404-readonly.py > /tmp/p93d-noop.txt; then exit 2; fi
+          grep -q 'P93D_OPERATOR_OPT_IN_REQUIRED' /tmp/p93d-noop.txt
+          echo 'P93D_MAX_GCLOUD_READS=6'
+          echo 'P93D_CLOUD_CALLS=0'
+          echo 'P93D_CLOUD_WRITES=0'
+          echo 'P93D_DEPLOY=0'
+          echo 'P93D_RELEASE=NO_GO_RELEASE'
