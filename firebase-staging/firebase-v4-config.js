@@ -9,3 +9,7 @@ export const firebaseConfig = {
   appId: "1:689946391888:web:15461425185a4c272ce855",
   measurementId: "G-KYBHK4F9YM"
 };
+
+// Public reCAPTCHA Enterprise *site key* for PACKTOOK staging; provision after owner validates domain and key.
+// Intentionally blank and fail-closed until real staging configuration is supplied. Never use a production key here.
+export const recaptchaEnterpriseSiteKey = "";
