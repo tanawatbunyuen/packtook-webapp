@@ -10,7 +10,7 @@ const checks=[];
 async function check(name,fn){try{await fn();checks.push([name,true]);console.log("PASS",name)}catch(e){checks.push([name,false]);console.error("FAIL",name,e.message)}}
 function scenario(key){
  const events=[]; const instance={};
- const windowObj={};
+ const windowObj={dispatchEvent:()=>{events.push("ready")}};
  const context={
   firebaseConfig:{projectId:"packtook-staging"},recaptchaEnterpriseSiteKey:key,
   initializeApp:()=>{events.push("app");return instance},
@@ -22,7 +22,7 @@ function scenario(key){
   signInWithEmailAndPassword:async()=>({user:{emailVerified:true}}),signOut:async()=>{},
   localStorage:{getItem:()=>null,setItem:()=>{}},
   crypto:{randomUUID:()=> "a".repeat(36)},
-  window:windowObj,Set,Error,console
+  window:windowObj,Event:class{constructor(type){this.type=type}},Set,Error,console
  };
  let js=bridge.replace(/^import\s+.*?;\s*$/gm,"");
  vm.runInNewContext(js,context,{filename:"firebase-packing-bridge.js",timeout:2000});
@@ -32,7 +32,7 @@ function scenario(key){
  await check("BACKEND_HAS_SCOPED_APP_CHECK",()=>assert.match(backend,/const statusOptions=\{\.\.\.options,enforceAppCheck:true\}/));
  await check("BOTH_STATUS_CALLABLES_GUARDED",()=>{for(const n of ["usageStatus","recordingStatus"])assert.match(backend,new RegExp("exports\\."+n+"=onCall\\(statusOptions,async req=>\\{\\s*const id=uid\\(req\\)"))});
  await check("WEB_CONFIG_EXPLICIT_SITE_KEY",()=>assert.match(config,/export const recaptchaEnterpriseSiteKey\s*=/));
- await check("MISSING_KEY_DOES_NOT_INITIALIZE",()=>{const t=scenario("");assert.deepEqual(t.events,["app"])});
+ await check("MISSING_KEY_DOES_NOT_INITIALIZE",()=>{const t=scenario("");assert.deepEqual(t.events,["app","ready"])});
  await check("MISSING_KEY_FAILS_CLOSED",async()=>{const t=scenario("");await assert.rejects(t.api.usage(),/App Check is not configured/);await assert.rejects(t.api.recordingStatus("x"),/App Check is not configured/);assert.equal(t.events.some(x=>x.startsWith("callable:")),false)});
  await check("MISSING_KEY_OTHER_CALLABLES_UNCHANGED",async()=>{const t=scenario("");const r=await t.api.deviceStatus();assert.equal(r.ok,true);assert.equal(t.events.includes("callable:deviceStatus"),true)});
  await check("PRESENT_KEY_INITIALIZES_BEFORE_STATUS",async()=>{const t=scenario("test-site-key");assert.deepEqual(t.events.slice(0,2),["app","appcheck"]);const r=await t.api.usage();assert.equal(r.ok,true);assert.equal(t.events.includes("callable:usageStatus"),true)});
