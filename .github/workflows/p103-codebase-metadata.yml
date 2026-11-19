@@ -1,0 +1,28 @@
+name: PACKTOOK P103 Staging Codebase Metadata Offline Tests
+on:
+  push:
+    branches: [review/p103-staging-codebase-metadata-attribution]
+  pull_request:
+    branches: [review/p102-staging-function-inventory-readonly]
+permissions:
+  contents: read
+jobs:
+  hermetic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Test bounded five-function metadata classifier
+        run: |
+          python3 -m py_compile production/scripts/p103-codebase-metadata-readonly.py
+          python3 production/scripts/test-p103-codebase-metadata-readonly.py
+      - name: Verify no implicit gcloud action
+        run: |
+          if python3 production/scripts/p103-codebase-metadata-readonly.py > /tmp/p103-noop.txt; then exit 2; fi
+          grep -q 'P103_EXPLICIT_OPERATOR_OPT_IN_REQUIRED' /tmp/p103-noop.txt
+          echo 'P103_CLOUD_CALLS=0'
+          echo 'P103_CLOUD_WRITES=0'
+          echo 'P103_DEPLOY=0'
+          echo 'P103_RELEASE=NO_GO_RELEASE'
