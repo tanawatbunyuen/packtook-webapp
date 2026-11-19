@@ -1,0 +1,47 @@
+name: PACKTOOK P99 Legacy Account and Deploy Isolation
+on:
+  push:
+    branches: [review/p99-legacy-account-deploy-isolation]
+  pull_request:
+    branches: [review/p98-guarded-status-integration-candidate]
+permissions:
+  contents: read
+jobs:
+  p99-hermetic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: P99 exact original account behavior and deployment scope tests
+        run: node --test production/ast-review/test-p99-legacy-account-deploy-gate.cjs
+      - name: P98 guarded integration regressions
+        run: node --test production/staging-candidates/p98/test-guarded-status-integration-candidate.cjs
+      - name: P97 response parity and P96 source regressions
+        run: |
+          node --test production/staging-candidates/p97/test-status-contract-parity.cjs
+          node --test production/ast-review/test-p96-status-contract-audit.cjs
+      - name: P99 no false safety promotion
+        run: |
+          node production/ast-review/p99-legacy-account-deploy-gate.cjs > /tmp/p99.json
+          node - <<'NODE'
+          const x=require("/tmp/p99.json");
+          if(x.sourceAuditPass!==true||x.fullAccountCompatibility!=="NOT_EQUIVALENT"||
+             x.safeDeployIsolation!=="NOT_VERIFIED"||
+             x.callerEligibilityChange!=="STAGING_PILOT_ONLY"||
+             x.firebaseCliSelector!=="NOT_TESTED"||
+             x.excludedCreditFunctions.length!==3||
+             x.cloudWrites!==0||x.deploy!==false||x.release!=="NO_GO_RELEASE")process.exit(2);
+          console.log("P99_LEGACY_BETA_PROVISIONING=ORIGINAL_SOURCE_CONFIRMED");
+          console.log("P99_P98_MISSING_ACCOUNT=FAIL_CLOSED");
+          console.log("P99_EXACT_FUNCTION_SELECTOR=NOT_TESTED");
+          console.log("P99_DEPLOY=BLOCKED");
+          NODE
+          echo 'P99_CLOUD_CALLS=0'
+          echo 'P99_CLOUD_WRITES=0'
+          echo 'P99_TRAFFIC_CHANGES=0'
+          echo 'P99_RELEASE=NO_GO_RELEASE'
