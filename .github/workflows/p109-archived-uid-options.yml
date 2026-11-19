@@ -1,0 +1,30 @@
+name: PACKTOOK P109 Archived UID and Options Offline Classification
+on:
+  push:
+    branches: [review/p109-archived-uid-options-audit]
+  pull_request:
+    branches: [review/p108-archived-guard-path-readonly]
+permissions:
+  contents: read
+jobs:
+  hermetic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: P109 static uid helper and shared options with fake archives
+        run: |
+          python3 -m py_compile production/scripts/p109-archived-uid-options-readonly.py
+          python3 production/scripts/test-p109-archived-uid-options-readonly.py
+      - name: Require explicit operator opt-in for Cloud reads
+        run: |
+          if python3 production/scripts/p109-archived-uid-options-readonly.py > /tmp/p109-noop; then exit 2; fi
+          grep -q P109_EXPLICIT_OPERATOR_OPT_IN_REQUIRED /tmp/p109-noop
+          echo 'P109_HERMETIC_DEPENDENCY_REVIEW=PASS'
+          echo 'P109_LIVE_STAGING_DEPENDENCIES=NOT_CHECKED'
+          echo 'P109_CLOUD_CALLS=0'
+          echo 'P109_CLOUD_WRITES=0'
+          echo 'P109_DEPLOY=0'
+          echo 'P109_RELEASE=NO_GO_RELEASE'
