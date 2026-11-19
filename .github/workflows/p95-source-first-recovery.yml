@@ -1,0 +1,38 @@
+name: PACKTOOK P95 Source-first Recovery Preflight
+on:
+  push:
+    branches: [review/p95-source-first-recovery-preflight]
+  pull_request:
+    branches: [review/p94-independent-registry-version-lookup]
+permissions:
+  contents: read
+jobs:
+  p95-hermetic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: P95 source/registry evidence integrity and negative cases
+        run: node --test production/ast-review/test-p95-source-first-recovery-gate.cjs
+      - name: Confirm no auto-deploy, traffic or rollback approval
+        run: |
+          node production/ast-review/p95-source-first-recovery-gate.cjs > /tmp/p95.json
+          node - <<'NODE'
+          const x=require("/tmp/p95.json");
+          if(x.state!=="SOURCE_FIRST_RECOVERY_PREFLIGHT_ONLY"||
+             x.action!=="NO_DEPLOY"||x.knownGood!=="NOT_SELECTED"||
+             x.excludedCreditFunctions!==3||x.release!=="NO_GO_RELEASE")process.exit(2);
+          console.log("P95_P88_SOURCE_AVAILABLE=YES_CURRENT_ONLY");
+          console.log("P95_P94_REGISTRY_LOOKUP=TWO_NOT_FOUND_REPO_VISIBLE");
+          console.log("P95_RECOVERY=REVIEW_ONLY");
+          NODE
+          echo 'P95_CLOUD_CALLS=0'
+          echo 'P95_CLOUD_WRITES=0'
+          echo 'P95_DEPLOY=0'
+          echo 'P95_TRAFFIC_CHANGES=0'
+          echo 'P95_RELEASE=NO_GO_RELEASE'
