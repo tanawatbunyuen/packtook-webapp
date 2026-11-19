@@ -28,3 +28,9 @@ Fetched source blob SHA:
 3. Verify exact Functions source provenance and target codebase/selector before staging-only deployment.
 4. Conduct positive and negative callable tests with real staging App Check tokens, Auth verified/unverified, cross-account resource denial, plus rollback and monitoring evidence.
 5. Keep public signup closed; no production deploy without independent review and approvals.
+
+## Subsequent CI diagnostic
+- GitHub Actions PR run `44555035290` executed Node 22; `node --check` passed and P111 static regression reported `14/14 PASS`.
+- P112 initially failed because it searched for legacy `api(...)` calls after the client switched to `protectedApi(...)`. The source gate was corrected and now explicitly requires a nonempty staging site key for a GO verdict.
+- The P113 GitHub Actions workflow now treats *only* the expected missing-key `NO_GO_STAGING` result as a successful protective gate, while executing the P113 behavior suite separately.
+- A completed green GitHub Actions run for the latest CI revision is **not yet confirmed**; this report does not assert CI success.
