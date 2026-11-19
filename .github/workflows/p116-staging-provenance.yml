@@ -1,0 +1,24 @@
+name: P116 Staging Same-Origin Readonly Probe
+on:
+  push:
+    branches:
+      - review/p116-staging-redirect-provenance
+  pull_request:
+    branches:
+      - review/p115-staging-readonly-runtime-preflight
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  staging-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax gate
+        run: node --check audit/p115-staging-hosting-readonly.cjs
+      - name: Read-only staging asset fingerprint
+        run: node audit/p115-staging-hosting-readonly.cjs
