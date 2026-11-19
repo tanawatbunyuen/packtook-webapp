@@ -1,0 +1,38 @@
+{
+  "schema": "P95_SOURCE_FIRST_RECOVERY_V1",
+  "project": "packtook-staging",
+  "currentStatusSourceArchives": {
+    "recordingStatus": "READABLE_METADATA_ONLY",
+    "usageStatus": "READABLE_METADATA_ONLY"
+  },
+  "currentRevisionDigestPins": {
+    "recordingStatus": "20_OF_20",
+    "usageStatus": "21_OF_21"
+  },
+  "currentRegistryLookups": {
+    "recordingStatus": "TWO_METHODS_NOT_FOUND_REPO_VISIBLE",
+    "usageStatus": "NOT_CHECKED"
+  },
+  "statusGuardDrift": "P80_UNREMEDIATED",
+  "statusFunctions": [
+    "recordingStatus",
+    "usageStatus"
+  ],
+  "excludedCreditFunctions": [
+    "reserveCredit",
+    "finalizeCredit",
+    "recoverStaleVideoReservation"
+  ],
+  "proposedPatch": "P81_P82_CANDIDATE_ONLY",
+  "candidateSourceToCurrentRevision": "NOT_VERIFIED",
+  "sourceToGitCommit": "NOT_VERIFIED",
+  "exactDeploySelector": "NOT_VERIFIED",
+  "priorKnownGood": "NOT_SELECTED",
+  "restoreDrill": "NOT_PERFORMED",
+  "liveAppCheck": "NOT_PROVEN",
+  "IAMLeastPrivilege": "NOT_VERIFIED",
+  "cloudWrites": 0,
+  "trafficChanges": 0,
+  "deployed": false,
+  "release": "NO_GO_RELEASE"
+}
