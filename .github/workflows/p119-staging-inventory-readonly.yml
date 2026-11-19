@@ -1,0 +1,23 @@
+name: P119 Staging Inventory Operator Offline Test
+on:
+  push:
+    branches:
+      - review/p119-staging-cloud-inventory-operator
+  pull_request:
+    branches:
+      - review/p118-status-selector-isolation
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  read-only-gcloud-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shell syntax
+        run: |
+          bash -n audit/p119-staging-cloud-inventory-readonly.sh
+          bash -n audit/p119-cloud-inventory-mock-test.sh
+      - name: Run mock gcloud safety test
+        run: bash audit/p119-cloud-inventory-mock-test.sh
