@@ -1,0 +1,29 @@
+name: P113 App Check Candidate Offline Regression
+on:
+  push:
+    branches:
+      - review/p113-appcheck-client-candidate
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-security-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Parse backend and test scripts
+        run: |
+          node --check functions/index.js
+          node --check audit/p111-status-appcheck-candidate.test.cjs
+          node --check audit/p112-appcheck-client-readiness.cjs
+          node --check audit/p113-appcheck-client-regression.cjs
+      - name: Run P111 backend regression
+        run: node audit/p111-status-appcheck-candidate.test.cjs
+      - name: Run P112 source readiness
+        run: node audit/p112-appcheck-client-readiness.cjs
+      - name: Run P113 mocked App Check behavioral tests
+        run: node audit/p113-appcheck-client-regression.cjs
