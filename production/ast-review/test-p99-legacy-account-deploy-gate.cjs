@@ -28,7 +28,7 @@ for(const [name,mutate,expected] of [
  ["misconfiguring codebase",x=>x.firebase={...x.firebase,functions:[{source:"functions",codebase:"wrong"}]},"P99_BETA_CODEBASE_UNVERIFIED"],
  ["removing credit function",x=>x.source=x.source.replace("exports.finalizeCredit=","exports.otherFinalizeCredit="),"P99_ORIGINAL_FUNCTION_MISSING_finalizeCredit"],
  ["registering new candidate",x=>x.source+="\ncreateP98GuardedStatusHandlers({});","P99_CANDIDATE_NOT_ISOLATED"],
- ["tampering candidate source",x=>x.candidate=x.candidate.replace("projectUsageStatus","wrongStatusOutput"),"P99_CANDIDATE_READONLY_MISSING"],
+ ["tampering candidate source",x=>x.candidate=x.candidate.replaceAll("projectUsageStatus","wrongStatusOutput"),"P99_CANDIDATE_READONLY_MISSING"],
  ["removing original ensureAccount call",x=>x.source=x.source.replace("const id=uid(req),ref=await ensureAccount(id),snap=await ref.get()","const id=uid(req),ref=own(id),snap=await ref.get()"),"P99_USAGE_CALLS_ENSURE_ACCOUNT"]
 ]){
  test("P99 fail close: "+name,()=>{
