@@ -1,0 +1,39 @@
+name: PACKTOOK P97 Status Contract Fixture Parity
+on:
+  push:
+    branches: [review/p97-status-contract-fixture-parity]
+  pull_request:
+    branches: [review/p96-status-handler-contract-gap-audit]
+permissions:
+  contents: read
+jobs:
+  offline-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: P97 original source VM versus isolated candidate fixtures
+        run: node --test production/staging-candidates/p97/test-status-contract-parity.cjs
+      - name: Recheck P96 source scope and P81 guard negative cases
+        run: |
+          node --test production/ast-review/test-p96-status-contract-audit.cjs
+          node --test production/staging-candidates/p81/test-legacy-status-live-gate-candidate.cjs
+      - name: Confirm unregistered candidate and zero Cloud requests
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const original=fs.readFileSync('production/functions/index.js','utf8');
+          if(original.includes("status-contract-projection.cjs")||original.includes("createP81LegacyHandlers("))process.exit(2);
+          console.log("P97_CANDIDATE=UNREGISTERED");
+          console.log("P97_DEPLOYED_SOURCE_TO_GIT_PARITY=NOT_VERIFIED");
+          console.log("P97_BACKEND_APP_CHECK=NOT_PROVEN");
+          NODE
+          echo 'P97_CLOUD_CALLS=0'
+          echo 'P97_CLOUD_WRITES=0'
+          echo 'P97_DEPLOY=0'
+          echo 'P97_RELEASE=NO_GO_RELEASE'
