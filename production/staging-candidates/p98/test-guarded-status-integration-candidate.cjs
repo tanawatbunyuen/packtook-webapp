@@ -94,9 +94,11 @@ denyCase("not invited uid",(_,r)=>{r.auth.uid="otherStagingUid999"});
 denyCase("revoked pilot lease",(x)=>x.revoke(),{handler:"recordingStatus"});
 denyCase("disabled live user",(x)=>x.disable());
 denyCase("unverified live user",(x)=>x.unverify());
-test("P98 wrong project fails closed before registration",()=>{
+test("P98 wrong project denies before customer account access",async()=>{
  const x=fixture(DATA,{blocked:true,wrongProject:true});
- assert.throws(()=>x.create(),/PERMISSION_DENIED|StagingAuthorizationError|P65/);
+ const handlers=x.create();
+ await assert.rejects(handlers.usageStatus(x.req()),e=>e.code==="permission-denied");
+ assert.equal(x.calls.some(v=>v.startsWith("account:")),false);
  assert.equal(x.writes.length,0);
 });
 test("P98 no account denies without provisioning credit or account",async()=>{
