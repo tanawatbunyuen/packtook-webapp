@@ -1,0 +1,45 @@
+name: PACKTOOK P100 Exact Status Selector Offline Guard
+on:
+  push:
+    branches: [review/p100-exact-status-selector-offline-gate]
+  pull_request:
+    branches: [review/p99-legacy-account-deploy-isolation]
+permissions:
+  contents: read
+jobs:
+  p100-offline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: P100 exact selector allowlist and negative mutations
+        run: node --test production/ast-review/test-p100-exact-status-selector-gate.cjs
+      - name: P99 original account compatibility release blockers
+        run: node --test production/ast-review/test-p99-legacy-account-deploy-gate.cjs
+      - name: P100 no false deploy authorization
+        run: |
+          node production/ast-review/p100-exact-status-selector-gate.cjs > /tmp/p100.json
+          node - <<'NODE'
+          const r=require('/tmp/p100.json');
+          if(r.offlineSyntaxAllowlist!=='PASS'||
+             r.targetFunctions.join(',')!=='recordingStatus,usageStatus'||
+             r.excludedCreditFunctions.length!==3||
+             r.actualCliSelectorSemantics!=='NOT_VERIFIED'||
+             r.deployedFunctionOwnership!=='NOT_VERIFIED'||
+             r.knownGoodRollback!=='NOT_VERIFIED'||
+             r.accountProvisioningParity!=='NOT_EQUIVALENT'||
+             r.stagingDeploy!=='BLOCKED'||r.release!=='NO_GO_RELEASE')process.exit(2);
+          console.log('P100_TWO_EXACT_STATUS_TARGETS=OFFLINE_SYNTAX_PASS');
+          console.log('P100_THREE_CREDIT_FUNCTIONS=EXCLUDED');
+          console.log('P100_ACTUAL_CLI_SELECTOR=NOT_VERIFIED');
+          console.log('P100_DEPLOY=BLOCKED');
+          NODE
+          echo 'P100_CLOUD_CALLS=0'
+          echo 'P100_CLOUD_WRITES=0'
+          echo 'P100_TRAFFIC_CHANGES=0'
+          echo 'P100_RELEASE=NO_GO_RELEASE'
