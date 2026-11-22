@@ -1,0 +1,21 @@
+name: P126 Build Source Artifact Existence Offline Contract
+on:
+  push:
+    branches:
+      - review/p126-staging-build-source-artifact-existence
+  pull_request:
+    branches:
+      - review/p125-owner-source-archaeology
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  metadata-only-offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse Python scripts
+        run: python3 -m py_compile audit/p126-build-source-artifact-existence.py audit/p126-source-artifact-fixtures.py
+      - name: Run metadata-only gcloud CLI fixtures
+        run: python3 audit/p126-source-artifact-fixtures.py
