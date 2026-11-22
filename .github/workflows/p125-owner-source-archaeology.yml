@@ -1,0 +1,29 @@
+name: P125 Owner Functions Git Archaeology
+on:
+  push:
+    branches:
+      - review/p125-owner-source-archaeology
+  pull_request:
+    branches:
+      - review/p124-staging-build-provenance-lock
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  history-readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate read-only scan
+        run: bash -n audit/p125-owner-source-archaeology.sh
+      - name: Fetch branch refs for source-only archaeology
+        run: git fetch --no-tags origin '+refs/heads/*:refs/remotes/origin/*'
+      - name: Run Git symbol archaeology
+        run: |
+          bash audit/p125-owner-source-archaeology.sh | tee p125-git.log
+          grep -Fq 'P125_RESULT=DISCOVERY_ONLY_NOT_DEPLOY_PROVENANCE' p125-git.log
+          grep -Fq 'P125_CLOUD_CALLS=0 P125_DEPLOYS=0' p125-git.log
