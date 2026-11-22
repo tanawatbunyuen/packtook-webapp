@@ -1,0 +1,24 @@
+name: P122 Six Function Revision Operator Syntax Gate
+on:
+  push:
+    branches:
+      - review/p122-six-function-revision-readonly
+  pull_request:
+    branches:
+      - review/p121-owner-functions-drift-guard
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-operator-syntax:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate P122 read-only collector
+        run: |
+          bash -n audit/p122-six-function-revision-readonly.sh
+          grep -Fq 'PROJECT="packtook-staging"' audit/p122-six-function-revision-readonly.sh
+          grep -Fq 'REGION="asia-southeast1"' audit/p122-six-function-revision-readonly.sh
+          grep -Fq 'P122_CLOUD_WRITES=0 P122_SECRET_READS=0 P122_DEPLOYS=0' audit/p122-six-function-revision-readonly.sh
+          echo P122_OPERATOR_SYNTAX=PASS
