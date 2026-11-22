@@ -1,0 +1,23 @@
+name: P124 Staging Buildsource Metadata Readonly Gate
+on:
+  push:
+    branches:
+      - review/p124-staging-build-provenance-lock
+  pull_request:
+    branches:
+      - review/p123-staging-six-revision-lock
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  metadata-comparison-offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax checks
+        run: |
+          bash -n audit/p124-buildsource-readonly.sh
+          python3 -m py_compile audit/p124-compare-buildsource.py audit/p124-offline-fixtures.py
+      - name: Execute comparison safety fixtures
+        run: python3 audit/p124-offline-fixtures.py
