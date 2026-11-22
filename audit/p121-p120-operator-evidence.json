@@ -1,0 +1,35 @@
+{
+  "project": "packtook-staging",
+  "region": "asia-southeast1",
+  "cloud_function_count": 27,
+  "review_source_export_count": 23,
+  "cloud_only": [
+    "ownerGetCustomerAdjustmentHistory",
+    "ownerGetCustomerManageState",
+    "ownerGrantVideoCredits",
+    "ownerUpdateCustomerExpiry"
+  ],
+  "source_only": [],
+  "targets": {
+    "recordingStatus": {
+      "state": "ACTIVE",
+      "runtime": "nodejs22",
+      "codebase_label": "UNSET",
+      "service_revision_present": true,
+      "updated": "2026-11-08T07:39:48.578943060Z",
+      "build_source_descriptor_sha256": "c63756a457f81e704f661fd550c0123639d29a12070b8777351b8caf21017d6f"
+    },
+    "usageStatus": {
+      "state": "ACTIVE",
+      "runtime": "nodejs22",
+      "codebase_label": "UNSET",
+      "service_revision_present": true,
+      "updated": "2026-11-07T16:48:15.873417293Z",
+      "build_source_descriptor_sha256": "b5107c407dde28451336996798bae04ca7220df15a8af37cf6b75b8de218f588"
+    }
+  },
+  "decision": "NO_GO_DEPLOY_SOURCE_PROVENANCE_UNVERIFIED",
+  "source": "Operator-provided P120 real staging read-only gcloud output, not assistant-executed live cloud calls",
+  "production_writes": 0,
+  "staging_writes": 0
+}

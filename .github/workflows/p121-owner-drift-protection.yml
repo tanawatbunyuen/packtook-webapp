@@ -1,0 +1,30 @@
+name: P121 Owner Functions Drift Protection
+on:
+  push:
+    branches:
+      - review/p121-owner-functions-drift-guard
+  pull_request:
+    branches:
+      - review/p120-staging-inventory-drift-evidence
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  owner-functions-no-go:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Source and evidence validation
+        run: |
+          node --check audit/p121-owner-drift-gate.cjs
+          node -e "JSON.parse(require('fs').readFileSync('audit/p121-p120-operator-evidence.json'))"
+      - name: Verify owner drift deployment block
+        run: |
+          node audit/p121-owner-drift-gate.cjs | tee p121.log
+          grep -Fq 'P121_TESTS=12/12' p121.log
+          grep -Fq 'P121_DECISION=BLOCK_STAGING_DEPLOY_FOUR_OWNER_FUNCTIONS_NOT_IN_SOURCE' p121.log
+          grep -Fq 'P121_CLOUD_CALLS=0 P121_DEPLOYS=0' p121.log
