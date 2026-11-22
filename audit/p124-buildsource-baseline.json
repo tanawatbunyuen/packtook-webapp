@@ -1,0 +1,17 @@
+{
+  "project": "packtook-staging",
+  "region": "asia-southeast1",
+  "p123_revision_matches": 6,
+  "functions": {
+    "recordingStatus": {
+      "revision": "recordingstatus-00020-gof",
+      "descriptor_sha256": "c63756a457f81e704f661fd550c0123639d29a12070b8777351b8caf21017d6f"
+    },
+    "usageStatus": {
+      "revision": "usagestatus-00021-nob",
+      "descriptor_sha256": "b5107c407dde28451336996798bae04ca7220df15a8af37cf6b75b8de218f588"
+    }
+  },
+  "source_commit_verified": false,
+  "provenance": "P120 authenticated Cloud Shell build-source descriptor metadata digests and P123 six-revision match; descriptor digest != source archive hash"
+}
