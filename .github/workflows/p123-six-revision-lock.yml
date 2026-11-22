@@ -1,0 +1,27 @@
+name: P123 Six Function Revision Lock Offline Tests
+on:
+  push:
+    branches:
+      - review/p123-staging-six-revision-lock
+  pull_request:
+    branches:
+      - review/p122-six-function-revision-readonly
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  revision-lock-offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate scripts
+        run: |
+          bash -n audit/p123-six-revision-readonly.sh
+          node --check audit/p123-six-revision-compare.cjs
+          node --check audit/p123-six-revision-fixtures.cjs
+      - name: Execute positive and negative drift fixtures
+        run: node audit/p123-six-revision-fixtures.cjs

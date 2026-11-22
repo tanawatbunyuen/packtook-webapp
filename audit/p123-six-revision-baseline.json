@@ -1,0 +1,40 @@
+{
+  "source": "Operator-supplied P122 authenticated, read-only Cloud Shell output",
+  "observed_date": "2026-11-22",
+  "project_id": "packtook-staging",
+  "region": "asia-southeast1",
+  "functions": {
+    "recordingStatus": {
+      "revision": "recordingstatus-00020-gof",
+      "state": "ACTIVE",
+      "codebase_label": "UNSET"
+    },
+    "usageStatus": {
+      "revision": "usagestatus-00021-nob",
+      "state": "ACTIVE",
+      "codebase_label": "UNSET"
+    },
+    "ownerGetCustomerAdjustmentHistory": {
+      "revision": "ownergetcustomeradjustmenthistory-00001-jim",
+      "state": "ACTIVE",
+      "codebase_label": "UNSET"
+    },
+    "ownerGetCustomerManageState": {
+      "revision": "ownergetcustomermanagestate-00001-miz",
+      "state": "ACTIVE",
+      "codebase_label": "UNSET"
+    },
+    "ownerGrantVideoCredits": {
+      "revision": "ownergrantvideocredits-00001-nuq",
+      "state": "ACTIVE",
+      "codebase_label": "UNSET"
+    },
+    "ownerUpdateCustomerExpiry": {
+      "revision": "ownerupdatecustomerexpiry-00001-bil",
+      "state": "ACTIVE",
+      "codebase_label": "UNSET"
+    }
+  },
+  "source_commit_attested": false,
+  "deploy_authorized": false
+}
