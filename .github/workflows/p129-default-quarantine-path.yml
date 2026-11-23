@@ -1,0 +1,23 @@
+name: P129 Recovery HOME Default Path Regression
+on:
+  push:
+    branches:
+      - review/p129-quarantine-default-path-fix
+  pull_request:
+    branches:
+      - review/p128-owner-source-quarantine
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  local-recovery-path:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python parse check
+        run: python3 -m py_compile audit/p128-owner-source-quarantine.py audit/p129-default-path-fixtures.py
+      - name: Original P128 safety regressions
+        run: python3 audit/p128-owner-source-fixtures.py
+      - name: Default HOME path and preservation regressions
+        run: python3 audit/p129-default-path-fixtures.py
