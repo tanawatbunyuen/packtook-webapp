@@ -1,0 +1,21 @@
+name: P158 Verified Firestore Artifact Download Offline CI
+on:
+  push:
+    branches:
+      - review/p158-verified-firestore-artifact-download
+  pull_request:
+    branches:
+      - review/p157-firestore-download-head-probe
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-verified-fixtures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Static and synthetic download checks without network
+        run: |
+          python3 -m py_compile audit/p158-verified-artifact-download.py audit/p158-verified-download-fixtures.py
+          python3 audit/p158-verified-download-fixtures.py
