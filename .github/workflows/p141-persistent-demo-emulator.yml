@@ -1,0 +1,26 @@
+name: P141 Persistent Demo Emulator Cache Offline
+on:
+  push:
+    branches:
+      - review/p141-persistent-demo-emulator-cache
+  pull_request:
+    branches:
+      - review/p140-demo-emulators-startup
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  cache-and-startup-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Parse launcher and fixtures
+        run: |
+          bash -n audit/p141-demo-emulator-start.sh
+          bash -n audit/p141-offline-fixtures.sh
+      - name: Test private emulator cache and mock startup failures
+        run: bash audit/p141-offline-fixtures.sh
