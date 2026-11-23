@@ -1,0 +1,26 @@
+name: P145 Firebase Emulator Rules Path Guard
+on:
+  push:
+    branches:
+      - review/p145-emulator-config-rules-path-fix
+  pull_request:
+    branches:
+      - review/p144-emulator-startup-phase-diagnostic
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  rules-path-offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify relative rules target and deny-all rules
+        run: |
+          node --check audit/p145-rules-path-regression.cjs
+          node audit/p145-rules-path-regression.cjs
+      - name: Repeat prior mocked Firebase CLI fixture
+        run: bash audit/p140-offline-fixtures.sh

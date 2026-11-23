@@ -1,6 +1,6 @@
 {
   "firestore": {
-    "rules": "audit/p140-firestore-deny-all.rules"
+    "rules": "p140-firestore-deny-all.rules"
   },
   "emulators": {
     "auth": {
