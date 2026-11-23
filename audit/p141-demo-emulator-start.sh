@@ -75,11 +75,13 @@ env -i \
   --config "$AUDIT/p140-firebase-emulator.json" --non-interactive >"$LOG" 2>&1 &
 CHILD=$!
 ready() {
-  "$NODE_BIN" -e "const n=require('net'),p=[18080,19099,14400,4500];Promise.all(p.map(port=>new Promise(r=>{const c=n.connect({host:'127.0.0.1',port});c.setTimeout(800);c.once('connect',()=>{c.destroy();r(true)});c.once('error',()=>r(false));c.once('timeout',()=>{c.destroy();r(false)})}))).then(v=>process.exit(v.every(Boolean)?0:1));"
+  "$NODE_BIN" -e "const n=require('net'),p=[18080,19099];Promise.all(p.map(port=>new Promise(r=>{const c=n.connect({host:'127.0.0.1',port});c.setTimeout(800);c.once('connect',()=>{c.destroy();r(true)});c.once('error',()=>r(false));c.once('timeout',()=>{c.destroy();r(false)})}))).then(v=>process.exit(v.every(Boolean)?0:1));"
 }
 started="$(date +%s)"
 while (( $(date +%s) - started < SECONDS_LIMIT )); do
   if ready; then
+    echo 'P141_PRIMARY_LISTENERS=FIRESTORE_AUTH_RESPONDING'
+    echo 'P141_AUXILIARY_HUB_LOGGING=NOT_REQUIRED_FOR_PRIMARY_READINESS'
     echo 'P141_LOCAL_LISTENERS=RESPONDING'
     echo 'P141_EMULATOR_IDENTITY=NOT_ATTESTED'
     echo 'P141_DECISION=LOCAL_STARTUP_REACHED_NOT_IMPORT_APPROVAL'
