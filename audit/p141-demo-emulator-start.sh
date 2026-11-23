@@ -42,7 +42,7 @@ fi
 [[ $# -eq 0 ]] || { echo 'P141_BLOCK=INVALID_ARGUMENT'; exit 1; }
 for port in 18080 19099; do
   if ! "$NODE_BIN" -e "let n=require('net'),s=n.createServer();s.once('error',()=>process.exit(1));s.listen($port,'127.0.0.1',()=>s.close(()=>process.exit(0)))"; then
-    echo "P141_BLOCK=PORT_$port_IN_USE"
+    echo "P141_BLOCK=PORT_${port}_IN_USE"
     exit 1
   fi
 done
