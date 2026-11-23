@@ -1,0 +1,21 @@
+name: P157 Firestore Official Artifact HEAD Probe Offline CI
+on:
+  push:
+    branches:
+      - review/p157-firestore-download-head-probe
+  pull_request:
+    branches:
+      - review/p156-proxy-env-and-download-timeout-diagnostic
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  no-network-fixtures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python HEAD-only synthetic network mocks
+        run: |
+          python3 -m py_compile audit/p157-official-artifact-head.py audit/p157-head-fixtures.py
+          python3 audit/p157-head-fixtures.py
