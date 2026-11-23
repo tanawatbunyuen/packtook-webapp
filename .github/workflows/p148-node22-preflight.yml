@@ -1,0 +1,22 @@
+name: P148 Offline Installed Node22 Preflight
+on:
+  push:
+    branches:
+      - review/p148-local-node22-preflight
+  pull_request:
+    branches:
+      - review/p147-runtime-compatibility-diagnostics
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test offline Node22 inventory
+        run: |
+          bash -n audit/p148-node22-preflight.sh
+          bash -n audit/p148-offline-fixtures.sh
+          bash audit/p148-offline-fixtures.sh
