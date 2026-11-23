@@ -1,0 +1,21 @@
+name: P128 Quarantined Owner Source Recovery Offline Tests
+on:
+  push:
+    branches:
+      - review/p128-owner-source-quarantine
+  pull_request:
+    branches:
+      - review/p127-staging-build-archive-recovery
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  quarantine-offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse recovery and test scripts
+        run: python3 -m py_compile audit/p128-owner-source-quarantine.py audit/p128-owner-source-fixtures.py
+      - name: Test local source ZIP quarantine safety
+        run: python3 audit/p128-owner-source-fixtures.py
