@@ -1,0 +1,24 @@
+name: P147 Node Runtime and Private Error Tags Offline
+on:
+  push:
+    branches:
+      - review/p147-runtime-compatibility-diagnostics
+  pull_request:
+    branches:
+      - review/p146-firebase-emulator-error-root-cause
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  safe-error-tags:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Offline local-only Python fixtures
+        run: |
+          python3 -m py_compile audit/p147-runtime-and-error-tags.py audit/p147-error-tag-fixtures.py
+          python3 audit/p147-error-tag-fixtures.py
