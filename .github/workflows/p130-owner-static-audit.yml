@@ -1,0 +1,21 @@
+name: P130 Owner Source Static Triage Offline Tests
+on:
+  push:
+    branches:
+      - review/p130-recovered-owner-source-security-audit
+  pull_request:
+    branches:
+      - review/p129-quarantine-default-path-fix
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-static-triage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse scripts
+        run: python3 -m py_compile audit/p130-owner-source-static-audit.py audit/p130-static-audit-fixtures.py
+      - name: Run synthetic manifest and tamper tests
+        run: python3 audit/p130-static-audit-fixtures.py
