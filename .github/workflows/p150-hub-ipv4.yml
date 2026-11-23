@@ -1,0 +1,27 @@
+name: P150 Emulator Hub IPv4-only Regression
+on:
+  push:
+    branches:
+      - review/p150-emulator-hub-ipv4-binding
+  pull_request:
+    branches:
+      - review/p149-emulator-port-preflight-diagnosis
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-ipv4-hub:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate hub loopback, deny-all rules and ports
+        run: |
+          node --check audit/p150-hub-ipv4-regression.cjs
+          bash -n audit/p141-demo-emulator-start.sh
+          node audit/p150-hub-ipv4-regression.cjs
+      - name: Repeat Firebase CLI mock fixtures
+        run: bash audit/p140-offline-fixtures.sh
