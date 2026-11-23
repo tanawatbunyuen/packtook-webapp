@@ -1,0 +1,21 @@
+name: P131 Recovered Owner Authz Static Signals Offline Tests
+on:
+  push:
+    branches:
+      - review/p131-owner-authz-static-triage
+  pull_request:
+    branches:
+      - review/p130-recovered-owner-source-security-audit
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-owner-signals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax check
+        run: python3 -m py_compile audit/p131-owner-authz-static-triage.py audit/p131-authz-fixtures.py
+      - name: Synthetic local security triage
+        run: python3 audit/p131-authz-fixtures.py
