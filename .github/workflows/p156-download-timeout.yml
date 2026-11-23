@@ -1,0 +1,21 @@
+name: P156 Private Download Timeout and Proxy Diagnostic
+on:
+  push:
+    branches:
+      - review/p156-proxy-env-and-download-timeout-diagnostic
+  pull_request:
+    branches:
+      - review/p155-isolated-official-firestore-setup
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test private-log categorization and proxy redaction
+        run: |
+          python3 -m py_compile audit/p156-timeout-env-diagnostic.py audit/p156-timeout-fixtures.py
+          python3 audit/p156-timeout-fixtures.py
