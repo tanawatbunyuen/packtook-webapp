@@ -1,0 +1,25 @@
+name: P155 Official Firestore Download Isolated Preflight
+on:
+  push:
+    branches:
+      - review/p155-isolated-official-firestore-setup
+  pull_request:
+    branches:
+      - review/p154-firestore-cli-manifest-preflight
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-mock-download:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Static syntax and mock official download
+        run: |
+          bash -n audit/p155-official-download-only.sh
+          bash -n audit/p155-download-mock-fixtures.sh
+          bash audit/p155-download-mock-fixtures.sh
