@@ -1,0 +1,21 @@
+name: P142 Emulator Startup Private Log Diagnostics Offline Tests
+on:
+  push:
+    branches:
+      - review/p142-emulator-startup-log-diagnostics
+  pull_request:
+    branches:
+      - review/p141-persistent-demo-emulator-cache
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  category-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python syntax
+        run: python3 -m py_compile audit/p142-emulator-startup-log-diagnostics.py audit/p142-log-fixtures.py
+      - name: Synthetic log pattern classification and secrecy checks
+        run: python3 audit/p142-log-fixtures.py
