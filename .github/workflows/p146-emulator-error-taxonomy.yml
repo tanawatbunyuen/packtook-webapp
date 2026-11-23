@@ -1,0 +1,21 @@
+name: P146 Existing Firebase Emulator Error Taxonomy Offline
+on:
+  push:
+    branches:
+      - review/p146-firebase-emulator-error-root-cause
+  pull_request:
+    branches:
+      - review/p145-emulator-config-rules-path-fix
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  error-taxonomy-fixtures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax and synthetic private-log classification tests
+        run: |
+          python3 -m py_compile audit/p146-emulator-error-taxonomy.py audit/p146-error-fixtures.py
+          python3 audit/p146-error-fixtures.py
