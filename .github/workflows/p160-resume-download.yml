@@ -1,0 +1,21 @@
+name: P160 Resumable Firestore Range Download Offline CI
+on:
+  push:
+    branches:
+      - review/p160-resumable-firestore-range-download
+  pull_request:
+    branches:
+      - review/p159-small-http-range-probe
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-resume-fixtures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python interrupted transfer, resume, ZIP CRC and fail-closed checks
+        run: |
+          python3 -m py_compile audit/p160-resumable-firestore.py audit/p160-resume-fixtures.py
+          python3 audit/p160-resume-fixtures.py
