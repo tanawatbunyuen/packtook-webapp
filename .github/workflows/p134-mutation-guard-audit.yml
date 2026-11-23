@@ -1,0 +1,29 @@
+name: P134 Owner Mutation Guard Offline AST Audit
+on:
+  push:
+    branches:
+      - review/p134-owner-mutation-guard-audit
+  pull_request:
+    branches:
+      - review/p133-owner-authz-ast-evidence
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-static-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install AST parser, no lifecycle scripts
+        run: npm install --prefix "$RUNNER_TEMP/p134-tools" --ignore-scripts --no-audit --no-fund --save=false acorn@8.15.0
+      - name: Parse and test synthetic recovered source
+        env:
+          NODE_PATH: ${{ runner.temp }}/p134-tools/node_modules
+        run: |
+          node --check audit/p134-owner-mutation-guard.cjs
+          node --check audit/p134-mutation-fixtures.cjs
+          node audit/p134-mutation-fixtures.cjs
