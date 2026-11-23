@@ -72,7 +72,7 @@ def main():
     ap.add_argument("--destination",help="Optional fresh private directory; no existing destination allowed")
     args=ap.parse_args()
     if args.expected_sha and not args.fixture_archive:raise RuntimeError("EXPECTED_HASH_OVERRIDE_DISALLOWED")
-    target=pathlib.Path(args.destination).expanduser() if args.destination else pathlib.Path.home()/".packtook-recovery"/"p128-owner-"+EXPECTED[:12]
+    target=pathlib.Path(args.destination).expanduser() if args.destination else pathlib.Path.home()/".packtook-recovery"/("p128-owner-"+EXPECTED[:12])
     if target.exists():raise RuntimeError("RECOVERY_DESTINATION_EXISTS")
     target.parent.mkdir(mode=0o700,parents=True,exist_ok=True)
     if target.parent.is_symlink():raise RuntimeError("SYMLINK_PARENT_BLOCKED")
