@@ -34,6 +34,7 @@ const f=require(process.argv[2]);
 if(f.emulators.auth.host!=='127.0.0.1'||f.emulators.firestore.host!=='127.0.0.1')process.exit(1);
 if(f.emulators.auth.port!==19099||f.emulators.firestore.port!==18080)process.exit(1);
 if(Object.hasOwn(f.emulators,'functions')||f.emulators.ui.enabled!==false||f.emulators.hub.host!=='127.0.0.1'||f.emulators.hub.port!==14400)process.exit(1);
+if(f.emulators.logging.host!=='127.0.0.1'||f.emulators.logging.port!==4500)process.exit(1);
 if(f.firestore.rules!=='p140-firestore-deny-all.rules')process.exit(1);
 console.log('P140_LOCAL_ONLY_CONFIG_VALIDATION=PASS');
 NODE
