@@ -1,0 +1,29 @@
+name: P133 Owner Authorization AST Triage Offline
+on:
+  push:
+    branches:
+      - review/p133-owner-authz-ast-evidence
+  pull_request:
+    branches:
+      - review/p132-owner-authorization-callpath
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  acorn-ast-offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install trusted parser without lifecycle scripts
+        run: npm install --prefix "$RUNNER_TEMP/p133-tools" --ignore-scripts --no-audit --no-fund --save=false acorn@8.15.0
+      - name: Node parse and mock AST fixture
+        env:
+          NODE_PATH: ${{ runner.temp }}/p133-tools/node_modules
+        run: |
+          node --check audit/p133-owner-authz-ast.cjs
+          node --check audit/p133-ast-fixtures.cjs
+          node audit/p133-ast-fixtures.cjs
