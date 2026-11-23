@@ -1,0 +1,21 @@
+'use strict';
+// P145: offline Firebase config resolution guard. No CLI/Cloud calls.
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const filename=path.resolve(__dirname,'p140-firebase-emulator.json');
+const config=JSON.parse(fs.readFileSync(filename,'utf8'));
+assert.equal(config.firestore.rules,'p140-firestore-deny-all.rules');
+const resolved=path.resolve(path.dirname(filename),config.firestore.rules);
+assert.equal(resolved,path.resolve(__dirname,'p140-firestore-deny-all.rules'));
+assert(fs.statSync(resolved).isFile());
+const rules=fs.readFileSync(resolved,'utf8');
+assert.match(rules,/allow read,\s*write:\s*if false\s*;/);
+assert.equal(config.emulators.auth.host,'127.0.0.1');
+assert.equal(config.emulators.firestore.host,'127.0.0.1');
+assert.equal(config.emulators.auth.port,19099);
+assert.equal(config.emulators.firestore.port,18080);
+assert(!Object.hasOwn(config.emulators,'functions'));
+console.log('P145_CONFIG_RELATIVE_RULES_PATH=PASS');
+console.log('P145_DENY_ALL_RULES_PRESENT=PASS');
+console.log('P145_LOCAL_EMULATOR_PORTS_ONLY=PASS');
+console.log('P145_OFFLINE_CHECKS=3/3_PASS');
+console.log('P145_EMULATOR_STARTS=0 P145_CLOUD_CALLS=0 P145_DEPLOYS=0');
