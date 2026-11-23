@@ -1,0 +1,46 @@
+{
+  "project": "packtook-staging",
+  "phase": "P134_REAL_LOCAL_STATIC_AST",
+  "source": "operator-supplied Cloud Shell output",
+  "recovered_files": 6,
+  "parsed_js_files": 3,
+  "functions": {
+    "ownerGetCustomerAdjustmentHistory": {
+      "auth_indicators": 3,
+      "deny_indicators": 2,
+      "owner_role_indicators": 0,
+      "appcheck_indicators": 0,
+      "direct_mutation_calls": 0,
+      "helper_mutation_candidates": 0,
+      "guard_before_mutation_proven": false
+    },
+    "ownerGetCustomerManageState": {
+      "auth_indicators": 4,
+      "deny_indicators": 2,
+      "owner_role_indicators": 0,
+      "appcheck_indicators": 0,
+      "direct_mutation_calls": 0,
+      "helper_mutation_candidates": 0,
+      "guard_before_mutation_proven": false
+    },
+    "ownerGrantVideoCredits": {
+      "auth_indicators": 3,
+      "deny_indicators": 3,
+      "owner_role_indicators": 0,
+      "appcheck_indicators": 0,
+      "direct_mutation_calls": 4,
+      "helper_mutation_candidates": 1,
+      "guard_before_mutation_proven": false
+    },
+    "ownerUpdateCustomerExpiry": {
+      "auth_indicators": 3,
+      "deny_indicators": 3,
+      "owner_role_indicators": 0,
+      "appcheck_indicators": 0,
+      "direct_mutation_calls": 4,
+      "helper_mutation_candidates": 1,
+      "guard_before_mutation_proven": false
+    }
+  },
+  "source_to_deploy_parity_attested": false
+}

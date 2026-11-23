@@ -1,0 +1,27 @@
+name: P135 Owner Write Security NO-GO Evidence Gate
+on:
+  push:
+    branches:
+      - review/p135-owner-write-security-gate
+  pull_request:
+    branches:
+      - review/p134-owner-mutation-guard-audit
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  owner-write-no-go:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Offline evidence validation
+        run: |
+          node --check audit/p135-owner-write-gate.cjs
+          node audit/p135-owner-write-gate.cjs | tee p135.log
+          grep -Fq 'P135_CHECKS=8/8' p135.log
+          grep -Fq 'P135_DECISION=NO_GO_OWNER_AUTHZ_AND_WRITE_GUARDS_UNVERIFIED' p135.log
+          grep -Fq 'P135_CLOUD_CALLS=0 P135_GIT_WRITES=0 P135_DEPLOYS=0' p135.log
