@@ -1,0 +1,21 @@
+name: P132 Owner Authorization Callpath Offline Tests
+on:
+  push:
+    branches:
+      - review/p132-owner-authorization-callpath
+  pull_request:
+    branches:
+      - review/p131-owner-authz-static-triage
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  callpath-offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse scripts
+        run: python3 -m py_compile audit/p132-owner-authorization-callpath.py audit/p132-callpath-fixtures.py
+      - name: Run synthetic recovered source callpath fixtures
+        run: python3 audit/p132-callpath-fixtures.py
