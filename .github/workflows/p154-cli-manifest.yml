@@ -1,0 +1,21 @@
+name: P154 Firestore CLI Static Manifest Preflight
+on:
+  push:
+    branches:
+      - review/p154-firestore-cli-manifest-preflight
+  pull_request:
+    branches:
+      - review/p153-firestore-cache-version-preflight
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  static-manifest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check local-only source and cache fixtures
+        run: |
+          python3 -m py_compile audit/p154-cli-manifest-preflight.py audit/p154-manifest-fixtures.py
+          python3 audit/p154-manifest-fixtures.py
