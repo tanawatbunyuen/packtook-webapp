@@ -1,0 +1,21 @@
+name: P159 Firestore 1MiB HTTP Range Probe
+on:
+  push:
+    branches:
+      - review/p159-small-http-range-probe
+  pull_request:
+    branches:
+      - review/p158-verified-firestore-artifact-download
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  small-range-offline-fixtures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python synthetic 206 range checks
+        run: |
+          python3 -m py_compile audit/p159-small-range-probe.py audit/p159-range-fixtures.py
+          python3 audit/p159-range-fixtures.py
