@@ -1,0 +1,31 @@
+name: P137 Emulator Environment Isolation Offline
+on:
+  push:
+    branches:
+      - review/p137-emulator-isolation-preflight
+  pull_request:
+    branches:
+      - review/p136-recovered-entrypoint-side-effect-preflight
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  fail-closed-environment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate syntax and simulated environments
+        run: |
+          bash -n audit/p137-isolation-preflight.sh
+          node --check audit/p137-emulator-isolation-preflight.cjs
+          node --check audit/p137-env-fixtures.cjs
+          node audit/p137-env-fixtures.cjs
+      - name: Verify clean shell wrapper
+        run: |
+          bash audit/p137-isolation-preflight.sh | tee p137.log
+          grep -Fq 'P137_CHECKS=8/8' p137.log
+          grep -Fq 'P137_DECISION=ENV_ISOLATION_PREFLIGHT_PASS_NOT_RUNTIME_PROOF' p137.log
