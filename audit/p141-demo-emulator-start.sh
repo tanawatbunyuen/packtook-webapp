@@ -40,7 +40,7 @@ if [[ $# -eq 1 && "$1" == "--preflight" ]]; then
   exit 0
 fi
 [[ $# -eq 0 ]] || { echo 'P141_BLOCK=INVALID_ARGUMENT'; exit 1; }
-for port in 18080 19099 14400; do
+for port in 18080 19099 14400 4500; do
   if ! "$NODE_BIN" -e "let n=require('net'),s=n.createServer();s.once('error',()=>process.exit(1));s.listen($port,'127.0.0.1',()=>s.close(()=>process.exit(0)))"; then
     echo "P141_BLOCK=PORT_${port}_IN_USE"
     exit 1
@@ -75,7 +75,7 @@ env -i \
   --config "$AUDIT/p140-firebase-emulator.json" --non-interactive >"$LOG" 2>&1 &
 CHILD=$!
 ready() {
-  "$NODE_BIN" -e "const n=require('net'),p=[18080,19099,14400];Promise.all(p.map(port=>new Promise(r=>{const c=n.connect({host:'127.0.0.1',port});c.setTimeout(800);c.once('connect',()=>{c.destroy();r(true)});c.once('error',()=>r(false));c.once('timeout',()=>{c.destroy();r(false)})}))).then(v=>process.exit(v.every(Boolean)?0:1));"
+  "$NODE_BIN" -e "const n=require('net'),p=[18080,19099,14400,4500];Promise.all(p.map(port=>new Promise(r=>{const c=n.connect({host:'127.0.0.1',port});c.setTimeout(800);c.once('connect',()=>{c.destroy();r(true)});c.once('error',()=>r(false));c.once('timeout',()=>{c.destroy();r(false)})}))).then(v=>process.exit(v.every(Boolean)?0:1));"
 }
 started="$(date +%s)"
 while (( $(date +%s) - started < SECONDS_LIMIT )); do

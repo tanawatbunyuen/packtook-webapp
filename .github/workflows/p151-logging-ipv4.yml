@@ -1,0 +1,27 @@
+name: P151 Firebase Logging IPv4 Regression
+on:
+  push:
+    branches:
+      - review/p151-emulator-logging-ipv4-binding
+  pull_request:
+    branches:
+      - review/p150-emulator-hub-ipv4-binding
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  demo-only-config:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check all configured listeners and private source exclusion
+        run: |
+          node --check audit/p151-logging-ipv4-regression.cjs
+          bash -n audit/p141-demo-emulator-start.sh
+          node audit/p151-logging-ipv4-regression.cjs
+      - name: Run mocked Firebase CLI startup regression
+        run: bash audit/p140-offline-fixtures.sh
