@@ -1,0 +1,21 @@
+name: P149 Local Firebase Emulator Port Check Diagnosis
+on:
+  push:
+    branches:
+      - review/p149-emulator-port-preflight-diagnosis
+  pull_request:
+    branches:
+      - review/p148-local-node22-preflight
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  read-only-port-log:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Offline log fingerprint and no-disclosure tests
+        run: |
+          python3 -m py_compile audit/p149-emulator-port-diagnostic.py audit/p149-port-fixtures.py
+          python3 audit/p149-port-fixtures.py
