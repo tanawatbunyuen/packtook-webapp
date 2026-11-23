@@ -1,0 +1,21 @@
+name: P153 Firestore Cache Version Offline Preflight
+on:
+  push:
+    branches:
+      - review/p153-firestore-cache-version-preflight
+  pull_request:
+    branches:
+      - review/p152-primary-emulator-readiness-gate
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  static-cache-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python static cache fixtures
+        run: |
+          python3 -m py_compile audit/p153-cache-version-preflight.py audit/p153-cache-fixtures.py
+          python3 audit/p153-cache-fixtures.py
