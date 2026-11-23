@@ -8,6 +8,7 @@ with tempfile.TemporaryDirectory() as tmp:
     (package/"package.json").write_text('{"name":"firebase-tools","version":"15.34.2"}')
     (package/"lib/emulator/downloadableEmulators.js").write_text('const jar="cloud-firestore-emulator-v1.22.0.jar"; const firestoreVersion="1.22.0";')
     (home/"bin").mkdir()
+    (package/"lib/emulator/downloadableEmulators.js").chmod(0o755)
     (home/"bin/firebase").symlink_to(package/"lib/emulator/downloadableEmulators.js")
     cache=home/".packtook-demo-emulator-home/.cache/firebase/emulators"
     cache.mkdir(parents=True)
