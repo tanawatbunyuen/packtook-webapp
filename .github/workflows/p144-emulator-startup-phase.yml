@@ -1,0 +1,21 @@
+name: P144 Emulator Startup Phase Offline Audit
+on:
+  push:
+    branches:
+      - review/p144-emulator-startup-phase-diagnostic
+  pull_request:
+    branches:
+      - review/p143-emulator-cache-integrity
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  private-stage-fixtures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse source and test synthetic local-only log/JARs
+        run: |
+          python3 -m py_compile audit/p144-emulator-startup-phase.py audit/p144-phase-fixtures.py
+          python3 audit/p144-phase-fixtures.py
