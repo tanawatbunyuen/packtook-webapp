@@ -1,0 +1,25 @@
+name: P140 Demo Emulator Launcher Offline Fixtures
+on:
+  push:
+    branches:
+      - review/p140-demo-emulators-startup
+  pull_request:
+    branches:
+      - review/p139-cloud-shell-node-path-fix
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  no-live-emulators:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Static syntax and mocked CLI startup only
+        run: |
+          bash -n audit/p140-start-demo-emulators.sh
+          bash -n audit/p140-offline-fixtures.sh
+          bash audit/p140-offline-fixtures.sh
