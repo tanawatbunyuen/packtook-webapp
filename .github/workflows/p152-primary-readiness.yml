@@ -1,0 +1,27 @@
+name: P152 Primary Emulator Readiness Offline Tests
+on:
+  push:
+    branches:
+      - review/p152-primary-emulator-readiness-gate
+  pull_request:
+    branches:
+      - review/p151-emulator-logging-ipv4-binding
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  primary-port-readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check launcher, config, and log categories
+        run: |
+          bash -n audit/p141-demo-emulator-start.sh
+          node audit/p152-primary-readiness-regression.cjs
+          python3 audit/p152-log-fixtures.py
+      - name: Repeat mocked Firebase CLI check
+        run: bash audit/p140-offline-fixtures.sh
