@@ -1,0 +1,31 @@
+name: P139 Cloud Shell Node PATH Regression
+on:
+  push:
+    branches:
+      - review/p139-cloud-shell-node-path-fix
+  pull_request:
+    branches:
+      - review/p138-local-emulator-http-probe
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  cloud-shell-node-resolution:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate sanitized shell scripts
+        run: |
+          bash -n audit/p137-isolation-preflight.sh
+          bash -n audit/p138-local-listener-preflight.sh
+          bash -n audit/p139-node-path-fixtures.sh
+      - name: Regression when Node installed outside sanitized PATH
+        run: bash audit/p139-node-path-fixtures.sh
+      - name: Repeat earlier P137 and P138 offline tests
+        run: |
+          node audit/p137-env-fixtures.cjs
+          node audit/p138-listener-fixtures.cjs
