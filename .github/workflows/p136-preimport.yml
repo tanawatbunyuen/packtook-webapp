@@ -1,0 +1,29 @@
+name: P136 Recovered Module Preimport Offline Tests
+on:
+  push:
+    branches:
+      - review/p136-recovered-entrypoint-side-effect-preflight
+  pull_request:
+    branches:
+      - review/p135-owner-write-security-gate
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preimport-offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install parser without install scripts
+        run: npm install --prefix "$RUNNER_TEMP/p136-parser" --ignore-scripts --no-audit --no-fund --save=false acorn@8.15.0
+      - name: Syntax and offline fixtures
+        env:
+          NODE_PATH: ${{ runner.temp }}/p136-parser/node_modules
+        run: |
+          node --check audit/p136-recovered-module-preimport.cjs
+          node --check audit/p136-preimport-fixtures.cjs
+          node audit/p136-preimport-fixtures.cjs
