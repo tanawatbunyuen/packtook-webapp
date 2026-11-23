@@ -50,7 +50,7 @@ echo 'P140_STATUS=STARTING_LOCAL_EMULATORS'
 # An isolated HOME does not completely remove Cloud metadata/network access.
 # This launcher is only for official Firestore/Auth emulator binaries and test data.
 # Run in foreground; Ctrl+C stops both emulators.
-exec env -i \
+env -i \
   PATH="/usr/local/bin:/usr/bin:/bin:$(dirname "$NODE_BIN"):$(dirname "$JAVA_BIN")" \
   HOME="$PRIVATE_HOME" \
   NODE_ENV="test" PACKTOOK_EMULATOR_ONLY="1" \
