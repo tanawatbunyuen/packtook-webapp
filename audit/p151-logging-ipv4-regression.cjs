@@ -1,0 +1,18 @@
+'use strict';
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const f=JSON.parse(fs.readFileSync(path.join(__dirname,'p140-firebase-emulator.json'),'utf8'));
+for(const k of ['auth','firestore','hub','logging'])assert.equal(f.emulators[k].host,'127.0.0.1',k);
+assert.deepEqual([f.emulators.auth.port,f.emulators.firestore.port,f.emulators.hub.port,f.emulators.logging.port],[19099,18080,14400,4500]);
+assert.equal(f.emulators.ui.enabled,false);
+assert(!Object.hasOwn(f.emulators,'functions'));
+assert.equal(f.firestore.rules,'p140-firestore-deny-all.rules');
+assert.match(fs.readFileSync(path.join(__dirname,f.firestore.rules),'utf8'),/allow read,\s*write:\s*if false\s*;/);
+console.log('P151_LOGGING_IPV4_4500=PASS');
+console.log('P151_ALL_EMULATOR_HOSTS_IPV4=PASS');
+console.log('P151_DENY_ALL_AND_NO_FUNCTIONS=PASS');
+const sh=fs.readFileSync(path.join(__dirname,'p141-demo-emulator-start.sh'),'utf8');
+assert(sh.includes('for port in 18080 19099 14400 4500; do'));
+assert(sh.includes('p=[18080,19099,14400,4500]'));
+console.log('P151_LAUNCHER_FOUR_PORTS=PASS');
+console.log('P151_OFFLINE_CHECKS=4/4_PASS');
+console.log('P151_EMULATOR_STARTS=0 P151_CLOUD_WRITES=0 P151_DEPLOYS=0');
