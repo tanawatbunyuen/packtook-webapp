@@ -1,0 +1,21 @@
+name: P127 Build Archive Recovery Offline Regression
+on:
+  push:
+    branches:
+      - review/p127-staging-build-archive-recovery
+  pull_request:
+    branches:
+      - review/p126-staging-build-source-artifact-existence
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  safe-archive-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse scripts
+        run: python3 -m py_compile audit/p127-stage-source-archive-preflight.py audit/p127-offline-archive-fixtures.py
+      - name: Test archive inspection without Cloud
+        run: python3 audit/p127-offline-archive-fixtures.py
