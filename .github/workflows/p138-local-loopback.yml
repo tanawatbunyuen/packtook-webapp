@@ -1,0 +1,27 @@
+name: P138 Loopback Listener Offline Tests
+on:
+  push:
+    branches:
+      - review/p138-local-emulator-http-probe
+  pull_request:
+    branches:
+      - review/p137-emulator-isolation-preflight
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  get-only-liveness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax checks
+        run: |
+          bash -n audit/p138-local-listener-preflight.sh
+          node --check audit/p138-local-emulator-listener.cjs
+          node --check audit/p138-listener-fixtures.cjs
+      - name: Synthetic local-only HTTP listeners
+        run: node audit/p138-listener-fixtures.cjs
