@@ -1,0 +1,21 @@
+name: P143 Local Emulator Cache Integrity Offline
+on:
+  push:
+    branches:
+      - review/p143-emulator-cache-integrity
+  pull_request:
+    branches:
+      - review/p142-emulator-startup-log-diagnostics
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  jar-fixtures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python syntax and synthetic cache fixtures
+        run: |
+          python3 -m py_compile audit/p143-emulator-cache-integrity.py audit/p143-cache-fixtures.py
+          python3 audit/p143-cache-fixtures.py
