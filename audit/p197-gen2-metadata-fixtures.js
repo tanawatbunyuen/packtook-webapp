@@ -2,7 +2,7 @@
 // The P197 synthetic fixture reproduces only the shape of the operator's
 // user-supplied Gen2 describe metadata. It is NOT a fresh live cloud query.
 const assert=require("node:assert/strict");
-const {safeExtract,TARGET,ENDPOINT}=require("../p196/operator-readonly-runtime");
+const {safeExtract,TARGET,ENDPOINT}=require("./p196/operator-readonly-runtime");
 const fixture=()=>({
  name:TARGET,environment:"GEN_2",state:"ACTIVE",
  url:ENDPOINT,
