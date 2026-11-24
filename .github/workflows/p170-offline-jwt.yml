@@ -1,0 +1,21 @@
+name: P170 Offline JWT Signature and Claim Boundary
+on:
+  push:
+    branches: [review/p170-offline-jwt-verification-boundary]
+  pull_request:
+    branches: [review/p169-emulator-auth-boundary-provenance]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Node built-in crypto ephemeral RSA signature and claim tests
+        run: |
+          node --check audit/p170-jwt-boundary.js
+          node --check audit/p170-jwt-fixtures.js
+          node audit/p170-jwt-fixtures.js
+          node audit/p170-jwt-boundary.js
