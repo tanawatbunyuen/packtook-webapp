@@ -1,0 +1,53 @@
+name: P194 G02 Chromium Real Firebase Emulator Integration
+on:
+  push:
+    branches: [review/p194-g02-chromium-real-firebase-emulators]
+  pull_request:
+    branches: [review/p193-g02-legacy-browser-dom-e2e]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser-firestore-auth-functions-emulator:
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.56.1-noble
+    timeout-minutes: 20
+    env:
+      CI: "true"
+      GCLOUD_PROJECT: demo-packtook-p184
+      GOOGLE_CLOUD_PROJECT: demo-packtook-p184
+      FIREBASE_SKIP_UPDATE_CHECK: "1"
+      FIRESTORE_EMULATOR_HOST: 127.0.0.1:18094
+      FIREBASE_AUTH_EMULATOR_HOST: 127.0.0.1:19094
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install isolated, pinned browser and Firebase Emulator tools
+        run: |
+          npm install --prefix audit/p193 --ignore-scripts --no-audit --no-fund --no-package-lock playwright@1.56.1
+          npm install --prefix audit/p177-emulator --ignore-scripts --no-audit --no-fund --no-package-lock
+          npm install --prefix audit/p184/runtime --ignore-scripts --no-audit --no-fund --no-package-lock
+      - name: Build full pinned G02 candidate inside disposable emulator functions source
+        run: |
+          node audit/p188/build-rc.js
+          node audit/p189/verify.js
+          cp audit/p188/candidate-index.js audit/p184/runtime/index.js
+          cp firestore.rules audit/p184/firestore.rules
+      - name: Run actual Chromium against local Auth Functions Firestore Emulator
+        run: |
+          audit/p177-emulator/node_modules/.bin/firebase emulators:exec --project demo-packtook-p184 --only auth,functions,firestore --config audit/p184/firebase.json "node audit/p194/test-browser-firebase.js"
+      - name: Preserve old browser and release security gates
+        run: |
+          node audit/p193/test-browser.js
+          node audit/p191-legacy-owner-frontend-fixtures.js
+          node audit/p192-legacy-owner-recovery-fixtures.js
+          node audit/p190/reconcile-fixtures.js
+          node audit/p180-fast-track-check.js
+          node audit/p172-release-gates.js
