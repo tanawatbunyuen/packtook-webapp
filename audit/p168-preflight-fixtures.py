@@ -21,5 +21,8 @@ print("P168_ONLY_TWO_EXISTING_OWNER_HANDLERS=PASS")
 assert 'dbEvent();return q' in generated
 assert 'async get(){dbEvent();return empty;}' in generated
 assert 'const db={collection(){dbEvent();return q;}}' in generated
+assert generated.count("dbEventMarker();")==2
+assert "function dbEventMarker()" in generated
+assert "HANDLER" in generated
 print("P168_INSTRUMENTED_EMPTY_DATABASE=PASS")
 print("P168_OFFLINE_FIXTURES=4/4_PASS")
