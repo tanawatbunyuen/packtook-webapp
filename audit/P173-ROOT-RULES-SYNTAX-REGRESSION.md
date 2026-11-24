@@ -32,3 +32,11 @@ python3 audit/p173-emulator-root-rules.py
 Expected offline `P173_OFFLINE_FIXTURES=5/5_PASS`, `P172_RELEASE_GATES=8/8_NO_GO`; real Emulator `P173_REAL_EMULATOR_CASES=24/24_PASS`. If Emulator outputs a BLOCK, preserve NO_GO and investigate; never alter pass criteria to match failures.
 
 **Production rules not attested. Changes remain in a Draft PR; do not merge or deploy.**
+
+## P173 operator runtime follow-up — readiness classification (2026-11-24)
+
+The operator ran the original P173 Cloud Shell test: offline fixtures 5/5 PASS; P172 preservation gates PASS; local runner returned `P173_BLOCK=EMULATOR_NOT_READY` and stopped without running any of the 24 runtime read/write cases.
+
+Investigation identified a likely local **harness readiness logic bug**: the script demanded an extra `hub` registration in the hub's `GET /emulators` response. That endpoint enumerates registered emulators (Auth and Firestore); its own hub is not necessarily represented. Candidate fix limits the readiness check to registered Auth and Firestore, and adds safe, categorical process/hub status outputs if startup still fails (no raw logs or credentials).
+
+Expected offline fixtures now `P173_OFFLINE_FIXTURES=6/6_PASS`. This does not prove the emulator has started; rerun separately in Cloud Shell. The 24-case real emulator gate remains unverified until a complete operator PASS. No production rules or release approvals change.
