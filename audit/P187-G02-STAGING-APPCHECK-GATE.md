@@ -5,7 +5,7 @@
 ## New evidence path
 P187 adds a restricted two-request HTTP read-only verifier for the staging `usageStatus` Callable endpoint. It requires **real** staging Firebase Auth and App Check tokens obtained by an authorized operator; the test never mints tokens, bypasses enforcement or prints credentials, user IDs, URLs or HTTP response bodies. One call omits App Check (must deny 401/403); one supplies the independently issued App Check token (must succeed 200). A result `passed=true` is only a scoped operator-collected staging evidence claim, **not** G02 signoff or proof of token signature in production.
 
-Only HTTPS callable endpoints with trusted `*.cloudfunctions.net` or `*.run.app` hosts and `/usageStatus` path are allowed; the operator must separately verify the URL matches the actual staging revision to avoid relying on hostname alone. This source file is safe to execute offline in CI with mocked fetch; the real CLI denies CI and only targets `packtook-staging`.
+Only the exact HTTPS origin `asia-southeast1-packtook-staging.cloudfunctions.net` and `/usageStatus` path are allowed; all other projects and arbitrary `*.run.app` hosts are **denied** to avoid credential exfiltration. If the true staging callable URL is different (for example a Gen2 Cloud Run URL), a separate security-reviewed **exact-host pin** is required before any real token can be supplied. The operator must confirm the allowed endpoint maps to the actual staging revision. This source file is safe to execute offline in CI with mocked fetch; the real CLI denies CI and only targets `packtook-staging`.
 
 ## Human-invoked staging test (NOT executed in CI)
 With independently approved change ticket and real valid tokens from trusted Staging application flow:
