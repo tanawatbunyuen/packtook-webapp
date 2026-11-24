@@ -3,7 +3,7 @@ const assert=require("node:assert/strict");
 const {authorize,safeExtract,observe,ACK,TARGET,ENDPOINT}=require("./operator-readonly-runtime");
 const env={PACKTOOK_G02_OPERATOR_APPROVED_PROJECT:"packtook-staging"};
 const ticket="G02-READONLY-20261124";
-const record=()=>({name:TARGET,state:"ACTIVE",buildConfig:{runtime:"nodejs22"},serviceConfig:{uri:ENDPOINT,revision:"usagestatus-00021-abc"}});
+const record=()=>({name:TARGET,environment:"GEN_2",url:ENDPOINT,state:"ACTIVE",buildConfig:{runtime:"nodejs22"},serviceConfig:{uri:"https://usagestatus-x5r74jtjza-as.a.run.app",revision:"usagestatus-00021-abc"}});
 let n=0;function test(label,fn){fn();n++;console.log("P196_"+label+"=PASS")}
 function blocked(label,args,code){
  test(label,()=>assert.throws(()=>authorize(args),new RegExp(code)));
@@ -31,13 +31,14 @@ test("EXPECTED_RUNTIME_METADATA_CLASSIFIED_ONLY",()=>{
  assert.equal(v.releaseDecision,"NO_GO_RELEASE");
  assert(!JSON.stringify(v).includes("usagestatus-00021-abc"));
 });
-test("ALTERNATE_CLOUD_RUN_URL_IS_NOT_PINNED",()=>{
+test("ALTERNATE_RUN_URI_NEVER_REPLACES_OFFICIAL_CALLABLE",()=>{
  const v=safeExtract({...record(),serviceConfig:{...record().serviceConfig,uri:"https://usage-status-xxyy.a.run.app"}});
- assert.equal(v.endpointMatchesPinned,false);
+ assert.equal(v.endpointMatchesPinned,true);
+ assert.equal(v.callableAndRunUriDistinct,true);
  assert.equal(v.deployedCandidateAttested,false);
 });
 test("NO_REVISION_NEVER_PASS_AS_DEPLOYED",()=>{
- const v=safeExtract({...record(),serviceConfig:{uri:ENDPOINT}});
+ const v=safeExtract({...record(),serviceConfig:{uri:"https://usagestatus-x5r74jtjza-as.a.run.app"}});
  assert.equal(v.revisionPresent,false);assert.equal(v.g02Decision,"NO_GO");
 });
 test("INVALID_RUNTIME_MARKED_UNVERIFIED",()=>{
