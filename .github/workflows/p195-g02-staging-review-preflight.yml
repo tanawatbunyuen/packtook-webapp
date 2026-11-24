@@ -1,0 +1,36 @@
+name: P195 G02 Staging Runtime Evidence Security Preparation
+on:
+  push:
+    branches: [review/p195-g02-staging-runtime-review-preflight]
+  pull_request:
+    branches: [review/p194-g02-chromium-real-firebase-emulators]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  isolated-offline-security-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    env:
+      CI: "true"
+      GCLOUD_PROJECT: demo-packtook-p184
+      GOOGLE_CLOUD_PROJECT: demo-packtook-p184
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Validate runtime evidence checker including negative attack scenarios
+        run: |
+          node --check audit/p195/reconcile.js
+          node --check audit/p195/cli.js
+          node audit/p195/reconcile-fixtures.js
+          node audit/p195/cli.js
+      - name: Verify pinned backend candidate, earlier App Check safeguards and no GO
+        run: |
+          node audit/p188/build-rc.js
+          node audit/p189/verify.js
+          node audit/p187-staging-appcheck-fixtures.js
+          node audit/p190/reconcile-fixtures.js
+          node audit/p180-fast-track-check.js
+          node audit/p172-release-gates.js
