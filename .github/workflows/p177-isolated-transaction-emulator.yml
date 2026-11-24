@@ -1,0 +1,41 @@
+name: P177 Isolated Firestore Transaction Emulator
+on:
+  push:
+    branches: [review/p177-isolated-firestore-transaction-emulator]
+  pull_request:
+    branches: [review/p176-owner-migration-cas-regression]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  demo-emulator-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      GCLOUD_PROJECT: demo-packtook-p177
+      GOOGLE_CLOUD_PROJECT: demo-packtook-p177
+      FIREBASE_CLI_DISABLE_TELEMETRY: "1"
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install pinned emulator tools in isolated audit folder
+        run: npm install --prefix audit/p177-emulator --ignore-scripts --no-audit --no-fund --no-package-lock
+      - name: Require isolated demo-emulator target and run transaction cases
+        run: |
+          node --check audit/p177-firestore-transaction-fixtures.js
+          audit/p177-emulator/node_modules/.bin/firebase emulators:exec --project demo-packtook-p177 --only firestore --config audit/p177-emulator/firebase.json "node audit/p177-firestore-transaction-fixtures.js"
+      - name: Check inherited release gates
+        run: |
+          node audit/p176-owner-migration-cas-fixtures.js
+          node audit/p175-owner-migration-fixtures.js
+          node audit/p174-authz-offline-fixtures.js
+          node audit/p173-root-rules-fixtures.js
+          node audit/p172-release-fixtures.js
+          node audit/p172-release-gates.js
