@@ -1,0 +1,20 @@
+#!/usr/bin/env node
+"use strict";
+const assert=require("node:assert/strict"),crypto=require("node:crypto");
+const p=require("./p170-jwt-boundary.js");
+const keys=crypto.generateKeyPairSync("rsa",{modulusLength:2048});
+const sign=p.signer(keys.privateKey);
+const valid=sign(p.baseClaims());
+assert.equal(p.ownerDecision(valid,keys.publicKey).http,200);
+console.log("P170_FIXTURE_VALID_RSA_SIGNATURE=PASS");
+const malformed=["x","a.b","a.b.c.d","!.b.c"];
+for(const token of malformed)assert.equal(p.ownerDecision(token,keys.publicKey).http,401);
+console.log("P170_FIXTURE_MALFORMED_FAIL_CLOSED=PASS");
+const withoutOwner=sign({...p.baseClaims(),packtookPlatformOwner:"true"});
+assert.equal(p.ownerDecision(withoutOwner,keys.publicKey).http,403);
+console.log("P170_FIXTURE_BOOLEAN_OWNER_CLAIM_REQUIRED=PASS");
+const altered=valid.split(".");
+altered[1]=Buffer.from(JSON.stringify({...p.baseClaims(),aud:"other"})).toString("base64url");
+assert.equal(p.ownerDecision(altered.join("."),keys.publicKey).http,401);
+console.log("P170_FIXTURE_SIGNATURE_BEFORE_CLAIMS=PASS");
+console.log("P170_OFFLINE_FIXTURES=4/4_PASS");
