@@ -30,3 +30,11 @@ python3 audit/p171-local-auth-emulator.py
 Expected `P171_OFFLINE_FIXTURES=4/4_PASS`, `P171_AUTH_EMULATOR_READY=PASS`, `P171_LOCAL_TOKEN_ISSUED=PASS`, `P171_ADMIN_VERIFY_LOCAL_VALID=ACCEPTED`, `P171_ADMIN_VERIFY_MALFORMED=REJECTED`, `P171_DISPOSABLE_USER_CLEANUP=PASS`. Actual modified-token results must be recorded honestly.
 
 **No-go:** P171 is not a real Google-signed JWT test, production deployed Functions attestation, signature verification at production boundary, App Check/IAM, or permission to import recovered Owner code. `NO_GO_CALLABLE_HTTP_INCOMPLETE`, `NO_GO_OWNER_IMPORT`, `NO_GO_DEPLOY` remain.
+
+## P171 operator runtime follow-up: legitimate local token rejection
+
+Cloud Shell observed Auth Emulator ready, Admin SDK 13.10.0 loaded, synthetic account created, local ID token issued, but **`P171_ADMIN_VERIFY_LOCAL_VALID=REJECTED`**. No Owner authentication attestation followed. All synthetic resources were cleaned.
+
+Code review found a harness bug: account creation used the named `admin.auth(app)` service but `inspect()` called `admin.auth().verifyIdToken(token)` on the default, uninitialized Admin app. The error was caught and incorrectly flattened to `REJECTED`. This is a test-harness issue, not evidence Firebase Auth rejected a legitimate token cryptographically.
+
+The updated review candidate passes the explicitly named `auth` service into `inspect()` for all four cases, and adds a static regression fixture guarding against use of the default Admin app. Local runtime still needs operator re-execution before claiming PASS. Do not print tokens or raw exception messages; preserve NO_GO gates.
