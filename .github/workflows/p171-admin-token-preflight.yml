@@ -1,0 +1,21 @@
+name: P171 Admin SDK Verify ID Token Offline Preflight
+on:
+  push:
+    branches: [review/p171-admin-sdk-token-verification-emulator]
+  pull_request:
+    branches: [review/p170-offline-jwt-verification-boundary]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  static-fixtures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Static verification; do NOT start emulators or access network
+        run: |
+          node --check audit/p171-admin-verify.js
+          node --check audit/p171-admin-fixtures.js
+          python3 -m py_compile audit/p171-local-auth-emulator.py
+          node audit/p171-admin-fixtures.js
