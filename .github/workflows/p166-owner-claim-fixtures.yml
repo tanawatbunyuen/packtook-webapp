@@ -1,0 +1,21 @@
+name: P166 Owner Claim Negative Source Fixtures
+on:
+  push:
+    branches: [review/p166-owner-claim-negative-fixtures]
+  pull_request:
+    branches: [review/p165-backend-authorization-static-audit]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mock isolated Owner claim guards, never import Functions module
+        run: |
+          node --check audit/p166-owner-claim-negative.js
+          node --check audit/p166-claim-fixtures.js
+          node audit/p166-claim-fixtures.js
+          node audit/p166-owner-claim-negative.js
