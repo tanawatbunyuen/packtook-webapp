@@ -64,3 +64,11 @@ At P173 offline 8/8, a further Cloud Shell run reported the same nonzero Firebas
 Firebase's documented `firebase.json` Security Rules example points to `firestore.rules` in the **project configuration directory**, not an ambiguous `../firestore.rules` reference from an audit config. P173 now creates a **temporary, mode-0600 Firebase config at repository root**, with `firestore.rules` as the path and the exact local-only Auth/Firestore ports from the pinned audit config. It runs Firebase CLI with that temporary config, preserving the hash-pinned actual root `firestore.rules` (no copied, alternate, or open rules). On process exit it removes the temporary configuration. The committed audit configuration remains as the review specification; it is never deployed. A static fixture asserts the temporary root-adjacent config flow.
 
 This change is a diagnostic candidate. The exact cause of the early exit is not proven without a successful rerun or targeted private local CLI inspection. Offline fixture count is now **9/9**. Production release gates remain NO_GO. Raw logs, credentials, tokens and real project identifiers must not be shared.
+
+## P173 fifth Cloud Shell result — Firestore registered, Auth readiness unresolved
+
+Cloud Shell at `d08f8c8` reported `P173_EMULATOR_PROCESS=RUNNING_BUT_NOT_READY`, hub HTTP 200, Firestore port match TRUE, Auth port match FALSE. This confirms the earlier CLI process-exit and config-root problems have been bypassed, but **does not** establish whether Auth is missing from Hub registration or registered on a different port/type.
+
+The diagnostic candidate now prints only fixed registration Boolean and validated numeric port (or `MISSING_OR_INVALID`) for Auth and Firestore. Do not lower the expected Auth port from 19373 or accept a mismatch as a security PASS; do not create test accounts until both registered services match the configured ports. Rerun local operator tests and use the new `P173_HUB_AUTH_REGISTERED` and `P173_HUB_AUTH_PORT` evidence to choose the next corrective action. No raw Hub response, tokens, secrets, real users or production data exposed.
+
+Static fixtures: 10/10 expected. Local 24-request rules runtime remains unverified. All P172 and production release gates stay NO_GO.
