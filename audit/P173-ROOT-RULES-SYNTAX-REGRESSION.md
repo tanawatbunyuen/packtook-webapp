@@ -100,3 +100,20 @@ python3 audit/p173-emulator-root-rules.py
 Interpretation: Auth-only PASS but dual Auth absent suggests a combined-config/CLI sequencing problem; both failed suggests local Auth bootstrap prerequisites. Neither result certifies production auth verification; 24-rule cases stay unverified until a completed local dual-emulator run. Do not change the dual-emulator expected ports or relax test assertions to force PASS.
 
 All release gates remain NO_GO.
+
+## P173 eighth operator result — Auth-only PASS, dual Auth absent
+
+At `ec80be4` the operator reported that **isolated Auth-only registered successfully** at localhost port 19375 with TCP OPEN and process RUNNING. Immediately following, the combined Auth+Firestore launcher returned Hub 200 and Firestore 18373 registered, but Auth 19373 absent and TCP CLOSED. This establishes that the local Auth Emulator is capable of starting in isolation, but not why it was omitted or blocked in the dual launcher. Neither test establishes deployed auth security or the 24 Rules cases.
+
+New controlled CLI differential: the combined launcher now intentionally omits the `--only auth,firestore` option, while asserting the disposable config declares **exactly** `auth` and `firestore` services (plus hub/logging/UI infrastructure). This tests whether Firebase CLI's explicit service filter selected the wrong emulator subset; it is a hypothesis, not a confirmed bug. Existing strict Hub readiness, expected ports, synthetic-only accounts, 24-denial assertions and cleanup are unchanged. Static fixtures now **13/13**.
+
+Run Cloud Shell:
+```bash
+cd "$HOME/packtook-p173"
+git fetch origin review/p173-root-firestore-rules-syntax-regression
+git checkout --detach origin/review/p173-root-firestore-rules-syntax-regression
+node audit/p173-root-rules-fixtures.js
+python3 audit/p173-emulator-root-rules.py
+```
+
+If the CLI starts both emulators, run all 24 cases as defined; if Auth is still missing, preserve NO_GO, do not rewrite protocol criteria, and use targeted local diagnostics (including an Auth-only check on **exact configured Auth port 19373**) before further changes. **GitHub CI does not execute Firebase Emulators.**
