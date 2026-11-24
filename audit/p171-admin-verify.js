@@ -19,6 +19,7 @@ const AUTH_HOST="127.0.0.1:19371";
 function localGate(){
  if(P166.gitBlob(fs.readFileSync(BACKEND))!==EXPECTED)
    throw Error("P171_BLOCK=SOURCE_DRIFT");
+ console.log("P171_GATE_SOURCE=PASS");
  if(process.env.GCLOUD_PROJECT!==PROJECT ||
     process.env.GOOGLE_CLOUD_PROJECT!==PROJECT ||
     process.env.FIREBASE_AUTH_EMULATOR_HOST!==AUTH_HOST ||
@@ -27,18 +28,28 @@ function localGate(){
  if(process.env.GOOGLE_APPLICATION_CREDENTIALS ||
     process.env.FIREBASE_CONFIG)
    throw Error("P171_BLOCK=AMBIENT_CLOUD_CREDENTIALS");
+ console.log("P171_GATE_EMULATOR_ENV=PASS");
  const installed=path.join(process.env.HOME||"", "packtook-p168/functions/package.json");
  if(!fs.existsSync(installed))
    throw Error("P171_BLOCK=PINNED_P168_SDK_NOT_FOUND");
  const source=path.join(path.dirname(installed),"index.js");
  if(P166.gitBlob(fs.readFileSync(source))!==EXPECTED)
    throw Error("P171_BLOCK=P168_SOURCE_DRIFT");
+ console.log("P171_GATE_P168_PINNED_SOURCE=PASS");
  const sdkRequire=createRequire(installed);
- const admin=sdkRequire("firebase-admin");
- const ver=sdkRequire("firebase-admin/package.json").version;
+ let admin;
+ try{admin=sdkRequire("firebase-admin");}
+ catch{throw Error("P171_BLOCK=ADMIN_SDK_MODULE_RESOLUTION");}
+ // Read metadata directly: package.json subpath may be blocked by package exports.
+ let metadata;
+ try{metadata=JSON.parse(fs.readFileSync(path.join(path.dirname(installed),"node_modules/firebase-admin/package.json"),"utf8"));}
+ catch{throw Error("P171_BLOCK=ADMIN_SDK_METADATA_UNREADABLE");}
+ if(metadata.name!=="firebase-admin")throw Error("P171_BLOCK=SDK_METADATA_MISMATCH");
+ const ver=metadata.version;
  if(!/^13\.\d+\.\d+$/.test(ver))
    throw Error("P171_BLOCK=UNEXPECTED_ADMIN_SDK_MAJOR");
  console.log("P171_ADMIN_SDK_VERSION="+ver);
+ console.log("P171_GATE_ADMIN_SDK_LOADED=PASS");
  return admin;
 }
 function postLocal(pathname,body){
@@ -131,7 +142,8 @@ async function main(){
  }
 }
 if(require.main===module)main().catch(e=>{
- console.log(String(e.message).startsWith("P171_BLOCK=")?e.message:
+ const message=String(e&&e.message||"");
+ console.log(message.startsWith("P171_BLOCK=")?message:
              "P171_BLOCK=LOCAL_VERIFY_ID_TOKEN_TEST_FAILED");
  process.exitCode=1;
 });
