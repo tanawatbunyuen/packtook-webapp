@@ -25,6 +25,8 @@ function mock(status){
    assert.throws(()=>validatedTarget(x));
  });
  await test("EXTERNAL_HOST_BLOCKED",()=>assert.throws(()=>validatedTarget("https://evil.example/usageStatus")));
+ await test("OTHER_PROJECT_CLOUDFUNCTIONS_HOST_DENIED",()=>assert.throws(()=>validatedTarget("https://asia-southeast1-other-project.cloudfunctions.net/usageStatus")));
+ await test("ARBITRARY_RUN_APP_HOST_DENIED",()=>assert.throws(()=>validatedTarget("https://fraudulent-123.a.run.app/usageStatus")));
  await test("REDIRECT_QUERY_BLOCKED",()=>assert.throws(()=>validatedTarget(url+"?token=SECRET")));
  await test("VALID_HOST_ALLOWLISTED",()=>assert.equal(validatedTarget(url),url));
  await test("REAL_TOKEN_REQUIRED",async()=>{await assert.rejects(verify({fetchImpl:mock(200),url,authToken:"bad",appCheckToken:token}),/REQUIRE_REAL/);});
