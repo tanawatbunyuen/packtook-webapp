@@ -38,3 +38,16 @@ The first real P168 invocation launched Functions/Auth emulators and verified sy
 The candidate adds allowlisted (non-token, non-log) diagnostics showing `INVALID_TOKEN_SECURITY_DENIED`, `INVALID_TOKEN_PROTOCOL_CONFORMANT`, and `INVALID_TOKEN_HANDLER_ENTERED`. A test-only `HANDLER` marker is inserted at the start of each generated local Callable handler, independent of the `READ` marker; the two original source snippets in Git remain unchanged. **If the malformed token reaches the handler despite protocol requiring 401, do not mark protocol conformance PASS merely because the owner claim guard rejects it.** If the emulator returns 403 before reaching the handler, treat it as potential Emulator/SDK protocol-version behavior requiring separate review.
 
 Official Firebase callable protocol: https://firebase.google.com/docs/functions/callable-reference (invalid supplied Auth token is specified as HTTP 401 / UNAUTHENTICATED). Review SDK and emulator exact versions before drawing a production conclusion. No deployment is authorized.
+
+## P168 investigation: HTTP 403 after handler entry (2026-11-24)
+
+A second real Cloud Shell run showed **both** malformed-token requests entering the synthetic HTTP Callable handler (`HANDLER_ENTERED=TRUE`) and being denied by `requirePlatformOwner` with HTTP 403 / `PERMISSION_DENIED`. Instrumented mock data reads remained unchanged. This establishes that the request did not get rejected before the handler by the *local emulator*; it does not prove the token was authenticated or cryptographically verified.
+
+**Relevant upstream explanation:** Firebase Functions maintainer [confirmed in firebase-functions issue #1465](https://github.com/firebase/firebase-functions/issues/1465#issuecomment-1749844678) that the local Firebase Emulator may run with debug behavior that bypasses token verification to enable offline testing. The report was closed as working as intended in October 2023. Version-specific behavior remains to be confirmed on the operator's installed SDK and CLI. [Firebase Callable protocol](https://firebase.google.com/docs/functions/callable-reference) still requires invalid Auth tokens to be rejected with HTTP 401 / `UNAUTHENTICATED`; do **not** weaken or overwrite that production conformance expectation.
+
+**Conclusion:** The 403/handler-entry discrepancy is consistent with local debug-mode bypass but cannot be treated as full token-verification attestation. The Owner guard denied the token *in this observed case*, not all possible malformed or forged tokens. Do not infer full Owner security or run forged Owner JWTs to produce misleading emulator authorization results. Two separately tracked gates must remain distinct:
+
+- Local **Owner claim guard** exercised via emulator: 16/18 cases met the original strict expectations, and both malformed-token cases were denied before any mock datastore reads.
+- **Callable invalid-token protocol**: 0/2 strict cases passed (403 rather than 401); not attested by this Emulator run, requires separate version-controlled production-equivalent evidence.
+
+Preserve `P168_DECISION=NO_GO_CALLABLE_HTTP_INCOMPLETE` until a separately approved test can establish protocol conformance. No Firebase Cloud/Production tests or deployments are permitted by this review.
