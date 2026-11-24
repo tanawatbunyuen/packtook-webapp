@@ -29,6 +29,7 @@ jobs:
           node audit/p200/fixtures.js
           node audit/p199/fixtures.js
           node audit/p198/fixtures.js
+          node audit/p188/build-rc.js
           node audit/p189/verify.js
           node audit/p180-fast-track-check.js
           node audit/p172-release-gates.js
