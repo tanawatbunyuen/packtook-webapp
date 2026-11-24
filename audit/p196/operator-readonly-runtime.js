@@ -23,20 +23,44 @@ function authorize({env={},project,ack,ticket}={}){
 }
 function safeExtract(record){
  if(!record||typeof record!=="object"||Array.isArray(record))throw Error("P196_INVALID_PROVIDER_RECORD");
- // GCloud Functions v2 gets serviceConfig.uri; Gen1 has httpsTrigger.url.
+ // Gen 2 has TWO distinct fields: Function's official callable URL in
+ // record.url, and an underlying Cloud Run service URI in serviceConfig.uri.
+ // Never substitute the Cloud Run URI for the pinned Callable URL.
  const resource=record.name;
  if(resource!==TARGET)throw Error("P196_PROVIDER_PROJECT_OR_FUNCTION_MISMATCH");
- const url=record.serviceConfig?.uri||record.url||record.httpsTrigger?.url||null;
+ const callableUrl=record.url||record.httpsTrigger?.url||null;
+ const runServiceUri=record.serviceConfig?.uri||null;
  const revision=record.serviceConfig?.revision||record.serviceConfig?.revisionId||null;
  const runtime=record.buildConfig?.runtime||record.runtime||null;
  const state=record.state||record.status||null;
+ const build=record.buildConfig||{};
+ const source=build.source?.storageSource||null;
+ const resolved=build.sourceProvenance?.resolvedStorageSource||null;
+ const sameSource=!!source&&!!resolved&&
+   typeof source.bucket==="string"&&typeof source.object==="string"&&
+   typeof source.generation==="string"&&
+   source.bucket===resolved.bucket&&source.object===resolved.object&&
+   source.generation===resolved.generation;
  const out={
-  schema:"packtook-p196-staging-function-readonly-v1",
+  schema:"packtook-p197-gen2-function-readonly-v1",
   project:PROJECT,functionResource:TARGET,region:REGION,
-  endpointMatchesPinned:url===ENDPOINT,
+  endpointMatchesPinned:callableUrl===ENDPOINT,
+  callableUrlPresent:typeof callableUrl==="string",
+  // This is metadata visibility, not endorsement of the service URI as a
+  // replacement App Check / callable endpoint.
+  cloudRunUriPresent:typeof runServiceUri==="string"&&
+    /^https:\/\/[a-z0-9-]+\.a\.run\.app\/?$/.test(runServiceUri),
+  callableAndRunUriDistinct:typeof callableUrl==="string"&&
+    typeof runServiceUri==="string"&&callableUrl!==runServiceUri,
+  gen2:record.environment==="GEN_2",
   revisionPresent:typeof revision==="string"&&/^[a-z][a-z0-9-]{5,120}$/.test(revision),
   runtime:typeof runtime==="string"&&/^nodejs(?:20|22|24)$/.test(runtime)?runtime:"UNVERIFIED",
   active:state==="ACTIVE",
+  sourceAndResolvedStorageSourceMatch:sameSource,
+  buildReferencePresent:typeof build.build==="string"&&
+    /^projects\/689946391888\/locations\/asia-southeast1\/builds\/[a-f0-9-]{36}$/.test(build.build),
+  // Firebase labels and Cloud Storage generation are NOT SHA256 of candidate.
+  firebaseFunctionsLabelIsNotSourceSha256:true,
   sourceHashMatchesCandidate:"NOT_ATTESTED_BY_DESCRIBE",
   candidateSha256Reference:EXPECTED_CANDIDATE,
   deployedCandidateAttested:false,
