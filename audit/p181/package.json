@@ -1,0 +1,10 @@
+{
+  "name": "packtook-p181-g01-rules-test",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "firebase": "11.10.0",
+    "@firebase/rules-unit-testing": "4.0.1",
+    "firebase-tools": "14.0.0"
+  }
+}
