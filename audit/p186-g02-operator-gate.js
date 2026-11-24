@@ -6,8 +6,8 @@ function validateGate({project,ack,env={}}={}){
  const fail=reason=>({allowed:false,reason});
  if(!PROJECTS.has(project))return fail("PROJECT_NOT_ALLOWLISTED");
  if(ack!=="I_AUTHORIZE_READ_ONLY_G02_INVENTORY")return fail("EXPLICIT_READ_ACK_MISSING");
- if(env.CI==="true"||env.GITHUB_ACTIONS==="true")return fail("CI_CLOUD_ACCESS_REFUSED");
  const emu=(project==="demo-packtook-p186");
+ if(!emu&&(env.CI==="true"||env.GITHUB_ACTIONS==="true"))return fail("CI_CLOUD_ACCESS_REFUSED");
  const auth=env.FIREBASE_AUTH_EMULATOR_HOST,store=env.FIRESTORE_EMULATOR_HOST;
  if(emu){
   if(auth!=="127.0.0.1:19096"||store!=="127.0.0.1:18096")return fail("DEMO_LOCALHOST_GUARD");
