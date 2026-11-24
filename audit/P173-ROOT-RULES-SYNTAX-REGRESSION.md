@@ -48,3 +48,11 @@ At commit `c42f40c`, static P173 6/6 and P172 NO_GO checks passed. Runtime emitt
 P173 now emits only a fixed, non-secret `P173_EMULATOR_EXIT_CATEGORY` based on patterns in the **local** emulator log and `P173_EMULATOR_EXIT_CODE_CLASS` (ZERO/NONZERO). It does not print log contents, credential values, file paths, tokens or secrets. This differentiates CLI option, configuration/rules path, permission, Java, binary download and port errors without exposing underlying logs. If `UNCLASSIFIED_REVIEW_PRIVATE_LOG`, do not assume any cause; use a focused read-only follow-up.
 
 Run the usual Cloud Shell `git fetch`, checkout the updated review branch, `node audit/p173-root-rules-fixtures.js`, and `python3 audit/p173-emulator-root-rules.py`. Expected offline fixtures now `7/7`. The 24-case runtime gate remains **unverified** until separately observed passing.
+
+## P173 third operator outcome — nonzero CLI exit, unclassified
+
+Cloud Shell at commit `1eac182` reported `P173_EMULATOR_PROCESS=EXITED`, `P173_EMULATOR_EXIT_CODE_CLASS=NONZERO`, `P173_EMULATOR_EXIT_CATEGORY=UNCLASSIFIED_REVIEW_PRIVATE_LOG`, and hub HTTP 0. This remains an **unexplained early exit**, not a Firestore security regression.
+
+Comparison with P171's previously working launcher found a meaningful difference: P171 preserves the real user's `HOME` for the Firebase CLI process, whereas P173 replaced subprocess `HOME` with the separate `.packtook-demo-emulator-home` artifacts folder. Firebase Emulator binary caches and local CLI configuration may depend on `HOME`. P173 now uses `HOME=str(Path.home())` **only for the local Firebase CLI subprocess**, consistent with P171, while keeping the log in the separate private audit folder. This is a controlled diagnostic candidate, **not yet a proven root cause**, and it does not make Firebase requests to a production project or authorize deployment.
+
+Offline fixture count increases to 8/8. If local startup still fails, keep all gates NO_GO. Review local private logs only with care; do not paste credentials, tokens or unredacted logs.
