@@ -83,9 +83,10 @@ async function test(label,fn){await fn();n++;console.log("P184_"+label+"=PASS");
    await deny("authorizeDuplicate",missing.token,INPUT);
    assert.equal((await accounts.doc(missing.uid).get()).exists,false);
   });
-  await test("LEGACY_USAGE_STATUS_HTTP_COMPATIBLE",async()=>{
+  await test("LEGACY_USAGE_STATUS_APP_CHECK_ENFORCEMENT_PRESERVED",async()=>{
    const x=await invoke("usageStatus",legacy.token);
-   assert.equal(x.http,200,JSON.stringify(x));assert.equal(x.result.plan,"Free");
+   assert.equal(x.http,401,JSON.stringify(x));
+   assert.equal(x.error,"UNAUTHENTICATED");
    assert.equal(Object.hasOwn((await accounts.doc(legacy.uid).get()).data(),"ownerUid"),false);
   });
   await test("INVALID_REASON_NO_APPROVAL_WRITES",async()=>{
@@ -94,6 +95,7 @@ async function test(label,fn){await fn();n++;console.log("P184_"+label+"=PASS");
   });
   console.log("P184_FULL_CALLABLE_LOCAL_RUNTIME="+n+"/"+n+"_PASS");
   console.log("P184_LOCAL_EMULATOR_TOKEN_SIGNATURE_ATTESTED=FALSE");
+  console.log("P184_LEGACY_STATUS_WITH_VALID_APP_CHECK=NOT_TESTED");
   console.log("P184_INVALID_AUTH_TOKEN_HTTP_PROTOCOL=NOT_ATTESTED_SEPARATE_G03");
   console.log("P184_PRODUCTION_WRITES=0 DEPLOYS=0 OWNER_IMPORTS=0");
   console.log("P184_G02=NO_GO_LEGACY_OWNER_PROVENANCE_AND_SECURITY_SIGNOFF");
