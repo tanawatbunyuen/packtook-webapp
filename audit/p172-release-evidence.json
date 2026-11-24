@@ -1,0 +1,108 @@
+{
+  "schema": "packtook-p172-release-evidence-v1",
+  "mode": "review_only",
+  "as_of": "2026-11-24",
+  "source_pins": {
+    "functions/index.js": "92262ea2fbbb941188937d72f0eea74a735d2bf3",
+    "firestore.rules": "d3e43720eb079c7f0fec50ec7f4e622fd7316e4a",
+    "firebase.json": "d0ae066640c435d3d304915ecaac4084584722c4"
+  },
+  "reference_docs": [
+    "audit/P166-OWNER-CLAIM-NEGATIVE.md",
+    "audit/P167-OWNER-HANDLERS-MOCK-ATTESTATION.md",
+    "audit/P168-CALLABLE-HTTP-RUNTIME.md",
+    "audit/P169-EMULATOR-AUTH-BOUNDARY.md",
+    "audit/P170-OFFLINE-JWT-BOUNDARY.md",
+    "audit/P171-ADMIN-SDK-VERIFYIDTOKEN.md"
+  ],
+  "evidence": [
+    {
+      "phase": "P165",
+      "class": "operator_reported_static",
+      "result": "completed_with_review_findings",
+      "runtime_attested": false
+    },
+    {
+      "phase": "P166",
+      "class": "operator_reported_offline_mock",
+      "result": "4/4 integrity, 8/8 mock cases PASS",
+      "runtime_attested": false
+    },
+    {
+      "phase": "P167",
+      "class": "operator_reported_extracted_handler_mock",
+      "result": "4/4 fixtures, 12/12 denied before mock datastore, 2/2 synthetic owner PASS",
+      "runtime_attested": false
+    },
+    {
+      "phase": "P168",
+      "class": "operator_reported_local_callable_emulator",
+      "result": "16/18 strict tests PASS; invalid token 403/PERMISSION_DENIED instead of 401/UNAUTHENTICATED; handler entered; mock datastore unchanged",
+      "runtime_attested": false
+    },
+    {
+      "phase": "P169",
+      "class": "operator_reported_read_only_inventory",
+      "result": "4/4 fixtures PASS; CLI 15.34.2; Node 26.13.0; Functions 6.6.0; Admin 13.10.0",
+      "runtime_attested": false
+    },
+    {
+      "phase": "P170",
+      "class": "operator_reported_independent_crypto_offline",
+      "result": "4/4 fixtures and 18/18 synthetic cases PASS; not firebase-admin.verifyIdToken",
+      "runtime_attested": false
+    },
+    {
+      "phase": "P171",
+      "class": "operator_reported_local_auth_emulator",
+      "result": "6/6 fixtures PASS; valid unsigned local token accepted, malformed and audience-mutated rejected; signature mutation skipped",
+      "runtime_attested": false
+    }
+  ],
+  "gates": [
+    {
+      "id": "G01_ROOT_RULES",
+      "status": "NO_GO",
+      "reason": "Original referenced firestore.rules has missing semicolon; only isolated normalized candidate tested."
+    },
+    {
+      "id": "G02_BACKEND_AUTH",
+      "status": "NO_GO",
+      "reason": "P165 backend role/admin model findings and non-owner access authorization still need review."
+    },
+    {
+      "id": "G03_CALLABLE_INVALID_TOKEN_PROTOCOL",
+      "status": "NO_GO",
+      "reason": "P168 local emulator invalid auth token yielded 403 and reached handler, while strict protocol expects 401."
+    },
+    {
+      "id": "G04_PRODUCTION_TOKEN_SIGNATURE",
+      "status": "NO_GO",
+      "reason": "Local Auth Emulator issued unsigned tokens; independent P170 verifier is not Firebase Admin production verifier."
+    },
+    {
+      "id": "G05_RECOVERED_OWNER_PROVENANCE",
+      "status": "NO_GO",
+      "reason": "Four recovered Owner functions remain unverified and not imported."
+    },
+    {
+      "id": "G06_APP_CHECK_IAM_SECRETS",
+      "status": "NO_GO",
+      "reason": "Production App Check enforcement, IAM least privilege, secret bindings and runtime revisions not attested by these milestones."
+    },
+    {
+      "id": "G07_BILLING_MONITORING_LEGAL",
+      "status": "NO_GO",
+      "reason": "Owner confirmation of billing caps, alerts/monitoring and legal/privacy readiness outstanding."
+    },
+    {
+      "id": "G08_OWNER_RELEASE_APPROVAL",
+      "status": "NO_GO",
+      "reason": "No explicit Owner signoff to deploy, enable public signup, or import recovered functions."
+    }
+  ],
+  "decision": "NO_GO_RELEASE",
+  "owner_import": "NO_GO_OWNER_IMPORT",
+  "deployment": "NO_GO_DEPLOY",
+  "verified_production_runtime": false
+}
