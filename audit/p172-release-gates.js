@@ -35,9 +35,24 @@ try{
  console.log("P172_RELEASE_GATES=8/8_NO_GO");
  for(const [name,sha] of Object.entries(record.source_pins)){
    const b=fs.readFileSync(path.join(ROOT,name));
-   assert.equal(blob(b),sha,"source_drift:"+name);
+   if(name==="firestore.rules"){
+     // Preserve P172's historical root-source pin. Only permit P173's exact
+     // one-byte syntax candidate; never infer that production rules changed.
+     const candidate=Buffer.from(b);
+     const original="function signedIn(){return request.auth != null}";
+     const patched="function signedIn(){return request.auth != null;}";
+     const text=candidate.toString("utf8");
+     assert.equal(blob(candidate),"52e207280059e5700da77add9e4af45971c94557",
+                  "unreviewed_p173_rules_candidate");
+     assert.equal(text.split(patched).length,2,"p173_patch_not_unique");
+     const historical=Buffer.from(text.replace(patched,original));
+     assert.equal(blob(historical),sha,"p172_historical_source_drift");
+   }else{
+     assert.equal(blob(b),sha,"source_drift:"+name);
+   }
  }
  console.log("P172_SOURCE_PINS=3/3_PASS");
+ console.log("P172_P173_REVIEW_ONLY_ROOT_RULES_CANDIDATE=PASS");
  for(const doc of record.reference_docs){
    assert(doc.startsWith("audit/")&&!doc.includes(".."));
    assert(fs.statSync(path.join(ROOT,doc)).isFile());
