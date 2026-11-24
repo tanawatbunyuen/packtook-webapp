@@ -49,7 +49,7 @@ async function test(label,fn){await fn();n++;console.log("P184_"+label+"=PASS");
   const deny=async(name,token,payload,expected="PERMISSION_DENIED")=>{
    const r=await invoke(name,token,payload);
    assert.equal(r.error,expected,JSON.stringify({name,http:r.http,error:r.error}));
-   assert([401,403].includes(r.http),JSON.stringify(r));
+   assert((expected==="INVALID_ARGUMENT"?[400]:[401,403]).includes(r.http),JSON.stringify(r));
   };
   await test("OWNER_ACCOUNT_ROLE_HTTP_SUCCESS",async()=>{
    const x=await invoke("accountRole",owner.token);
