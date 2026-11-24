@@ -7,7 +7,7 @@ if(process.env.FIRESTORE_EMULATOR_HOST!=="127.0.0.1:18087"||
  process.env.GCLOUD_PROJECT!=="demo-packtook-g02-p183"||
  process.env.GOOGLE_CLOUD_PROJECT!=="demo-packtook-g02-p183")
  throw Error("P183_EMULATOR_PROJECT_AND_HOST_GUARD");
-const admin=require("./p177-emulator/node_modules/firebase-admin");
+const admin=require("../p177-emulator/node_modules/firebase-admin");
 const inherited=Module._load;
 class HttpsError extends Error{constructor(code,message){super(message);this.code=code;}}
 Module._load=function(name,parent,main){
