@@ -248,6 +248,16 @@ def verify(trace):
                     after=trace_count(trace)
                     observed=data.get("error",{}).get("status")
                     good=(observed==wanted and after==before and code in (401,403))
+                    if label=="INVALID_TOKEN":
+                        # Only fixed, non-sensitive classifiers: NEVER print token/body/log.
+                        safe_status=(observed if observed in (
+                            "UNAUTHENTICATED","PERMISSION_DENIED","INVALID_ARGUMENT",
+                            "INTERNAL","UNKNOWN","NOT_FOUND") else "OTHER_OR_MISSING")
+                        safe_http=(str(code) if code in (0,200,400,401,403,404,500,503) else "OTHER")
+                        print(f"P168_{name.upper()}_INVALID_TOKEN_HTTP="+safe_http)
+                        print(f"P168_{name.upper()}_INVALID_TOKEN_STATUS="+safe_status)
+                        print(f"P168_{name.upper()}_INVALID_TOKEN_DB_READS_UNCHANGED="+
+                              ("TRUE" if after==before else "FALSE"))
                     print(f"P168_{name.upper()}_{label}="+("PASS" if good else "FAIL"))
                     ok=ok and good
                 before=trace_count(trace)
