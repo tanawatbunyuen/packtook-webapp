@@ -7,10 +7,10 @@ Source evidence on the reviewed GitHub branch:
 
 This P163 script:
 1. Fails closed if exact reviewed repository source Git blob or isolated emulator config differs, or if separate ports are occupied.
-2. Starts **another local Auth/Firestore demo emulator** (`demo-packtook-owner-security-p163`) using `firestore.rules`, **not** P140 deny-all fixture; separate loopback ports Hub 14500, Firestore 18180, Auth 19199, Logging 14510.
+2. Starts **another local Auth/Firestore demo emulator** (`demo-packtook-owner-security-p163`) using `firestore.rules`, **not** P140 deny-all fixture; separate loopback ports Hub 14500, Firestore 18180, Auth 19199, Logging 14510, Firestore auxiliary WebSocket 9151 (instead of default 9150 used by P141).
 3. Uses verified private Firebase emulator cache (P160) but never starts Functions or connects to staging/production services.
 4. Creates two random local-only `@example.invalid` accounts with Auth Emulator, signs them in, and tests **three paths** using Firestore REST GET: own account => 404 (nonexistent but authorized), other account => 403, anonymous => 403. No Firestore documents are created. Requires all 18 reads to match expected matrix.
-5. Deletes local Auth fixtures in a finally block and terminates **only its own** isolated emulator process. Prints status markers only; no tokens, account IDs, emails, response bodies or raw logs. Logs remain in the private HOME.
+5. Deletes local Auth fixtures in a finally block and terminates **only its own** isolated emulator process. Prints status markers only; no tokens, account IDs, emails, response bodies or raw logs. Logs remain in the private HOME. The initial P163 Cloud Shell run failed at registry readiness; a likely reason was both local emulators reserving Firestore WebSocket port 9150. This revision isolates P163 on port 9151. The exact cause of the first failure remains unconfirmed without private log inspection.
 6. Denial for unknown paths and Firestore client writes can be added as *additional* tests, but this candidate never attempts Firestore writes. SDK rules parity and production deployment remain separate gates.
 
 For Cloud Shell from your existing repo worktree (leave old P141 emulator alone):
