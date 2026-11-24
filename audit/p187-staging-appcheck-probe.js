@@ -5,8 +5,8 @@ const {URL}=require("node:url");
 function validatedTarget(value){
  const u=new URL(value);
  if(u.protocol!=="https:"||u.username||u.password||u.search||u.hash||
-    u.port||!/^(?:[a-z0-9-]+\.)+(?:cloudfunctions\.net|run\.app)$/.test(u.hostname)||
-    !/\/usageStatus\/?$/.test(u.pathname))
+    u.port||u.hostname!=="asia-southeast1-packtook-staging.cloudfunctions.net"||
+    u.pathname!=="/usageStatus")
   throw Error("P187_UNAPPROVED_STAGING_ENDPOINT");
  return u.toString();
 }
