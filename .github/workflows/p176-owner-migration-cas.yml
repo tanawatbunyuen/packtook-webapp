@@ -1,0 +1,25 @@
+name: P176 Owner Migration CAS Offline Regression
+on:
+  push:
+    branches: [review/p176-owner-migration-cas-regression]
+  pull_request:
+    branches: [review/p175-legacy-owner-migration-preflight]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: P176 and inherited NO_GO fixtures
+        run: |
+          node --check audit/p176-owner-migration-cas.js
+          node --check audit/p176-owner-migration-cas-fixtures.js
+          node audit/p176-owner-migration-cas-fixtures.js
+          node audit/p175-owner-migration-fixtures.js
+          node audit/p174-authz-offline-fixtures.js
+          node audit/p173-root-rules-fixtures.js
+          node audit/p172-release-fixtures.js
+          node audit/p172-release-gates.js
