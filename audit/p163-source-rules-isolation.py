@@ -24,6 +24,7 @@ PROJECT = "demo-packtook-owner-security-p163"
 HOST = "127.0.0.1"
 PORTS = {"hub": 14500, "firestore": 18180, "auth": 19199}
 LOGGING_PORT = 14510
+WEBSOCKET_PORT = 9151
 # Lock exact reviewed GitHub blob sha1 (git hash-object format) to prevent source drift.
 EXPECTED_RULES_GIT_BLOB = "d3e43720eb079c7f0fec50ec7f4e622fd7316e4a"
 
@@ -172,13 +173,14 @@ def main():
                              and cfg["emulators"][n]["host"] == HOST
                              for n,port in PORTS.items())
                      and cfg["emulators"]["logging"]["port"] == LOGGING_PORT
-                     and cfg["emulators"]["logging"]["host"] == HOST)
+                     and cfg["emulators"]["logging"]["host"] == HOST
+                     and cfg["emulators"]["firestore"]["websocketPort"] == WEBSOCKET_PORT)
     except (OSError, KeyError, ValueError, TypeError):
         config_ok = False
     if not config_ok:
         print("P163_BLOCK=ISOLATED_CONFIG_CHANGED")
         return 1
-    for port in (*PORTS.values(), LOGGING_PORT):
+    for port in (*PORTS.values(), LOGGING_PORT, WEBSOCKET_PORT):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             if sock.connect_ex((HOST, port)) == 0:
                 print("P163_BLOCK=ISOLATED_PORT_IN_USE_" + str(port))
