@@ -23,4 +23,10 @@ const runner=fs.readFileSync(path.join(__dirname,"p171-local-auth-emulator.py"),
 assert(runner.includes('"--only","auth"'));
 assert(!runner.includes('"--only","functions"'));
 console.log("P171_AUTH_ONLY_EMULATOR_FIXTURE=PASS");
-console.log("P171_OFFLINE_FIXTURES=4/4_PASS");
+const nodeSource=fs.readFileSync(path.join(__dirname,"p171-admin-verify.js"),"utf8");
+assert(nodeSource.includes("async function inspect(auth,token,label)"));
+assert(nodeSource.includes("await auth.verifyIdToken(token)"));
+assert(!nodeSource.includes("admin.auth().verifyIdToken(token)"));
+assert(nodeSource.includes('inspect(auth,good,"LOCAL_VALID")'));
+console.log("P171_NAMED_APP_AUTH_VERIFIER_FIXTURE=PASS");
+console.log("P171_OFFLINE_FIXTURES=5/5_PASS");
