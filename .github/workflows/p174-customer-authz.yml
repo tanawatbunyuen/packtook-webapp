@@ -1,0 +1,23 @@
+name: P174 Customer Admin Authorization Candidate
+on:
+  push:
+    branches: [review/p174-customer-admin-authz-boundary]
+  pull_request:
+    branches: [review/p173-root-firestore-rules-syntax-regression]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Candidate authorization and inherited fail-closed gates
+        run: |
+          node --check audit/p174-authz-guard-candidate.js
+          node --check audit/p174-authz-offline-fixtures.js
+          node audit/p174-authz-offline-fixtures.js
+          node audit/p173-root-rules-fixtures.js
+          node audit/p172-release-fixtures.js
+          node audit/p172-release-gates.js
