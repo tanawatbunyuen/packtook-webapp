@@ -1,0 +1,23 @@
+name: P180 Production Fast Track Read Only Gate Check
+on:
+  push:
+    branches: [review/p180-production-fast-track-readiness]
+  pull_request:
+    branches: [review/p179-atomic-migration-audit-emulator]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  release-plan-consistency-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify fast track gate coverage but never approve release
+        run: |
+          node --check audit/p180-fast-track-check.js
+          node audit/p180-fast-track-check.js
+          node audit/p172-release-gates.js

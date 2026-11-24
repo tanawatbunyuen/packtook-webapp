@@ -1,0 +1,133 @@
+{
+  "schema": "packtook-production-fast-track-v1",
+  "asOf": "2026-11-24",
+  "mode": "review_only",
+  "productionProject": "packtook-prod-01",
+  "stagingProject": "packtook-staging",
+  "currentDecision": "NO_GO_RELEASE",
+  "ownerImports": "NO_GO_OWNER_IMPORT",
+  "deployment": "NO_GO_DEPLOY",
+  "publicSignup": "KEEP_CLOSED",
+  "stages": [
+    {
+      "id": "S1",
+      "title": "Security and authorization",
+      "gates": [
+        "G01_ROOT_RULES",
+        "G02_BACKEND_AUTH",
+        "G03_CALLABLE_INVALID_TOKEN_PROTOCOL",
+        "G04_PRODUCTION_TOKEN_SIGNATURE",
+        "G05_RECOVERED_OWNER_PROVENANCE"
+      ],
+      "tasks": [
+        "Run exact root-rules client-emulator denial + approved tenant reads",
+        "Source-review admin/owner/duplicate/legacy ownerUid migrations and release candidate",
+        "Resolve P168 invalid-token 403-vs-401 protocol failure in tested runtime",
+        "Verify Firebase Admin token semantics in controlled staging without production credentials in CI",
+        "Trace recovered Owner source provenance; exclude from release if not needed"
+      ]
+    },
+    {
+      "id": "S2",
+      "title": "Cloud security payments and monitoring",
+      "gates": [
+        "G06_APP_CHECK_IAM_SECRETS",
+        "G07_BILLING_MONITORING_LEGAL"
+      ],
+      "tasks": [
+        "Read-only staging and production IAM/App Check/runtime revision/secret binding inventory",
+        "Resolve Omise staging Test API 404 and reconcile webhook idempotency and subscription credits",
+        "Verify billing alerts, dashboards, log retention, monitoring and incident contacts",
+        "Document production secret rotation and limit privileges"
+      ]
+    },
+    {
+      "id": "S3",
+      "title": "End-to-end recovery staging",
+      "gates": [],
+      "tasks": [
+        "Isolated end-to-end signup/email verify, record/credit reserve-finalize-recovery, duplicate/device transfer, payment via Omise Test Mode",
+        "Exercise backup-restore and rollback with restore metrics and no customer data exposure",
+        "Load test realistic pilot concurrency, alerts, and error budget"
+      ]
+    },
+    {
+      "id": "S4",
+      "title": "Legal owner approval and controlled release",
+      "gates": [
+        "G08_OWNER_RELEASE_APPROVAL"
+      ],
+      "tasks": [
+        "Review Thai PDPA/Terms/Privacy/Refund and data retention",
+        "Independently verify evidence per gate and collect written Owner approval",
+        "Separately authorize deploy, controlled signup enablement and rollback operator",
+        "Small controlled pilot; monitor alerts, payment/credit reconciliation and staged public rollout"
+      ]
+    }
+  ],
+  "gateEvidence": [
+    {
+      "id": "G01_ROOT_RULES",
+      "status": "NO_GO",
+      "proof": "exact release-candidate Firestore emulator suite and reviewed deploy diff",
+      "owner": "Engineering"
+    },
+    {
+      "id": "G02_BACKEND_AUTH",
+      "status": "NO_GO",
+      "proof": "approved source diff, negative owner/admin and legacy-account emulator runtime tests",
+      "owner": "Security"
+    },
+    {
+      "id": "G03_CALLABLE_INVALID_TOKEN_PROTOCOL",
+      "status": "NO_GO",
+      "proof": "reproduced and fixed strict protocol test in chosen callable runtime",
+      "owner": "Engineering"
+    },
+    {
+      "id": "G04_PRODUCTION_TOKEN_SIGNATURE",
+      "status": "NO_GO",
+      "proof": "staging token verification and independent live-runtime attestation (never synthetic token claim)",
+      "owner": "Security"
+    },
+    {
+      "id": "G05_RECOVERED_OWNER_PROVENANCE",
+      "status": "NO_GO",
+      "proof": "source provenance or documented deliberate exclusion from release candidate",
+      "owner": "Engineering"
+    },
+    {
+      "id": "G06_APP_CHECK_IAM_SECRETS",
+      "status": "NO_GO",
+      "proof": "operator-verified prod config, least privilege and secret binding report",
+      "owner": "Cloud Owner"
+    },
+    {
+      "id": "G07_BILLING_MONITORING_LEGAL",
+      "status": "NO_GO",
+      "proof": "staging Omise reconciliation, billing/alert evidence and signed legal/privacy review",
+      "owner": "Business Owner"
+    },
+    {
+      "id": "G08_OWNER_RELEASE_APPROVAL",
+      "status": "NO_GO",
+      "proof": "explicit recorded approval for precisely scoped deploy and controlled launch",
+      "owner": "Business Owner"
+    }
+  ],
+  "validatedExisting": {
+    "p173Offline": "13/13 PASS",
+    "p174Offline": "12/12 PASS",
+    "p175Offline": "20/20 PASS",
+    "p176Offline": "15/15 PASS",
+    "p177Emulator": "10/10 PASS",
+    "p178Offline": "21/21 PASS",
+    "p179Emulator": "10/10 PASS"
+  },
+  "outstanding": [
+    "P168 callable protocol discrepancy",
+    "External approver trust/root, immutable audit, historical owner-account provenance",
+    "Omise staging 404 not confirmed resolved",
+    "Prod runtime/IAM/App Check/secrets/billing/monitoring/PDPA and Owner signoff"
+  ]
+}
