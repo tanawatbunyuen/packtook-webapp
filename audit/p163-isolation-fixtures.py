@@ -10,6 +10,12 @@ p = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(p)
 assert p.git_blob(p.RULES.read_bytes()) == p.EXPECTED_RULES_GIT_BLOB
 print("P163_EXACT_REVIEWED_RULES_BLOB=PASS")
+source = p.RULES.read_bytes()
+assert source.count(b"return request.auth != null}") == 1
+assert p.NORMALIZED_RULES.read_bytes() == source.replace(
+    b"return request.auth != null}", b"return request.auth != null;}")
+assert __import__("json").loads(p.CONFIG.read_text())["firestore"]["rules"] == "p163-source-rules-normalized.rules"
+print("P163_ISOLATED_ONE_SEMICOLON_DELTA=PASS")
 accounts = {}
 tokens = {}
 seq = [0]
