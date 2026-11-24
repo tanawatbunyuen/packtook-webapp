@@ -1,0 +1,21 @@
+name: P162 Demo Auth and Firestore Deny-All Offline Fixtures
+on:
+  push:
+    branches:
+      - review/p162-demo-auth-deny-all-security
+  pull_request:
+    branches:
+      - review/p161-emulator-identity-readonly-attestation
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  fixtures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: P162 offline synthetic gate (no Firebase network)
+        run: |
+          python3 -m py_compile audit/p162-demo-auth-deny-all.py audit/p162-auth-fixtures.py
+          python3 audit/p162-auth-fixtures.py
