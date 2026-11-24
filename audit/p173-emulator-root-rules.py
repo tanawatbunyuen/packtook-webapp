@@ -135,9 +135,15 @@ def main():
  print("P173_CLI_HOME_PARITY_WITH_P171=PASS")
  proc=None
  try:
+  # This disposable config declares ONLY Auth + Firestore. Omit --only to
+  # test whether CLI service-filter parsing caused Auth to be skipped.
+  allowed=set(settings.get("emulators",{}))-{"hub","logging","ui"}
+  if allowed!={"auth","firestore"}:
+   print("P173_BLOCK=UNEXPECTED_EMULATOR_SERVICE");return 1
+  print("P173_LAUNCH_CONFIGURED_SERVICES=AUTH_AND_FIRESTORE")
+  print("P173_LAUNCH_ONLY_FILTER=OMITTED")
   proc=subprocess.Popen([firebase,"emulators:start","--project",PROJECT,
-      "--only","auth,firestore","--config",str(config_path),
-      "--non-interactive"],cwd=ROOT,env=env,
+      "--config",str(config_path),"--non-interactive"],cwd=ROOT,env=env,
       stdout=fd,stderr=subprocess.STDOUT,start_new_session=True)
   for _ in range(60):
    if proc.poll() is not None:break
