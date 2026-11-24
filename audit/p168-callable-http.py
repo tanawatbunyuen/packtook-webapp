@@ -215,7 +215,7 @@ def trace_count(path):
     return path.read_text().count("READ\n") if path.exists() else 0
 
 def handler_entry_count(path):
-    return path.read_text().count("HANDLER\\n") if path.exists() else 0
+    return path.read_text().count("HANDLER\n") if path.exists() else 0
 
 def verify(trace):
     users=[]
