@@ -1,0 +1,33 @@
+name: P192 G02 Legacy Owner Recovery Compatibility
+on:
+  push:
+    branches: [review/p192-g02-legacy-recovery-compatibility]
+  pull_request:
+    branches: [review/p191-g02-legacy-owner-frontend-ux]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  review-only-compatibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      CI: "true"
+      GCLOUD_PROJECT: demo-packtook-p184
+      GOOGLE_CLOUD_PROJECT: demo-packtook-p184
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Legacy recovery frontend behavior, duplicate ownership and credit invariants
+        run: |
+          node audit/p191-legacy-owner-frontend-fixtures.js
+          node audit/p192-legacy-owner-recovery-fixtures.js
+      - name: Retain backend RC integrity, external-evidence NO_GO and release gates
+        run: |
+          node audit/p188/build-rc.js
+          node audit/p189/verify.js
+          node audit/p190/reconcile-fixtures.js
+          node audit/p180-fast-track-check.js
+          node audit/p172-release-gates.js
