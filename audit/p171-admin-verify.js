@@ -72,6 +72,15 @@ function postLocal(pathname,body){
   req.once("error",reject);req.end(bytes);
  });
 }
+function tokenShape(token){
+ if(typeof token!=="string")return "NOT_STRING";
+ const parts=token.split(".");
+ if(parts.length!==3)return "NOT_THREE_SEGMENTS";
+ if(!parts[0]||!parts[1])return "MISSING_HEADER_OR_PAYLOAD";
+ if(!parts[2])return "UNSIGNED_EMULATOR_TOKEN";
+ if(parts[2].length<2)return "SHORT_SIGNATURE";
+ return "SIGNED_THREE_SEGMENTS";
+}
 function mutateSignature(token){
  const parts=token.split(".");
  if(parts.length!==3||parts[2].length<2)throw Error("not_jwt");
@@ -122,11 +131,24 @@ async function main(){
   console.log("P171_LOCAL_TOKEN_ISSUED=PASS");
   const valid=await inspect(auth,good,"LOCAL_VALID");
   const malformed=await inspect(auth,"invalid-p168-demo-token","MALFORMED");
-  const broken=await inspect(auth,mutateSignature(good),"MUTATED_SIGNATURE");
-  const wrong=await inspect(auth,mutateAudienceWithoutResigning(good),"MUTATED_AUDIENCE");
+  const shape=tokenShape(good);
+  console.log("P171_LOCAL_TOKEN_SHAPE="+shape);
+  let broken="NOT_APPLICABLE";
+  if(shape==="SIGNED_THREE_SEGMENTS"){
+   broken=await inspect(auth,mutateSignature(good),"MUTATED_SIGNATURE");
+  }else if(shape==="UNSIGNED_EMULATOR_TOKEN"){
+   console.log("P171_ADMIN_VERIFY_MUTATED_SIGNATURE=NOT_APPLICABLE_UNSIGNED_EMULATOR_TOKEN");
+  }else {
+   throw Error("P171_BLOCK=UNEXPECTED_LOCAL_TOKEN_SHAPE");
+  }
+  let wrong;
+  try{wrong=await inspect(auth,mutateAudienceWithoutResigning(good),"MUTATED_AUDIENCE");}
+  catch{throw Error("P171_BLOCK=AUDIENCE_MUTATION_UNAVAILABLE");}
   if(valid!=="ACCEPTED")throw Error("P171_BLOCK=VALID_LOCAL_TOKEN_NOT_VERIFIED");
   if(malformed!=="REJECTED")throw Error("P171_BLOCK=MALFORMED_TOKEN_NOT_REJECTED");
   console.log("P171_LOCAL_VALID_AND_MALFORMED_CONTRACT=PASS");
+  console.log("P171_MUTATED_SIGNATURE_CASE="+(broken==="NOT_APPLICABLE"?"SKIPPED_UNSIGNED":"OBSERVED_ONLY"));
+  console.log("P171_MUTATED_AUDIENCE_CASE=OBSERVED_ONLY");
   console.log("P171_MUTATED_SIGNATURE_EMULATOR_CRYPTO_ATTESTED=FALSE");
   console.log("P171_MUTATED_AUDIENCE_EMULATOR_CRYPTO_ATTESTED=FALSE");
   console.log("P171_LOCAL_ACCEPTANCE_IS_NOT_PRODUCTION_ATTESTATION=TRUE");
@@ -148,4 +170,4 @@ if(require.main===module)main().catch(e=>{
              "P171_BLOCK=LOCAL_VERIFY_ID_TOKEN_TEST_FAILED");
  process.exitCode=1;
 });
-module.exports={mutateSignature,mutateAudienceWithoutResigning,localGate};
+module.exports={mutateSignature,mutateAudienceWithoutResigning,tokenShape,localGate};
