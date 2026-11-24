@@ -1,0 +1,24 @@
+name: P175 Legacy Owner Migration Offline Preflight
+on:
+  push:
+    branches: [review/p175-legacy-owner-migration-preflight]
+  pull_request:
+    branches: [review/p174-customer-admin-authz-boundary]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fail closed owner migration preview and inherited security reviews
+        run: |
+          node --check audit/p175-owner-migration-preview.js
+          node --check audit/p175-owner-migration-fixtures.js
+          node audit/p175-owner-migration-fixtures.js
+          node audit/p174-authz-offline-fixtures.js
+          node audit/p173-root-rules-fixtures.js
+          node audit/p172-release-fixtures.js
+          node audit/p172-release-gates.js
