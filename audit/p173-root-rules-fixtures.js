@@ -42,4 +42,7 @@ assert(runner.includes("P173_EMULATOR_EXIT_CATEGORY="));
 assert(runner.includes("diagnose_exit(log)"));
 assert(runner.includes("UNCLASSIFIED_REVIEW_PRIVATE_LOG"));
 console.log("P173_EMULATOR_EXIT_SAFE_DIAGNOSTIC_FIXTURE=PASS");
-console.log("P173_OFFLINE_FIXTURES=7/7_PASS");
+assert(runner.includes('"HOME":str(Path.home())'));
+assert(runner.includes("P173_CLI_HOME_PARITY_WITH_P171=PASS"));
+console.log("P173_CLI_HOME_PARITY_FIXTURE=PASS");
+console.log("P173_OFFLINE_FIXTURES=8/8_PASS");
