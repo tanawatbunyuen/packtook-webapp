@@ -131,7 +131,12 @@ def main():
     for kind,expected_port in (("auth",19373),("firestore",18373)):
      entry=hub_data.get(kind)
      port=entry.get("port") if isinstance(entry,dict) else None
-     print("P173_HUB_"+kind.upper()+"_PORT_MATCH="+str(port==expected_port).upper())
+     registered=isinstance(entry,dict)
+     # Only output loopback port numbers (non-secret); never echo provider JSON.
+     safe_port=port if type(port) is int and 1<=port<=65535 else None
+     print("P173_HUB_"+kind.upper()+"_REGISTERED="+str(registered).upper())
+     print("P173_HUB_"+kind.upper()+"_PORT="+str(safe_port if safe_port is not None else "MISSING_OR_INVALID"))
+     print("P173_HUB_"+kind.upper()+"_PORT_MATCH="+str(safe_port==expected_port).upper())
    print("P173_BLOCK=EMULATOR_NOT_READY");return 1
   print("P173_EMULATOR_LISTENERS=PASS")
   people=[]
