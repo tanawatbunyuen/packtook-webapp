@@ -1,0 +1,22 @@
+name: P173 Root Firestore Rules Exact Source Regression
+on:
+  push:
+    branches: [review/p173-root-firestore-rules-syntax-regression]
+  pull_request:
+    branches: [review/p172-auth-security-evidence-release-gates]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  static-review-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Strict root Firestore rules source and historical release gate checks
+        run: |
+          node --check audit/p173-root-rules-fixtures.js
+          python3 -m py_compile audit/p173-emulator-root-rules.py
+          node audit/p173-root-rules-fixtures.js
+          node audit/p172-release-fixtures.js
+          node audit/p172-release-gates.js
