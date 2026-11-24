@@ -1,0 +1,9 @@
+{
+  "name": "packtook-p177-isolated-emulator",
+  "private": true,
+  "version": "1.0.0",
+  "dependencies": {
+    "firebase-admin": "13.0.0",
+    "firebase-tools": "14.0.0"
+  }
+}
