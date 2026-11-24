@@ -1,0 +1,31 @@
+name: P178 Trusted Approval And Audit Offline Regression
+on:
+  push:
+    branches: [review/p178-trusted-approval-audit-boundary]
+  pull_request:
+    branches: [review/p177-isolated-firestore-transaction-emulator]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-signatures-and-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: P178 signature / audit tamper regressions
+        run: |
+          node --check audit/p178-trusted-approval-audit.js
+          node --check audit/p178-trusted-approval-fixtures.js
+          node audit/p178-trusted-approval-fixtures.js
+      - name: Inherited P176-P172 release safety tests
+        run: |
+          node audit/p176-owner-migration-cas-fixtures.js
+          node audit/p175-owner-migration-fixtures.js
+          node audit/p174-authz-offline-fixtures.js
+          node audit/p173-root-rules-fixtures.js
+          node audit/p172-release-fixtures.js
+          node audit/p172-release-gates.js
