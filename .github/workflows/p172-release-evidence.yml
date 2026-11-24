@@ -1,0 +1,21 @@
+name: P172 Release Evidence Integrity Fail Closed
+on:
+  push:
+    branches: [review/p172-auth-security-evidence-release-gates]
+  pull_request:
+    branches: [review/p171-admin-sdk-token-verification-emulator]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  review-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Static evidence and no-go integrity tests only
+        run: |
+          node --check audit/p172-release-gates.js
+          node --check audit/p172-release-fixtures.js
+          node audit/p172-release-fixtures.js
+          node audit/p172-release-gates.js
