@@ -7,6 +7,7 @@ only when strictly validated. Runtime protocol remains NO_GO.
 """
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import shutil
@@ -44,8 +45,11 @@ def triage(record):
 
 def safe_run(argv,pattern):
     try:
+        env=dict(os.environ)
+        env["FIREBASE_SKIP_UPDATE_CHECK"]="1"
+        env["CI"]="true"
         p=subprocess.run(argv,capture_output=True,text=True,timeout=12,
-                         check=False)
+                         check=False,env=env)
     except (OSError,subprocess.TimeoutExpired):
         return "UNAVAILABLE"
     value=p.stdout.strip()
@@ -53,7 +57,21 @@ def safe_run(argv,pattern):
         return "UNAVAILABLE"
     return value
 
-def local_packages():
+def sdk_package_location():
+    # P168 operator installed SDK packages in its separate worktree. Reuse only
+    # if the same exact pinned backend source is present there.
+    if (ROOT/"functions/node_modules").is_dir():
+        return PACKAGE,"CURRENT_P169_WORKTREE"
+    sibling=Path.home()/"packtook-p168"/"functions"
+    try:
+        if ((sibling/"node_modules").is_dir()
+            and git_blob((sibling/"index.js").read_bytes())==EXPECTED_SOURCE):
+            return sibling/"package.json","PINNED_P168_WORKTREE"
+    except OSError:
+        pass
+    return PACKAGE,"NOT_FOUND"
+
+def local_packages(package_path):
     """Only installed module metadata through Node's module resolution."""
     script=r'''
 const {createRequire}=require("node:module");
@@ -84,7 +102,7 @@ for(const name of names){
 process.stdout.write(JSON.stringify(out));
 '''
     try:
-        p=subprocess.run(["node","-e",script,str(PACKAGE)],
+        p=subprocess.run(["node","-e",script,str(package_path)],
             capture_output=True,text=True,timeout=12)
         if p.returncode!=0:return {}
         data=json.loads(p.stdout)
@@ -122,7 +140,9 @@ def main():
         (safe_run([firebase,"--version"],VERSION) if firebase else "UNAVAILABLE"))
     print("P169_NODE_VERSION="+
         (safe_run([node,"--version"],NODE_VERSION) if node else "UNAVAILABLE"))
-    pkgs=local_packages() if node else {}
+    sdk_package, sdk_location=sdk_package_location()
+    print("P169_INSTALLED_SDK_SOURCE="+sdk_location)
+    pkgs=local_packages(sdk_package) if node else {}
     for name,tag in (("firebase-functions","FUNCTIONS"),("firebase-admin","ADMIN")):
         val=pkgs.get(name)
         print("P169_INSTALLED_"+tag+"_SDK_VERSION="+
