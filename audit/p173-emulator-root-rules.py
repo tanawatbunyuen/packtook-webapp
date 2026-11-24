@@ -2,7 +2,7 @@
 """P173 local Auth/Firestore emulator tests on CURRENT ROOT firestore.rules only.
 No production credentials; no original backend import; no deployed reads/writes.
 """
-import hashlib,json,os,secrets,signal,socket,subprocess,sys,time
+import hashlib,json,os,secrets,signal,socket,subprocess,sys,tempfile,time
 from pathlib import Path
 import urllib.request,urllib.error
 ROOT=Path(__file__).resolve().parent.parent
@@ -81,6 +81,23 @@ def main():
  firebase=shutil.which("firebase")
  if not firebase:
   print("P173_BLOCK=FIREBASE_CLI_MISSING");return 1
+ # Place disposable config beside the pinned root rules; ensure relative
+ # 'firestore.rules' can never point outside this worktree.
+ settings=json.loads((AUDIT/"p173-emulator-root-rules.json").read_text())
+ if settings.get("firestore",{}).get("rules")!="../firestore.rules":
+  print("P173_BLOCK=REVIEW_CONFIG_DRIFT");return 1
+ settings["firestore"]={"rules":"firestore.rules"}
+ config_path=None
+ try:
+  with tempfile.NamedTemporaryFile(mode="w",encoding="utf-8",suffix=".json",
+      prefix=".p173-local-",dir=ROOT,delete=False) as tmp:
+   config_path=Path(tmp.name)
+   os.chmod(config_path,0o600)
+   json.dump(settings,tmp)
+ except OSError:
+  if config_path:config_path.unlink(missing_ok=True)
+  print("P173_BLOCK=LOCAL_CONFIG_CREATION");return 1
+ print("P173_CONFIG_NEXT_TO_ROOT_RULES=PASS")
  log=HOME/"p173-firestore-auth-emulator.log"
  fd=log.open("w")
  # Match P171's successfully tested CLI environment. Keep artifacts in HOME.
@@ -93,7 +110,7 @@ def main():
  proc=None
  try:
   proc=subprocess.Popen([firebase,"emulators:start","--project",PROJECT,
-      "--only","auth,firestore","--config",str(AUDIT/"p173-emulator-root-rules.json"),
+      "--only","auth,firestore","--config",str(config_path),
       "--non-interactive"],cwd=ROOT,env=env,
       stdout=fd,stderr=subprocess.STDOUT,start_new_session=True)
   for _ in range(60):
@@ -172,6 +189,8 @@ def main():
     except ProcessLookupError:pass
     proc.wait(timeout=5)
   fd.close()
+  config_path.unlink(missing_ok=True)
+  print("P173_TEMP_CONFIG_REMOVED=TRUE")
   print("P173_EMULATORS_STOPPED=TRUE")
   print("P173_CLOUD_CALLS=0 P173_DEPLOYS=0")
 if __name__=="__main__":
