@@ -1,0 +1,35 @@
+name: P190 G02 Final Security Preflight Reconciliation
+on:
+  push:
+    branches: [review/p190-g02-external-evidence-reconciliation]
+  pull_request:
+    branches: [review/p189-g02-release-evidence-integrity]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-evidence-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    env:
+      GCLOUD_PROJECT: demo-packtook-p184
+      GOOGLE_CLOUD_PROJECT: demo-packtook-p184
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Build exact source pinned backend candidate and verify no unreviewed diff
+        run: |
+          node audit/p188/build-rc.js
+          node audit/p189/verify.js
+      - name: Run strict offline G02 evidence reconciliation, no credentials or cloud
+        run: |
+          node --check audit/p190/reconcile.js
+          node audit/p190/reconcile-fixtures.js
+          node audit/p190/reconcile.js
+      - name: Historical release gates still blocked
+        run: |
+          node audit/p180-fast-track-check.js
+          node audit/p172-release-gates.js
