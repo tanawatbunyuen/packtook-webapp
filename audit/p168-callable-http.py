@@ -162,9 +162,11 @@ admin.initializeApp({projectId:process.env.GCLOUD_PROJECT});
  const records=JSON.parse(fs.readFileSync(0,"utf8"));
  if(process.argv[2]==="create"){
    for(const x of records){
-    await admin.auth().createUser({uid:x.uid,email:x.email,
-      password:x.password,emailVerified:x.verified});
-    if(x.claims)await admin.auth().setCustomUserClaims(x.uid,x.claims);
+    try{
+     await admin.auth().createUser({uid:x.uid,email:x.email,
+       password:x.password,emailVerified:x.verified});
+     if(x.claims)await admin.auth().setCustomUserClaims(x.uid,x.claims);
+    }catch(e){try{await admin.auth().deleteUser(x.uid)}catch(_){/*best-effort rollback*/}throw e;}
    }
  }else if(process.argv[2]==="delete"){
    for(const x of records)await admin.auth().deleteUser(x.uid);
@@ -280,7 +282,7 @@ def main():
     print("P168_PINNED_SOURCE_AND_TWO_HANDLER_ONLY=PASS")
     if not all(shutil.which(x) for x in ("firebase","node")):
         print("P168_BLOCK=LOCAL_CLI_MISSING");return 1
-    if not npm_preflight():
+    if not npm_preflight() or not (ROOT/"functions/node_modules").is_dir():
         print("P168_BLOCK=PREINSTALLED_FUNCTIONS_DEPS_MISSING")
         print("P168_REQUIRE_MANUAL_DEPENDENCY_REVIEW=TRUE")
         return 1
@@ -297,10 +299,13 @@ def main():
     finally: os.umask(old)
     trace=tmp/"db-trace.txt"
     (tmp/"functions").mkdir(mode=0o700)
+    # Reuse already-reviewed installed SDK packages; NEVER invoke npm install.
+    (tmp/"functions"/"node_modules").symlink_to(ROOT/"functions/node_modules",target_is_directory=True)
     (tmp/"functions"/"index.js").write_text(generated_index(parts,trace))
     (tmp/"functions"/"package.json").write_text(json.dumps({
       "name":"packtook-p168-demo-only","private":True,"version":"0.0.0",
-      "main":"index.js","engines":{"node":"22"}}))
+      "main":"index.js","engines":{"node":"22"},
+      "dependencies":{"firebase-functions":"^6.0.0","firebase-admin":"^13.0.0"}}))
     config={"functions":{"source":"functions"},
       "emulators":{"functions":{"host":HOST,"port":PORTS["functions"]},
         "auth":{"host":HOST,"port":PORTS["auth"]},
