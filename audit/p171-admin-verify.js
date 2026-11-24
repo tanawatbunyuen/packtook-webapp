@@ -95,7 +95,7 @@ async function main(){
  const password=crypto.randomBytes(24).toString("base64url");
  let created=false;
  try{
-  const auth=app.auth();
+  const auth=admin.auth(app);
   await auth.createUser({uid,email,password,emailVerified:true});
   created=true;
   console.log("P171_SYNTHETIC_LOCAL_ACCOUNT_CREATED=PASS");
@@ -122,7 +122,7 @@ async function main(){
  }finally{
   let cleaned=!created;
   if(created){
-    try{await app.auth().deleteUser(uid);cleaned=true;}
+    try{await admin.auth(app).deleteUser(uid);cleaned=true;}
     catch{cleaned=false;}
   }
   console.log("P171_DISPOSABLE_USER_CLEANUP="+(cleaned?"PASS":"FAIL"));
