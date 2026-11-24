@@ -9,7 +9,8 @@
     },
     "firestore": {
       "host": "127.0.0.1",
-      "port": 18180
+      "port": 18180,
+      "websocketPort": 9151
     },
     "hub": {
       "host": "127.0.0.1",
