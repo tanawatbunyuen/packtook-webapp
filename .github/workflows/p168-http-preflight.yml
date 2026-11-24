@@ -1,0 +1,19 @@
+name: P168 Isolated Callable HTTP Preflight Fixtures
+on:
+  push:
+    branches: [review/p168-isolated-callable-http-runtime]
+  pull_request:
+    branches: [review/p167-owner-handlers-mock-datastore]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify pinned generated isolated HTTP harness (no Firebase services)
+        run: |
+          python3 -m py_compile audit/p168-callable-http.py audit/p168-preflight-fixtures.py
+          python3 audit/p168-preflight-fixtures.py
