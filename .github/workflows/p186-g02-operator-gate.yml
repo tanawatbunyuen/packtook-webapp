@@ -1,0 +1,40 @@
+name: P186 G02 Operator Read-only Gate Offline
+on:
+  push:
+    branches: [review/p186-g02-operator-readonly-evidence]
+  pull_request:
+    branches: [review/p185-g02-legacy-inventory-read-only]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  gate-only-no-cloud:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify operator safety gate and retained release NO_GO
+        run: |
+          node --check audit/p186-g02-operator-cli.js
+          node audit/p186-g02-operator-gate-fixtures.js
+          node audit/p180-fast-track-check.js
+          node audit/p172-release-gates.js
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install disposable localhost emulator tools
+        run: npm install --prefix audit/p177-emulator --ignore-scripts --no-audit --no-fund --no-package-lock
+      - name: Execute real CLI with synthetic Auth and Firestore accounts
+        env:
+          GCLOUD_PROJECT: demo-packtook-p186
+          GOOGLE_CLOUD_PROJECT: demo-packtook-p186
+          FIREBASE_AUTH_EMULATOR_HOST: 127.0.0.1:19096
+          FIRESTORE_EMULATOR_HOST: 127.0.0.1:18096
+          CI: "true"
+        run: |
+          node --check audit/p186-cli-emulator-fixtures.js
+          audit/p177-emulator/node_modules/.bin/firebase emulators:exec --project demo-packtook-p186 --only auth,firestore --config audit/p186/firebase.json "node audit/p186-cli-emulator-fixtures.js"
