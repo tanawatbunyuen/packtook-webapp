@@ -86,9 +86,9 @@ function mutateAudienceWithoutResigning(token){
  parts[1]=Buffer.from(JSON.stringify(body)).toString("base64url");
  return parts.join(".");
 }
-async function inspect(admin,token,label){
+async function inspect(auth,token,label){
  let outcome="REJECTED";
- try{const decoded=await admin.auth().verifyIdToken(token);
+ try{const decoded=await auth.verifyIdToken(token);
    // Classification only. Never interpret emulator acceptance as a cryptographic proof.
    outcome=(decoded&&typeof decoded.uid==="string"?"ACCEPTED":"UNEXPECTED_RESULT");
  }catch(e){outcome="REJECTED";}
@@ -107,6 +107,7 @@ async function main(){
  let created=false;
  try{
   const auth=admin.auth(app);
+  console.log("P171_VERIFY_USES_NAMED_APP=PASS");
   await auth.createUser({uid,email,password,emailVerified:true});
   created=true;
   console.log("P171_SYNTHETIC_LOCAL_ACCOUNT_CREATED=PASS");
@@ -119,10 +120,10 @@ async function main(){
     throw Error("P171_BLOCK=LOCAL_SIGNIN_FAILED");
   const good=login.body.idToken;
   console.log("P171_LOCAL_TOKEN_ISSUED=PASS");
-  const valid=await inspect(admin,good,"LOCAL_VALID");
-  const malformed=await inspect(admin,"invalid-p168-demo-token","MALFORMED");
-  const broken=await inspect(admin,mutateSignature(good),"MUTATED_SIGNATURE");
-  const wrong=await inspect(admin,mutateAudienceWithoutResigning(good),"MUTATED_AUDIENCE");
+  const valid=await inspect(auth,good,"LOCAL_VALID");
+  const malformed=await inspect(auth,"invalid-p168-demo-token","MALFORMED");
+  const broken=await inspect(auth,mutateSignature(good),"MUTATED_SIGNATURE");
+  const wrong=await inspect(auth,mutateAudienceWithoutResigning(good),"MUTATED_AUDIENCE");
   if(valid!=="ACCEPTED")throw Error("P171_BLOCK=VALID_LOCAL_TOKEN_NOT_VERIFIED");
   if(malformed!=="REJECTED")throw Error("P171_BLOCK=MALFORMED_TOKEN_NOT_REJECTED");
   console.log("P171_LOCAL_VALID_AND_MALFORMED_CONTRACT=PASS");
