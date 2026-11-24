@@ -80,3 +80,23 @@ Cloud Shell reported `P173_HUB_HTTP_STATUS=200`, `P173_HUB_FIRESTORE_REGISTERED=
 The next review-only diagnostic instruments the launcher to **require** Auth localhost port 19373 in the disposable config and to classify a private logfile for an Auth startup error, Auth startup attempt, unrelated Auth mention, or no Auth mention. It also probes **only** whether TCP port 19373 is open on 127.0.0.1. Printed values are restricted to safe fixed labels/Boolean and the predeclared test port; no raw log, tokens, passwords, provider responses or identities.
 
 Expected static fixture result `P173_OFFLINE_FIXTURES=11/11_PASS`. A real test remains blocked until both Auth and Firestore register in the same Hub with expected ports. Preserve `NO_GO_RELEASE / NO_GO_OWNER_IMPORT / NO_GO_DEPLOY`.
+
+## P173 seventh operator result — differential Auth-only test
+
+Cloud Shell at commit `5c862e3` shows Firestore registered at 18373 but Auth not registered, with TCP 19373 CLOSED and a log categorizer reporting `AUTH_NOT_MENTIONED`. This proves neither port mismatch nor Auth startup failure as a root cause: it only establishes that Auth did not become accessible in the dual-emulator process.
+
+To isolate whether Auth itself can start on the same local environment, `audit/p173-auth-only-differential.py` runs **Auth only**, using a separate disposable demo project, temp file config and isolated loopback ports Auth 19375 / Hub 14375 / logging 14376. It does not create users or write accounts or Firestore data. It does not import functions, call cloud endpoints, or deploy. On exit it stops the process group and removes the temp config. Outputs are strictly safe status classifications and predeclared loopback ports.
+
+Run on Cloud Shell *after* updating the review worktree:
+```bash
+cd "$HOME/packtook-p173"
+git fetch origin review/p173-root-firestore-rules-syntax-regression
+git checkout --detach origin/review/p173-root-firestore-rules-syntax-regression
+node audit/p173-root-rules-fixtures.js
+python3 audit/p173-auth-only-differential.py
+python3 audit/p173-emulator-root-rules.py
+```
+
+Interpretation: Auth-only PASS but dual Auth absent suggests a combined-config/CLI sequencing problem; both failed suggests local Auth bootstrap prerequisites. Neither result certifies production auth verification; 24-rule cases stay unverified until a completed local dual-emulator run. Do not change the dual-emulator expected ports or relax test assertions to force PASS.
+
+All release gates remain NO_GO.
