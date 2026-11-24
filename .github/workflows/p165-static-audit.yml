@@ -1,0 +1,20 @@
+name: P165 Backend Authorization Static Inventory
+on:
+  push:
+    branches: [review/p165-backend-authorization-static-audit]
+  pull_request:
+    branches: [review/p164-client-write-denial-rules-hardening]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Source-only security inventory and fail-closed fixtures
+        run: |
+          python3 -m py_compile audit/p165-backend-auth-audit.py audit/p165-audit-fixtures.py
+          python3 audit/p165-audit-fixtures.py
+          python3 audit/p165-backend-auth-audit.py
