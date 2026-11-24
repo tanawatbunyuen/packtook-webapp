@@ -1,0 +1,21 @@
+name: P161 Local Emulator Identity Read-only Attestation
+on:
+  push:
+    branches:
+      - review/p161-emulator-identity-readonly-attestation
+  pull_request:
+    branches:
+      - review/p160-resumable-firestore-range-download
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test identity and Firestore deny-read attestation (synthetic only)
+        run: |
+          python3 -m py_compile audit/p161-local-identity-attest.py audit/p161-identity-fixtures.py
+          python3 audit/p161-identity-fixtures.py
