@@ -10,6 +10,8 @@ permissions:
 jobs:
   browser-demo-only:
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.56.1-noble
     timeout-minutes: 18
     env:
       CI: "true"
@@ -23,7 +25,6 @@ jobs:
       - name: Install pinned Playwright in isolated audit directory
         run: |
           npm install --prefix audit/p193 --ignore-scripts --no-audit --no-fund --no-package-lock playwright@1.56.1
-          audit/p193/node_modules/.bin/playwright install --with-deps chromium
       - name: Exercise actual account panel and real helper source in headless Chromium
         run: |
           node audit/p193/test-browser.js
