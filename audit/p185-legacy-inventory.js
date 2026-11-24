@@ -15,7 +15,8 @@ async function inventory({listAccounts,lookupUser,pageSize=3,maxDocs=1000}={}){
  const digest=crypto.createHash("sha256");
  let cursor=null, last=null,pages=0,exhausted=false;
  while(counts.scanned<maxDocs){
-  const entries=await listAccounts(cursor,Math.min(pageSize,maxDocs-counts.scanned));
+  const requested=Math.min(pageSize,maxDocs-counts.scanned);
+  const entries=await listAccounts(cursor,requested);
   if(!Array.isArray(entries)||entries.length>pageSize)throw Error("P185_UNTRUSTED_PAGE");
   if(!entries.length){exhausted=true;break;}
   pages++;
@@ -61,7 +62,7 @@ async function inventory({listAccounts,lookupUser,pageSize=3,maxDocs=1000}={}){
    digest.update(item.id+"|"+type+"\n");
   }
   cursor=last;
-  if(entries.length<pageSize){exhausted=true;break;}
+  if(entries.length<requested){exhausted=true;break;}
  }
  return {schema:"packtook-p185-inventory-v1",mode:"READ_ONLY",
   scanned:counts.scanned,pages,complete:exhausted,
