@@ -36,6 +36,37 @@ def ready():
  status,r=call(14373,"/emulators")
  return status==200 and all(isinstance(r.get(k),dict) and r[k].get("port")==port
          for k,port in (("auth",19373),("firestore",18373)))
+def diagnose_exit(log_path):
+ """Return one safe category only; never expose raw emulator log lines."""
+ try:
+  data=log_path.read_text(encoding="utf-8",errors="replace")[-200000:].lower()
+ except OSError:
+  return "LOG_UNAVAILABLE"
+ # Keep the output restricted to these known constant labels.
+ if any(x in data for x in ("invalid rules", "rules parsing", "rules failed to compile",
+                              "could not parse rules", "error compiling rules")):
+  return "FIRESTORE_RULES_COMPILE"
+ if any(x in data for x in ("file does not exist", "enoent", "no such file",
+                              "could not find", "not found: ../firestore.rules")):
+  return "CONFIG_OR_RULES_FILE_PATH"
+ if any(x in data for x in ("permission denied", "eacces", "eperm")):
+  return "LOCAL_FILESYSTEM_PERMISSION"
+ if any(x in data for x in ("java not found", "java: command not found",
+                              "unable to locate java", "could not find java")):
+  return "JAVA_RUNTIME_UNAVAILABLE"
+ if any(x in data for x in ("failed to download", "download failed",
+                              "could not download", "unable to download")):
+  return "EMULATOR_BINARY_UNAVAILABLE"
+ if any(x in data for x in ("error: unknown option", "unknown option:",
+                              "unrecognized option", "unknown argument")):
+  return "CLI_OPTION_UNSUPPORTED"
+ if any(x in data for x in ("eaddrinuse", "address already in use",
+                              "port is already in use")):
+  return "PORT_CONFLICT"
+ if any(x in data for x in ("error: not in a firebase app directory",
+                              "no firebase project", "invalid firebase.json")):
+  return "FIREBASE_CONFIG"
+ return "UNCLASSIFIED_REVIEW_PRIVATE_LOG"
 def main():
  print("P173_MODE=LOCAL_ROOT_RULES_AUTH_FIRESTORE_EMULATOR")
  if blob(SOURCE.read_bytes())!=EXPECTED:
@@ -69,6 +100,9 @@ def main():
   if not ready():
    if proc.poll() is not None:
     print("P173_EMULATOR_PROCESS=EXITED")
+    print("P173_EMULATOR_EXIT_CODE_CLASS="+("ZERO" if proc.returncode==0 else "NONZERO"))
+    fd.flush()
+    print("P173_EMULATOR_EXIT_CATEGORY="+diagnose_exit(log))
    else:
     print("P173_EMULATOR_PROCESS=RUNNING_BUT_NOT_READY")
    hub_status,hub_data=call(14373,"/emulators")
