@@ -38,3 +38,11 @@ Cloud Shell observed Auth Emulator ready, Admin SDK 13.10.0 loaded, synthetic ac
 Code review found a harness bug: account creation used the named `admin.auth(app)` service but `inspect()` called `admin.auth().verifyIdToken(token)` on the default, uninitialized Admin app. The error was caught and incorrectly flattened to `REJECTED`. This is a test-harness issue, not evidence Firebase Auth rejected a legitimate token cryptographically.
 
 The updated review candidate passes the explicitly named `auth` service into `inspect()` for all four cases, and adds a static regression fixture guarding against use of the default Admin app. Local runtime still needs operator re-execution before claiming PASS. Do not print tokens or raw exception messages; preserve NO_GO gates.
+
+## P171 next observed runtime result: unsigned local-token classification
+
+Cloud Shell rerun at commit `d212c32` confirmed: named Admin App loaded, local user created, local token issued, `P171_ADMIN_VERIFY_LOCAL_VALID=ACCEPTED`, `P171_ADMIN_VERIFY_MALFORMED=REJECTED`, disposable account deleted. The test stopped **between** malformed-token verification and the first `MUTATED_SIGNATURE` output. Code review found `mutateSignature(good)` throws `not_jwt` when the third JWT component has length below two, as is compatible with **unsigned** Local Auth Emulator tokens. Previous general exception handling masked the true stage.
+
+The candidate now outputs **only an allowlisted shape classification** (never token contents, key or payload). For a JWT with empty signature segment, prints `P171_LOCAL_TOKEN_SHAPE=UNSIGNED_EMULATOR_TOKEN`, `P171_ADMIN_VERIFY_MUTATED_SIGNATURE=NOT_APPLICABLE_UNSIGNED_EMULATOR_TOKEN`, and proceeds to **separately** test a modified audience with no re-signing. It must **not** report a skipped signature mutation as a passing signature-verification test. Any unexpected token shape still fails closed. Other outcomes remain observational-only in Auth Emulator mode, not production cryptographic attestation.
+
+Run `node audit/p171-admin-fixtures.js` (expected `P171_OFFLINE_FIXTURES=6/6_PASS`) followed by `python3 audit/p171-local-auth-emulator.py`. Original source and all production deployments stay unchanged. `NO_GO_CALLABLE_HTTP_INCOMPLETE / NO_GO_OWNER_IMPORT / NO_GO_DEPLOY` remain.
