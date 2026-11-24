@@ -72,3 +72,11 @@ Cloud Shell at `d08f8c8` reported `P173_EMULATOR_PROCESS=RUNNING_BUT_NOT_READY`,
 The diagnostic candidate now prints only fixed registration Boolean and validated numeric port (or `MISSING_OR_INVALID`) for Auth and Firestore. Do not lower the expected Auth port from 19373 or accept a mismatch as a security PASS; do not create test accounts until both registered services match the configured ports. Rerun local operator tests and use the new `P173_HUB_AUTH_REGISTERED` and `P173_HUB_AUTH_PORT` evidence to choose the next corrective action. No raw Hub response, tokens, secrets, real users or production data exposed.
 
 Static fixtures: 10/10 expected. Local 24-request rules runtime remains unverified. All P172 and production release gates stay NO_GO.
+
+## P173 sixth operator outcome — Auth emulator not registered
+
+Cloud Shell reported `P173_HUB_HTTP_STATUS=200`, `P173_HUB_FIRESTORE_REGISTERED=TRUE`, Firestore 18373 correct, but `P173_HUB_AUTH_REGISTERED=FALSE` and Auth port missing. The Firebase CLI was still running; no 24-case security tests executed. This is **not** a Firestore rules rejection and cannot be counted as tenant-security test success.
+
+The next review-only diagnostic instruments the launcher to **require** Auth localhost port 19373 in the disposable config and to classify a private logfile for an Auth startup error, Auth startup attempt, unrelated Auth mention, or no Auth mention. It also probes **only** whether TCP port 19373 is open on 127.0.0.1. Printed values are restricted to safe fixed labels/Boolean and the predeclared test port; no raw log, tokens, passwords, provider responses or identities.
+
+Expected static fixture result `P173_OFFLINE_FIXTURES=11/11_PASS`. A real test remains blocked until both Auth and Firestore register in the same Hub with expected ports. Preserve `NO_GO_RELEASE / NO_GO_OWNER_IMPORT / NO_GO_DEPLOY`.
