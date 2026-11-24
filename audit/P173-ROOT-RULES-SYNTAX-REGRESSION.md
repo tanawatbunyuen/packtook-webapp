@@ -56,3 +56,11 @@ Cloud Shell at commit `1eac182` reported `P173_EMULATOR_PROCESS=EXITED`, `P173_E
 Comparison with P171's previously working launcher found a meaningful difference: P171 preserves the real user's `HOME` for the Firebase CLI process, whereas P173 replaced subprocess `HOME` with the separate `.packtook-demo-emulator-home` artifacts folder. Firebase Emulator binary caches and local CLI configuration may depend on `HOME`. P173 now uses `HOME=str(Path.home())` **only for the local Firebase CLI subprocess**, consistent with P171, while keeping the log in the separate private audit folder. This is a controlled diagnostic candidate, **not yet a proven root cause**, and it does not make Firebase requests to a production project or authorize deployment.
 
 Offline fixture count increases to 8/8. If local startup still fails, keep all gates NO_GO. Review local private logs only with care; do not paste credentials, tokens or unredacted logs.
+
+## P173 fourth operator outcome — verify configuration root before retesting
+
+At P173 offline 8/8, a further Cloud Shell run reported the same nonzero Firebase CLI exit before the hub opened, with `UNCLASSIFIED_REVIEW_PRIVATE_LOG`. Aligning CLI HOME with P171 did not fix the startup problem.
+
+Firebase's documented `firebase.json` Security Rules example points to `firestore.rules` in the **project configuration directory**, not an ambiguous `../firestore.rules` reference from an audit config. P173 now creates a **temporary, mode-0600 Firebase config at repository root**, with `firestore.rules` as the path and the exact local-only Auth/Firestore ports from the pinned audit config. It runs Firebase CLI with that temporary config, preserving the hash-pinned actual root `firestore.rules` (no copied, alternate, or open rules). On process exit it removes the temporary configuration. The committed audit configuration remains as the review specification; it is never deployed. A static fixture asserts the temporary root-adjacent config flow.
+
+This change is a diagnostic candidate. The exact cause of the early exit is not proven without a successful rerun or targeted private local CLI inspection. Offline fixture count is now **9/9**. Production release gates remain NO_GO. Raw logs, credentials, tokens and real project identifiers must not be shared.
