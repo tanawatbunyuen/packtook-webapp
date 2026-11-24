@@ -83,10 +83,13 @@ def main():
   print("P173_BLOCK=FIREBASE_CLI_MISSING");return 1
  log=HOME/"p173-firestore-auth-emulator.log"
  fd=log.open("w")
+ # Match P171's successfully tested CLI environment. Keep artifacts in HOME.
+ # A synthetic HOME can hide cached Firestore Emulator binaries and Firebase CLI state.
  env={"PATH":os.environ.get("PATH",""),
-      "HOME":str(HOME),"CI":"true","FIREBASE_SKIP_UPDATE_CHECK":"1",
+      "HOME":str(Path.home()),"CI":"true","FIREBASE_SKIP_UPDATE_CHECK":"1",
       "GCLOUD_PROJECT":PROJECT,"GOOGLE_CLOUD_PROJECT":PROJECT,
       "FIREBASE_PROJECT_ID":PROJECT}
+ print("P173_CLI_HOME_PARITY_WITH_P171=PASS")
  proc=None
  try:
   proc=subprocess.Popen([firebase,"emulators:start","--project",PROJECT,
