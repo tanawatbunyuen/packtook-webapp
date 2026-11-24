@@ -20,7 +20,7 @@ function make(){
    role==="security"?security.privateKey:owner.privateKey).toString("base64");
   return p;
  });
- return {request,proofs,registry,now};
+ return {request,proofs,registry:structuredClone(registry),now};
 }
 let count=0;
 function test(name,change,decision){
