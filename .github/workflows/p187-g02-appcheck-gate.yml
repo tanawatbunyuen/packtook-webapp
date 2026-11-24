@@ -1,0 +1,26 @@
+name: P187 G02 Staging App Check Read-only Proof Gate
+on:
+  push:
+    branches: [review/p187-g02-staging-appcheck-attestation]
+  pull_request:
+    branches: [review/p186-g02-operator-readonly-evidence]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-no-staging-credentials:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Read-only App Check gate mock tests and persistent NO_GO
+        run: |
+          node --check audit/p187-staging-appcheck-probe.js
+          node --check audit/p187-staging-appcheck-cli.js
+          node audit/p187-staging-appcheck-fixtures.js
+          node audit/p186-g02-operator-gate-fixtures.js
+          node audit/p180-fast-track-check.js
+          node audit/p172-release-gates.js
