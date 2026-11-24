@@ -1,6 +1,6 @@
 {
   "firestore": {
-    "rules": "../firestore.rules"
+    "rules": "p163-source-rules-normalized.rules"
   },
   "emulators": {
     "auth": {
