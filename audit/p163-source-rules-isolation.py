@@ -20,6 +20,7 @@ import urllib.request
 ROOT = Path(__file__).resolve().parent.parent
 RULES = ROOT / "firestore.rules"
 CONFIG = ROOT / "audit/p163-source-rules-emulator.json"
+NORMALIZED_RULES = ROOT / "audit/p163-source-rules-normalized.rules"
 PROJECT = "demo-packtook-owner-security-p163"
 HOST = "127.0.0.1"
 PORTS = {"hub": 14500, "firestore": 18180, "auth": 19199}
@@ -164,9 +165,23 @@ def main():
         print("P163_BLOCK=SOURCE_RULES_GIT_BLOB_CHANGED")
         return 1
     print("P163_SOURCE_RULES_GIT_BLOB_MATCH=PASS")
+    # The source has one missing function return terminator. Keep root untouched.
+    marker = b"return request.auth != null}"
+    if data.count(marker) != 1:
+        print("P163_BLOCK=EXPECTED_SOURCE_SYNTAX_NOT_FOUND")
+        return 1
+    expected_candidate = data.replace(marker, b"return request.auth != null;}")
+    try:
+        normalized_matches = NORMALIZED_RULES.read_bytes() == expected_candidate
+    except OSError:
+        normalized_matches = False
+    if not normalized_matches:
+        print("P163_BLOCK=ISOLATED_RULES_CANDIDATE_MISMATCH")
+        return 1
+    print("P163_ISOLATED_RULES_SINGLE_SEMICOLON_DELTA=PASS")
     try:
         cfg = json.loads(CONFIG.read_text(encoding="utf-8"))
-        config_ok = (cfg["firestore"]["rules"] == "../firestore.rules"
+        config_ok = (cfg["firestore"]["rules"] == "p163-source-rules-normalized.rules"
                      and set(cfg["emulators"]) == {"auth","firestore","hub","logging","ui"}
                      and cfg["emulators"]["ui"]["enabled"] is False
                      and all(cfg["emulators"][n]["port"] == port
