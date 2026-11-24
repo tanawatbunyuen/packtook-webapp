@@ -30,3 +30,11 @@ Expected: `P168_PINNED_SOURCE_AND_TWO_HANDLER_ONLY=PASS`, `P168_PREINSTALLED_FUN
 **Caveats:** test-only empty datastore and exact source snippets with synthetic module configuration; does not prove real deployed function revision, real Backend Admin SDK tenant isolation, App Check enforcement, IAM, production deployed rules, or recovered Owner source provenance. `ownerOptions.enforceAppCheck` is explicitly disabled in the DEMO-only generated functions to avoid confusing this test with App Check attestation. Do NOT merge or deploy this harness.
 
 **NO_GO_OWNER_IMPORT / NO_GO_DEPLOY.**
+
+## Observed real Cloud Shell P168 invalid-token discrepancy (2026-11-24)
+
+The first real P168 invocation launched Functions/Auth emulators and verified synthetic Auth accounts. It passed **16/18** callable scenarios, with both `INVALID_TOKEN` tests returning **HTTP 403 / PERMISSION_DENIED**, not the expected **HTTP 401 / UNAUTHENTICATED**. In both cases, `P168_..._INVALID_TOKEN_DB_READS_UNCHANGED=TRUE`, confirming the in-memory mock datastore was not read. All other denials and valid synthetic Owner empty-data responses passed. Account cleanup and isolated process shutdown passed. This is **secure denial within this test scope**, but **NOT Callable protocol conformance**, and P168 remains `NO_GO_CALLABLE_HTTP_INCOMPLETE`.
+
+The candidate adds allowlisted (non-token, non-log) diagnostics showing `INVALID_TOKEN_SECURITY_DENIED`, `INVALID_TOKEN_PROTOCOL_CONFORMANT`, and `INVALID_TOKEN_HANDLER_ENTERED`. A test-only `HANDLER` marker is inserted at the start of each generated local Callable handler, independent of the `READ` marker; the two original source snippets in Git remain unchanged. **If the malformed token reaches the handler despite protocol requiring 401, do not mark protocol conformance PASS merely because the owner claim guard rejects it.** If the emulator returns 403 before reaching the handler, treat it as potential Emulator/SDK protocol-version behavior requiring separate review.
+
+Official Firebase callable protocol: https://firebase.google.com/docs/functions/callable-reference (invalid supplied Auth token is specified as HTTP 401 / UNAUTHENTICATED). Review SDK and emulator exact versions before drawing a production conclusion. No deployment is authorized.
