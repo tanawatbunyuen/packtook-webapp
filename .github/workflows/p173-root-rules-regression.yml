@@ -17,6 +17,7 @@ jobs:
         run: |
           node --check audit/p173-root-rules-fixtures.js
           python3 -m py_compile audit/p173-emulator-root-rules.py
+          python3 -m py_compile audit/p173-auth-only-differential.py
           node audit/p173-root-rules-fixtures.js
           node audit/p172-release-fixtures.js
           node audit/p172-release-gates.js
