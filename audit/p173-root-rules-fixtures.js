@@ -38,4 +38,8 @@ const runner=fs.readFileSync(path.join(__dirname,"p173-emulator-root-rules.py"),
 assert(runner.includes('for k,port in (("auth",19373),("firestore",18373))'));
 assert(!runner.includes('("firestore",18373),("hub",14373)'));
 console.log("P173_HUB_READINESS_ONLY_REGISTERED_EMULATORS=PASS");
-console.log("P173_OFFLINE_FIXTURES=6/6_PASS");
+assert(runner.includes("P173_EMULATOR_EXIT_CATEGORY="));
+assert(runner.includes("diagnose_exit(log)"));
+assert(runner.includes("UNCLASSIFIED_REVIEW_PRIVATE_LOG"));
+console.log("P173_EMULATOR_EXIT_SAFE_DIAGNOSTIC_FIXTURE=PASS");
+console.log("P173_OFFLINE_FIXTURES=7/7_PASS");
