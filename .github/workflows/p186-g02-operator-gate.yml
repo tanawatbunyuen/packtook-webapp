@@ -1,0 +1,24 @@
+name: P186 G02 Operator Read-only Gate Offline
+on:
+  push:
+    branches: [review/p186-g02-operator-readonly-evidence]
+  pull_request:
+    branches: [review/p185-g02-legacy-inventory-read-only]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  gate-only-no-cloud:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify operator safety gate and retained release NO_GO
+        run: |
+          node --check audit/p186-g02-operator-cli.js
+          node audit/p186-g02-operator-gate-fixtures.js
+          node audit/p180-fast-track-check.js
+          node audit/p172-release-gates.js
