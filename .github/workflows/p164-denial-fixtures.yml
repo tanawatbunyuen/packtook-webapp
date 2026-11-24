@@ -1,0 +1,22 @@
+name: P164 Client Write Denial Offline Fixtures
+on:
+  push:
+    branches:
+      - review/p164-client-write-denial-rules-hardening
+  pull_request:
+    branches:
+      - review/p163-isolated-source-rules-account-isolation
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Synthetic negative client write and unmapped read matrix
+        run: |
+          python3 -m py_compile audit/p164-client-write-denial.py audit/p164-denial-fixtures.py
+          python3 audit/p164-denial-fixtures.py > /tmp/p164-mock.log
+          grep -F 'P164_OFFLINE_FIXTURES=4/4_PASS' /tmp/p164-mock.log
