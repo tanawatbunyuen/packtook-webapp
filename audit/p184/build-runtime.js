@@ -4,7 +4,11 @@ const dir=__dirname;
 if(process.env.GCLOUD_PROJECT!=="demo-packtook-p184"||
  process.env.GOOGLE_CLOUD_PROJECT!=="demo-packtook-p184")throw Error("P184_REFUSE_NON_DEMO_BUILD");
 cp.execFileSync(process.execPath,[path.resolve(dir,"../p183/build-candidate.js")],{stdio:"inherit"});
-const source=fs.readFileSync(path.resolve(dir,"../p183/.generated-index.js"),"utf8");
+let source=fs.readFileSync(path.resolve(dir,"../p183/.generated-index.js"),"utf8");
+const oldFieldValue="const {FieldValue}=admin.firestore;";
+if(source.split(oldFieldValue).length!==2)throw Error("P184_FIELDVALUE_IMPORT_SOURCE_DRIFT");
+source=source.replace(oldFieldValue,'const {FieldValue}=require("firebase-admin/firestore");');
+console.log("P184_FIREBASE_ADMIN_FIELDVALUE_IMPORT_CANDIDATE_FIX=PASS");
 if(!source.includes("Explicit account owner required")||
  source.includes("if(!a.ownerUid)tx.update(acc,{ownerUid:accountId});"))
  throw Error("P184_UNSAFE_GENERATED_BACKEND");
