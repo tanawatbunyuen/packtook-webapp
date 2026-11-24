@@ -35,7 +35,7 @@ def call(port,uri,body=None,token=None):
 def ready():
  status,r=call(14373,"/emulators")
  return status==200 and all(isinstance(r.get(k),dict) and r[k].get("port")==port
-         for k,port in (("auth",19373),("firestore",18373),("hub",14373)))
+         for k,port in (("auth",19373),("firestore",18373)))
 def main():
  print("P173_MODE=LOCAL_ROOT_RULES_AUTH_FIRESTORE_EMULATOR")
  if blob(SOURCE.read_bytes())!=EXPECTED:
@@ -67,6 +67,17 @@ def main():
    if ready():break
    time.sleep(2)
   if not ready():
+   if proc.poll() is not None:
+    print("P173_EMULATOR_PROCESS=EXITED")
+   else:
+    print("P173_EMULATOR_PROCESS=RUNNING_BUT_NOT_READY")
+   hub_status,hub_data=call(14373,"/emulators")
+   print("P173_HUB_HTTP_STATUS="+str(hub_status))
+   if hub_status==200:
+    for kind,expected_port in (("auth",19373),("firestore",18373)):
+     entry=hub_data.get(kind)
+     port=entry.get("port") if isinstance(entry,dict) else None
+     print("P173_HUB_"+kind.upper()+"_PORT_MATCH="+str(port==expected_port).upper())
    print("P173_BLOCK=EMULATOR_NOT_READY");return 1
   print("P173_EMULATOR_LISTENERS=PASS")
   people=[]
