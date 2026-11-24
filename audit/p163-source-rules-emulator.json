@@ -1,0 +1,27 @@
+{
+  "firestore": {
+    "rules": "p163-source-rules-normalized.rules"
+  },
+  "emulators": {
+    "auth": {
+      "host": "127.0.0.1",
+      "port": 19199
+    },
+    "firestore": {
+      "host": "127.0.0.1",
+      "port": 18180,
+      "websocketPort": 9151
+    },
+    "hub": {
+      "host": "127.0.0.1",
+      "port": 14500
+    },
+    "logging": {
+      "host": "127.0.0.1",
+      "port": 14510
+    },
+    "ui": {
+      "enabled": false
+    }
+  }
+}

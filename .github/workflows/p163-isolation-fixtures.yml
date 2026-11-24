@@ -1,0 +1,21 @@
+name: P163 Source Firestore Rules Isolation Offline Fixtures
+on:
+  push:
+    branches:
+      - review/p163-isolated-source-rules-account-isolation
+  pull_request:
+    branches:
+      - review/p162-demo-auth-deny-all-security
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: P163 exact source rules plus identity matrix offline fixtures
+        run: |
+          python3 -m py_compile audit/p163-source-rules-isolation.py audit/p163-isolation-fixtures.py
+          python3 audit/p163-isolation-fixtures.py
