@@ -67,6 +67,27 @@ def diagnose_exit(log_path):
                               "no firebase project", "invalid firebase.json")):
   return "FIREBASE_CONFIG"
  return "UNCLASSIFIED_REVIEW_PRIVATE_LOG"
+def auth_startup_category(log_path):
+ """Classify Auth-only startup from private local log. No raw log output."""
+ try:
+  data=log_path.read_text(encoding="utf-8",errors="replace")[-200000:].lower()
+ except OSError:
+  return "LOG_UNAVAILABLE"
+ if any(k in data for k in ("auth emulator: error", "auth emulator failed",
+                              "authentication emulator failed", "failed to start auth",
+                              "failed to start authentication")):
+  return "AUTH_START_ERROR"
+ if any(k in data for k in ("auth emulator: starting", "starting authentication emulator",
+                              "starting auth emulator")):
+  return "AUTH_START_ATTEMPT_RECORDED"
+ if any(k in data for k in ("auth emulator", "authentication emulator")):
+  return "AUTH_MENTIONED_NO_START_ATTESTATION"
+ return "AUTH_NOT_MENTIONED"
+def auth_endpoint_probe():
+ """No credentials, synthetic identities, or request body; loopback TCP only."""
+ with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as sock:
+  sock.settimeout(1)
+  return sock.connect_ex(("127.0.0.1",19373))==0
 def main():
  print("P173_MODE=LOCAL_ROOT_RULES_AUTH_FIRESTORE_EMULATOR")
  if blob(SOURCE.read_bytes())!=EXPECTED:
@@ -98,6 +119,11 @@ def main():
   if config_path:config_path.unlink(missing_ok=True)
   print("P173_BLOCK=LOCAL_CONFIG_CREATION");return 1
  print("P173_CONFIG_NEXT_TO_ROOT_RULES=PASS")
+ configured=settings.get("emulators",{}).get("auth")
+ if not isinstance(configured,dict) or configured.get("host")!="127.0.0.1" or type(configured.get("port")) is not int or configured.get("port")!=19373:
+  config_path.unlink(missing_ok=True)
+  print("P173_BLOCK=AUTH_CONFIG_DRIFT");return 1
+ print("P173_TEMP_CONFIG_AUTH_PORT=19373")
  log=HOME/"p173-firestore-auth-emulator.log"
  fd=log.open("w")
  # Match P171's successfully tested CLI environment. Keep artifacts in HOME.
@@ -127,6 +153,9 @@ def main():
     print("P173_EMULATOR_PROCESS=RUNNING_BUT_NOT_READY")
    hub_status,hub_data=call(14373,"/emulators")
    print("P173_HUB_HTTP_STATUS="+str(hub_status))
+   fd.flush()
+   print("P173_AUTH_STARTUP_CATEGORY="+auth_startup_category(log))
+   print("P173_AUTH_CONFIGURED_PORT_TCP_OPEN="+str(auth_endpoint_probe()).upper())
    if hub_status==200:
     for kind,expected_port in (("auth",19373),("firestore",18373)):
      entry=hub_data.get(kind)
