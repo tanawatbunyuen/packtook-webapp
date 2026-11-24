@@ -22,3 +22,19 @@ jobs:
           node audit/p186-g02-operator-gate-fixtures.js
           node audit/p180-fast-track-check.js
           node audit/p172-release-gates.js
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install disposable localhost emulator tools
+        run: npm install --prefix audit/p177-emulator --ignore-scripts --no-audit --no-fund --no-package-lock
+      - name: Execute real CLI with synthetic Auth and Firestore accounts
+        env:
+          GCLOUD_PROJECT: demo-packtook-p186
+          GOOGLE_CLOUD_PROJECT: demo-packtook-p186
+          FIREBASE_AUTH_EMULATOR_HOST: 127.0.0.1:19096
+          FIRESTORE_EMULATOR_HOST: 127.0.0.1:18096
+          CI: "true"
+        run: |
+          node --check audit/p186-cli-emulator-fixtures.js
+          audit/p177-emulator/node_modules/.bin/firebase emulators:exec --project demo-packtook-p186 --only auth,firestore --config audit/p186/firebase.json "node audit/p186-cli-emulator-fixtures.js"
