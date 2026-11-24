@@ -1,0 +1,38 @@
+name: P193 G02 Real Chromium Legacy Owner Recovery DOM
+on:
+  push:
+    branches: [review/p193-g02-legacy-browser-dom-e2e]
+  pull_request:
+    branches: [review/p192-g02-legacy-recovery-compatibility]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser-demo-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      CI: "true"
+      GCLOUD_PROJECT: demo-packtook-p184
+      GOOGLE_CLOUD_PROJECT: demo-packtook-p184
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install pinned Playwright in isolated audit directory
+        run: |
+          npm install --prefix audit/p193 --ignore-scripts --no-audit --no-fund --no-package-lock playwright@1.56.1
+          audit/p193/node_modules/.bin/playwright install --with-deps chromium
+      - name: Exercise actual account panel and real helper source in headless Chromium
+        run: |
+          node audit/p193/test-browser.js
+      - name: Preserve all frontend, backend and release NO_GO regressions
+        run: |
+          node audit/p191-legacy-owner-frontend-fixtures.js
+          node audit/p192-legacy-owner-recovery-fixtures.js
+          node audit/p188/build-rc.js
+          node audit/p189/verify.js
+          node audit/p190/reconcile-fixtures.js
+          node audit/p180-fast-track-check.js
+          node audit/p172-release-gates.js
