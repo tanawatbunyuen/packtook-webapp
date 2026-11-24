@@ -1,0 +1,21 @@
+name: P167 Owner Handler Authorization Mock Datastore
+on:
+  push:
+    branches: [review/p167-owner-handlers-mock-datastore]
+  pull_request:
+    branches: [review/p166-owner-claim-negative-fixtures]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Owner Analytics handler bodies with instrumented in-memory Admin SDK
+        run: |
+          node --check audit/p167-owner-handler-mock.js
+          node --check audit/p167-handler-fixtures.js
+          node audit/p167-handler-fixtures.js
+          node audit/p167-owner-handler-mock.js
