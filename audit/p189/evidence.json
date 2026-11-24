@@ -1,0 +1,65 @@
+{
+  "schema": "packtook-p189-g02-release-integrity-v1",
+  "mode": "REVIEW_ONLY",
+  "sourcePins": {
+    "originalFunctionsBlob": "92262ea2fbbb941188937d72f0eea74a735d2bf3",
+    "isolatedCandidateSha256": "c599056ccc227ffbf76fd9d582ecbd3cec1bf516437e72b0d097ac2e07a3978b"
+  },
+  "checks": [
+    {
+      "id": "AUTH_GUARDS",
+      "evidence": "P183 full backend 15/15; P184 callable 14/14",
+      "class": "DEMO_EMULATOR",
+      "status": "PASS"
+    },
+    {
+      "id": "NEW_ACCOUNT_PROVISIONING",
+      "evidence": "P188 callable 7/7; first create only ownerUid",
+      "class": "DEMO_EMULATOR",
+      "status": "PASS"
+    },
+    {
+      "id": "LEGACY_READ_ONLY_CLASSIFICATION",
+      "evidence": "P185 12/12; P186 guard 12/12 and localhost CLI",
+      "class": "DEMO_EMULATOR",
+      "status": "PASS"
+    },
+    {
+      "id": "APPCHECK_PROBE_SAFETY",
+      "evidence": "P187 mocked fetch 16/16",
+      "class": "OFFLINE_MOCK",
+      "status": "PASS"
+    },
+    {
+      "id": "PROD_LEGACY_INVENTORY",
+      "evidence": null,
+      "class": "OPERATOR_CLOUD_READ_ONLY",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "id": "STAGING_VALID_APPCHECK",
+      "evidence": null,
+      "class": "OPERATOR_STAGING_RUNTIME",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "id": "OWNER_PROVENANCE_REMEDIATION",
+      "evidence": null,
+      "class": "SECURITY_HUMAN_REVIEW",
+      "status": "NOT_VERIFIED"
+    },
+    {
+      "id": "EXACT_RELEASE_DIFF_SECURITY_SIGNOFF",
+      "evidence": null,
+      "class": "SECURITY_HUMAN_REVIEW",
+      "status": "NOT_VERIFIED"
+    }
+  ],
+  "g02Decision": "NO_GO",
+  "releaseDecision": "NO_GO_RELEASE",
+  "deployDecision": "NO_GO_DEPLOY",
+  "publicSignup": "KEEP_CLOSED",
+  "productionReads": 0,
+  "productionWrites": 0,
+  "ownerImports": 0
+}
