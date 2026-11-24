@@ -40,3 +40,11 @@ The operator ran the original P173 Cloud Shell test: offline fixtures 5/5 PASS; 
 Investigation identified a likely local **harness readiness logic bug**: the script demanded an extra `hub` registration in the hub's `GET /emulators` response. That endpoint enumerates registered emulators (Auth and Firestore); its own hub is not necessarily represented. Candidate fix limits the readiness check to registered Auth and Firestore, and adds safe, categorical process/hub status outputs if startup still fails (no raw logs or credentials).
 
 Expected offline fixtures now `P173_OFFLINE_FIXTURES=6/6_PASS`. This does not prove the emulator has started; rerun separately in Cloud Shell. The 24-case real emulator gate remains unverified until a complete operator PASS. No production rules or release approvals change.
+
+## P173 second Cloud Shell outcome: Firebase CLI process exited
+
+At commit `c42f40c`, static P173 6/6 and P172 NO_GO checks passed. Runtime emitted `P173_EMULATOR_PROCESS=EXITED` and `P173_HUB_HTTP_STATUS=0`, before any Auth/Firestore security case. This disproves an exclusively hub-self-registration readiness bug: the local Firebase process exits before readiness. The actual exit cause is **unconfirmed**, and NO_GO remains.
+
+P173 now emits only a fixed, non-secret `P173_EMULATOR_EXIT_CATEGORY` based on patterns in the **local** emulator log and `P173_EMULATOR_EXIT_CODE_CLASS` (ZERO/NONZERO). It does not print log contents, credential values, file paths, tokens or secrets. This differentiates CLI option, configuration/rules path, permission, Java, binary download and port errors without exposing underlying logs. If `UNCLASSIFIED_REVIEW_PRIVATE_LOG`, do not assume any cause; use a focused read-only follow-up.
+
+Run the usual Cloud Shell `git fetch`, checkout the updated review branch, `node audit/p173-root-rules-fixtures.js`, and `python3 audit/p173-emulator-root-rules.py`. Expected offline fixtures now `7/7`. The 24-case runtime gate remains **unverified** until separately observed passing.
