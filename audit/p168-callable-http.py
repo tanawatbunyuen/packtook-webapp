@@ -113,6 +113,15 @@ function pendingReservations(){return 0}
 '''
     prelude=prelude.replace("__PACKTOOK_PACKAGE__",json.dumps(str(PACKAGE)))
     prelude=prelude.replace("__TRACE_PATH__",json.dumps(str(trace_path)))
+    # Instrument only generated, local test wrapper at the handler entry boundary.
+    # Do not alter the pinned source file or grant any additional privilege.
+    for name in FUNCS:
+        entry="exports."+name+"=onCall(ownerOptions,async req=>{"
+        if suffix.count(entry)!=1:
+            raise ValueError("handler_entry_drift")
+        suffix=suffix.replace(entry,entry+'dbEventMarker();',1)
+    prelude=prelude.replace("const empty={empty:true,size:0,docs:[]};",
+        'function dbEventMarker(){fs.appendFileSync(TRACE,"HANDLER\\n",{encoding:"utf8",mode:0o600});}\\nconst empty={empty:true,size:0,docs:[]};')
     return prelude+"\n"+a+"\n"+b+"\n"+suffix
 
 def request(port,path,payload=None,token=None):
@@ -244,11 +253,24 @@ def verify(trace):
                      "PERMISSION_DENIED"))
                 for label,token,wanted in scenarios:
                     before=trace_count(trace)
+                    entry_before=handler_entry_count(trace)
                     code,data=status(name,token,{"packtookPlatformOwner":True,"role":"owner"})
                     after=trace_count(trace)
+                    entry_after=handler_entry_count(trace)
                     observed=data.get("error",{}).get("status")
                     good=(observed==wanted and after==before and code in (401,403))
                     if label=="INVALID_TOKEN":
+                        # Strictly preserve protocol conformance gate (401/UNAUTHENTICATED).
+                        # 403/PERMISSION_DENIED + zero reads is a security denial, not a protocol PASS.
+                        secure_denial=(code in (401,403) and observed in (
+                            "UNAUTHENTICATED","PERMISSION_DENIED") and after==before)
+                        protocol_conformant=(code==401 and observed=="UNAUTHENTICATED")
+                        print(f"P168_{name.upper()}_INVALID_TOKEN_SECURITY_DENIED="+
+                              ("PASS" if secure_denial else "FAIL"))
+                        print(f"P168_{name.upper()}_INVALID_TOKEN_PROTOCOL_CONFORMANT="+
+                              ("PASS" if protocol_conformant else "FAIL"))
+                        print(f"P168_{name.upper()}_INVALID_TOKEN_HANDLER_ENTERED="+
+                              ("TRUE" if entry_after>entry_before else "FALSE"))
                         # Only fixed, non-sensitive classifiers: NEVER print token/body/log.
                         safe_status=(observed if observed in (
                             "UNAUTHENTICATED","PERMISSION_DENIED","INVALID_ARGUMENT",
