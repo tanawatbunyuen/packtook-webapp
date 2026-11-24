@@ -121,7 +121,8 @@ function pendingReservations(){return 0}
             raise ValueError("handler_entry_drift")
         suffix=suffix.replace(entry,entry+'dbEventMarker();',1)
     prelude=prelude.replace("const empty={empty:true,size:0,docs:[]};",
-        'function dbEventMarker(){fs.appendFileSync(TRACE,"HANDLER\\n",{encoding:"utf8",mode:0o600});}\\nconst empty={empty:true,size:0,docs:[]};')
+        'function dbEventMarker(){fs.appendFileSync(TRACE,"HANDLER\\n",{encoding:"utf8",mode:0o600});}' + "\n" +
+        'const empty={empty:true,size:0,docs:[]};')
     return prelude+"\n"+a+"\n"+b+"\n"+suffix
 
 def request(port,path,payload=None,token=None):
@@ -212,6 +213,9 @@ def reg_ready():
 
 def trace_count(path):
     return path.read_text().count("READ\n") if path.exists() else 0
+
+def handler_entry_count(path):
+    return path.read_text().count("HANDLER\\n") if path.exists() else 0
 
 def verify(trace):
     users=[]
