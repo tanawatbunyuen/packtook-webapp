@@ -1,0 +1,19 @@
+name: P169 Read Only Emulator Auth Boundary Inventory
+on:
+  push:
+    branches: [review/p169-emulator-auth-boundary-provenance]
+  pull_request:
+    branches: [review/p168-isolated-callable-http-runtime]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Source-only auth boundary tests (never run actual Firebase)
+        run: |
+          python3 -m py_compile audit/p169-auth-boundary-inventory.py audit/p169-boundary-fixtures.py
+          python3 audit/p169-boundary-fixtures.py
