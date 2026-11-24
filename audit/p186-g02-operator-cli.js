@@ -16,7 +16,7 @@ if(!Number.isSafeInteger(maxDocs)||maxDocs<1||maxDocs>10000||
  !Number.isSafeInteger(pageSize)||pageSize<1||pageSize>500)
  throw Error("P186_INVALID_BOUNDS");
 // Only after all safety checks are complete do we load the Firebase Admin SDK.
-const admin=require("../p177-emulator/node_modules/firebase-admin");
+const admin=require("./p177-emulator/node_modules/firebase-admin");
 admin.initializeApp({projectId:gate.project});
 const db=admin.firestore(),auth=admin.auth();
 const accounts=db.collection("accounts");
