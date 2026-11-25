@@ -48,9 +48,9 @@ let n=0;const test=async(label,f)=>{await f();console.log("P226_"+label+"=PASS")
  await test("NO_USER_REQUEST_TARGETS",()=>assert(!/req\.(?:body|query|params)/.test(source)));
  let r=await invoke();
  await test("BASELINE_BLOCKED",()=>assert.equal(r.statusCode,503));
- await test("NAMED_INVALID_DATABASE_ID",()=>assert.deepEqual(r.body.namedRest,{code:"INVALID_ARGUMENT",reason:"INVALID_DATABASE_ID"}));
- await test("DEFAULT_INVALID_DATABASE_ID",()=>assert.deepEqual(r.body.defaultRest,{code:"INVALID_ARGUMENT",reason:"INVALID_DATABASE_ID"}));
- await test("SDK_NAMED_INVALID_DATABASE_ID",()=>assert.deepEqual(r.body.namedSdk,{code:"INVALID_ARGUMENT",reason:"INVALID_DATABASE_ID"}));
+ await test("NAMED_INVALID_DATABASE_ID",()=>assert.equal(JSON.stringify(r.body.namedRest),JSON.stringify({code:"INVALID_ARGUMENT",reason:"INVALID_DATABASE_ID"})));
+ await test("DEFAULT_INVALID_DATABASE_ID",()=>assert.equal(JSON.stringify(r.body.defaultRest),JSON.stringify({code:"INVALID_ARGUMENT",reason:"INVALID_DATABASE_ID"})));
+ await test("SDK_NAMED_INVALID_DATABASE_ID",()=>assert.equal(JSON.stringify(r.body.namedSdk),JSON.stringify({code:"INVALID_ARGUMENT",reason:"INVALID_DATABASE_ID"})));
  await test("SDK_DEFAULT_DENIED",()=>assert.equal(r.body.defaultSdk.code,"PERMISSION_DENIED"));
  await test("NO_SECRET_DATA",()=>assert(!JSON.stringify(r.body).includes("DO_NOT_LEAK")&&!JSON.stringify(r.body).includes("TEST_TOKEN")));
  await test("NO_RAW_MESSAGE",()=>assert(!JSON.stringify(r.body).includes("g02-security-test")&&!JSON.stringify(r.body).includes("%28default%29")));
