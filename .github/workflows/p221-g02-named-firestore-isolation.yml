@@ -1,0 +1,35 @@
+name: P221 G02 Named Firestore Isolation Review
+on:
+  push:
+    branches: [review/p221-g02-named-database-isolation]
+  pull_request:
+    branches: [review/p220-g02-isolated-staging-probe]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-named-db-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    env:
+      CI: "true"
+      GCLOUD_PROJECT: demo-packtook-p184
+      GOOGLE_CLOUD_PROJECT: demo-packtook-p184
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Recreate patch and test isolated probe
+        run: |
+          node audit/p188/build-rc.js
+          node audit/p189/verify.js
+          node audit/p220/predeploy.js
+          node audit/p220/fixtures.js
+          node --check audit/p220/probe/index.js
+          bash -n audit/p220/deploy-staging.sh
+      - name: Confirm release remains blocked
+        run: |
+          node audit/p219/fixtures.js
+          node audit/p180-fast-track-check.js
+          node audit/p172-release-gates.js
