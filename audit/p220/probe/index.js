@@ -6,7 +6,10 @@
 const {onCall,HttpsError}=require("firebase-functions/v2/https");
 const admin=require("firebase-admin");
 if(!admin.apps.length)admin.initializeApp();
-const db=admin.firestore();
+const {getFirestore}=require("firebase-admin/firestore");
+const DATABASE_ID="g02-security-test";
+if(DATABASE_ID==="(default)")throw Error("G02_DEFAULT_DATABASE_FORBIDDEN");
+const db=getFirestore(admin.app(),DATABASE_ID);
 const options={region:"asia-southeast1",enforceAppCheck:true,
  invoker:"private",maxInstances:1,timeoutSeconds:15};
 const synthetic=/^g02test_[a-zA-Z0-9_-]{10,60}$/;
