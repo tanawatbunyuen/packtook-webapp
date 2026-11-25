@@ -1,0 +1,37 @@
+name: P225 G02 SDK REST Differential Offline
+on:
+  push:
+    branches: [review/p225-g02-sdk-rest-differential]
+  pull_request:
+    branches: [review/p224-g02-firestore-safe-diagnostics]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    env:
+      CI: "true"
+      GCLOUD_PROJECT: demo-packtook-p184
+      GOOGLE_CLOUD_PROJECT: demo-packtook-p184
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify P188 SHA and SDK vs REST offline tests
+        run: |
+          node audit/p188/build-rc.js
+          node audit/p189/verify.js
+          node audit/p225/predeploy.js
+          node audit/p225/fixtures.js
+          node --check audit/p225/probe/index.js
+          node --check audit/p225/fixtures.js
+          bash -n audit/p225/deploy-staging.sh
+      - name: Retain legacy safety gates
+        run: |
+          node audit/p224/predeploy.js
+          node audit/p219/fixtures.js
+          node audit/p180-fast-track-check.js
+          node audit/p172-release-gates.js
