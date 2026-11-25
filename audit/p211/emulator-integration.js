@@ -34,11 +34,13 @@ const mockRequire=(name)=>{
  throw Error("P211_UNEXPECTED_MODULE_"+name);
 };
 const handlers={};
-vm.runInNewContext(generated,{exports:handlers,module:{exports:handlers},require:mockRequire,
- process:{env:{GCLOUD_PROJECT:project,GOOGLE_CLOUD_PROJECT:project}},
- console:{log(){},error(){},warn(){}},Buffer,Promise,Date,URLSearchParams,
- fetch(){throw Error("P211_NETWORK_ACCESS_FORBIDDEN")}},
- {filename:"p188-pin-emulator-real-handlers.js",timeout:2500});
+// Firebase Firestore Transaction verifies callback Promise instanceof host Promise.
+// vm.runInNewContext gives async handlers a foreign Promise realm and fails there.
+// compileFunction (without parsingContext) uses host Promise realm for real SDK transactions.
+// Candidate bytes are SHA256-pinned, module imports strictly allowlisted, demo emulators only.
+const executePinnedCandidate=vm.compileFunction(generated,["exports","require","module"],
+ {filename:"p188-pin-emulator-real-handlers.js"});
+executePinnedCandidate(handlers,mockRequire,{exports:handlers});
 const db=admin.firestore(),auth=admin.auth();
 const FIXTURE_ACCOUNTS=["p211-owner","p211-foreign","p211-legacy","p211-unverified","p211-new"];
 const account=uid=>db.collection("accounts").doc(uid);
