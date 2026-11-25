@@ -1,0 +1,16 @@
+"use strict";
+const fs=require("node:fs"),path=require("node:path"),assert=require("node:assert/strict"),crypto=require("node:crypto");
+const {EXPECTED_CANDIDATE}=require("../p190/reconcile");
+const p188=fs.readFileSync(path.resolve(__dirname,"../p188/candidate-index.js"));
+assert.equal(crypto.createHash("sha256").update(p188).digest("hex"),EXPECTED_CANDIDATE);
+const src=fs.readFileSync(path.join(__dirname,"probe/index.js"),"utf8");
+assert(src.includes('const NAMED_DB="g02-security-test"'));
+assert(src.includes('const DEFAULT_DB="(default)"'));
+assert(src.includes('invoker:"private"'));
+assert(src.includes('defaultDatabase==="PERMISSION_DENIED"'));
+assert(!/(?:named|baseline|db|snap)\.(?:set|update|create|delete|add|runTransaction)\(/.test(src));
+assert.deepEqual([...src.matchAll(/exports\.([A-Za-z0-9_]+)=/g)].map(m=>m[1]),["g02IamDiagnosticProbe"]);
+assert(!/\b(?:defineSecret|onCall|payment|webhook|omise)\b/i.test(src));
+console.log("P224_PINNED_SOURCE=PASS");
+console.log("P224_DIAGNOSTIC_SOURCE_NO_WRITES=PASS");
+console.log("P224_RELEASE=NO_GO_RELEASE");
