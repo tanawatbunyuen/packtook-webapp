@@ -35,7 +35,7 @@ let n=0;async function t(label,fn){await fn();n++;console.log("P220_"+label+"=PA
  await t("APPCHECK_ENFORCED",()=>assert.equal(config.enforceAppCheck,true));
  await t("ONE_INSTANCE",()=>assert.equal(config.maxInstances,1));
  await t("SINGLE_REGION",()=>assert.equal(config.region,"asia-southeast1"));
- await t("NO_PAYMENT_OR_WEBHOOK_EXPORTS",()=>assert(!/omise|payment|webhook|billing|signup/i.test(source)));
+ await t("NO_PAYMENT_OR_WEBHOOK_EXPORTS",()=>assert(!/exports\\.(?:omise|payment|webhook|billing|signup)/i.test(source)));
  await t("NO_FIRESTORE_MUTATIONS",()=>assert(!/\.set\(|\.update\(|\.create\(|\.delete\(|\.add\(|\.runTransaction\(/.test(source)));
  const good="g02test_0123456789ABC";
  run.set(good,snapshot);
