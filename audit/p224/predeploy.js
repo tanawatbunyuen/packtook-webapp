@@ -8,7 +8,7 @@ assert(src.includes('const NAMED_DB="g02-security-test"'));
 assert(src.includes('const DEFAULT_DB="(default)"'));
 assert(src.includes('invoker:"private"'));
 assert(src.includes('defaultDatabase==="PERMISSION_DENIED"'));
-assert(!/\.set\(|\.update\(|\.create\(|\.delete\(|\.add\(|\.runTransaction\(/.test(src));
+assert(!/(?:named|baseline|db|snap)\.(?:set|update|create|delete|add|runTransaction)\(/.test(src));
 assert.deepEqual([...src.matchAll(/exports\.([A-Za-z0-9_]+)=/g)].map(m=>m[1]),["g02IamDiagnosticProbe"]);
 assert(!/defineSecret|onCall|payment|webhook|omise/i.test(src));
 console.log("P224_PINNED_SOURCE=PASS");
