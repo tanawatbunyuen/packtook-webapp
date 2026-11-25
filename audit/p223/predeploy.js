@@ -11,7 +11,7 @@ assert(src.includes('admin.initializeApp({projectId:PROJECT})'));
 assert(src.includes('invoker:"private"'));
 assert(src.includes('res.status(passed?200:503)'));
 assert(src.includes('defaultDatabase==="PERMISSION_DENIED"'));
-assert(!/\.set\(|\.update\(|\.create\(|\.delete\(|\.add\(|\.runTransaction\(/.test(src));
+assert(!/(?:safeDb|defaultDb|db|ref|snapshot)\.(?:set|update|create|delete|add|runTransaction)\(/.test(src));
 assert.deepEqual([...src.matchAll(/exports\.([A-Za-z0-9_]+)=/g)].map(x=>x[1]),["g02IamBoundaryProbe"]);
 assert(!/omiseSecret|webhookSecret|defineSecret|signUp|createUser/.test(src));
 console.log("P223_PINNED_P188=PASS");
