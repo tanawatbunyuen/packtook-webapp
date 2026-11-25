@@ -13,9 +13,9 @@ const {local:reconcileGates}=require("../p209/reconcile");
 const read=p=>fs.readFileSync(path.join(ROOT,p),"utf8");
 const digest=s=>crypto.createHash("sha256").update(s).digest("hex");
 const TESTS=Object.freeze([
- {phase:"P211",script:"audit/p211/emulator-integration.js",workflow:".github/workflows/p211-g02-auth-firestore-emulator.yml",command:"node audit/p211/emulator-integration.js",output:"P211_REAL_AUTH_FIRESTORE_EMULATOR_HANDLER_TESTS=23/23_PASS",expected:23,scope:"ACTUAL_AUTH_AND_FIRESTORE_EMULATORS_DIRECT_HANDLER"},
- {phase:"P212",script:"audit/p212/http-integration.js",workflow:".github/workflows/p212-g02-callable-http.yml",command:"node audit/p212/http-integration.js",output:"P212_REAL_CALLABLE_HTTP_FIREBASE_EMULATOR_TESTS=23/23_PASS",expected:23,scope:"ACTUAL_ONCALL_SDK_LOCAL_EXPRESS_AUTH_FIRESTORE"},
- {phase:"P213",script:"audit/p213/authz-mutation-emulator.js",workflow:".github/workflows/p213-g02-authz-mutation.yml",command:"node audit/p213/authz-mutation-emulator.js",output:"P213_REAL_FIREBASE_AUTH_FIRESTORE_EMULATOR_FIXTURES=20/20_PASS",expected:20,scope:"LOCAL_AUTH_FIRESTORE_MUTATION_DEMO"}
+ {phase:"P211",script:"audit/p211/emulator-integration.js",workflow:".github/workflows/p211-g02-auth-firestore-emulator.yml",command:"node audit/p211/emulator-integration.js",output:"P211_REAL_AUTH_FIRESTORE_EMULATOR_HANDLER_TESTS=",expected:23,scope:"ACTUAL_AUTH_AND_FIRESTORE_EMULATORS_DIRECT_HANDLER"},
+ {phase:"P212",script:"audit/p212/http-integration.js",workflow:".github/workflows/p212-g02-callable-http.yml",command:"node audit/p212/http-integration.js",output:"P212_REAL_CALLABLE_HTTP_FIREBASE_EMULATOR_TESTS=",expected:23,scope:"ACTUAL_ONCALL_SDK_LOCAL_EXPRESS_AUTH_FIRESTORE"},
+ {phase:"P213",script:"audit/p213/authz-mutation-emulator.js",workflow:".github/workflows/p213-g02-authz-mutation.yml",command:"node audit/p213/authz-mutation-emulator.js",output:"P213_REAL_FIREBASE_AUTH_FIRESTORE_EMULATOR_FIXTURES=",expected:20,scope:"LOCAL_AUTH_FIRESTORE_MUTATION_DEMO"}
 ]);
 const isObj=x=>x&&typeof x==="object"&&!Array.isArray(x);
 function inspect({source=read("audit/p188/candidate-index.js"),files={},claims={}}={}){
