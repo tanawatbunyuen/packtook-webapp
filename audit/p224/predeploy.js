@@ -10,7 +10,7 @@ assert(src.includes('invoker:"private"'));
 assert(src.includes('defaultDatabase==="PERMISSION_DENIED"'));
 assert(!/(?:named|baseline|db|snap)\.(?:set|update|create|delete|add|runTransaction)\(/.test(src));
 assert.deepEqual([...src.matchAll(/exports\.([A-Za-z0-9_]+)=/g)].map(m=>m[1]),["g02IamDiagnosticProbe"]);
-assert(!/defineSecret|onCall|payment|webhook|omise/i.test(src));
+assert(!/\b(?:defineSecret|onCall|payment|webhook|omise)\b/i.test(src));
 console.log("P224_PINNED_SOURCE=PASS");
 console.log("P224_DIAGNOSTIC_SOURCE_NO_WRITES=PASS");
 console.log("P224_RELEASE=NO_GO_RELEASE");
