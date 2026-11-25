@@ -1,0 +1,42 @@
+name: P207 G02 Source Provenance Readiness
+on:
+  push:
+    branches: [review/p207-g02-source-provenance-readiness]
+  pull_request:
+    branches: [review/p206-g02-security-execution-preflight]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-source-provenance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      CI: "true"
+      GCLOUD_PROJECT: demo-packtook-p184
+      GOOGLE_CLOUD_PROJECT: demo-packtook-p184
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: P207 provenance missing and negative-claim fixtures
+        run: |
+          node --check audit/p207/verify.js
+          node audit/p207/fixtures.js
+      - name: Preserve P206 and NO_GO gates
+        run: |
+          node audit/p206/fixtures.js
+          node audit/p205/fixtures.js
+          node audit/p204/fixtures.js
+          node audit/p203/fixtures.js
+          node audit/p202/fixtures.js
+          node audit/p201/fixtures.js
+          node audit/p200/fixtures.js
+          node audit/p199/fixtures.js
+          node audit/p198/fixtures.js
+          node audit/p188/build-rc.js
+          node audit/p189/verify.js
+          node audit/p190/reconcile-fixtures.js
+          node audit/p180-fast-track-check.js
+          node audit/p172-release-gates.js
