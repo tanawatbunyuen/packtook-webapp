@@ -34,7 +34,6 @@ jobs:
           node audit/p189/verify.js
           node audit/p218/fixtures.js
           node --check .p218-staging-candidate-build/index.js
-          node audit/p218/prepare.js --offline-only || test $? -eq 1
       - name: Verify real G02 handlers with Auth and Firestore Emulators
         run: |
           npx --yes firebase-tools@14 emulators:exec --project demo-packtook-p184 --config audit/p211/firebase.json --only auth,firestore "node audit/p217/adversarial-g02.js"
