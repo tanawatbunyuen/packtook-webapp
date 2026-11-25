@@ -1,0 +1,46 @@
+name: P219 G02 Runtime Remediation Readiness
+on:
+  push:
+    branches: [review/p219-g02-runtime-remediation-readiness]
+  pull_request:
+    branches: [review/p218-g02-staging-candidate-repair-bundle]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  g02-patched-source-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 19
+    env:
+      CI: "true"
+      GCLOUD_PROJECT: demo-packtook-p184
+      GOOGLE_CLOUD_PROJECT: demo-packtook-p184
+      FIREBASE_CONFIG: '{"projectId":"demo-packtook-p184"}'
+      FUNCTIONS_EMULATOR: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install isolated emulator dependencies
+        run: npm install --prefix functions --no-package-lock --no-audit --no-fund
+      - name: Reproduce pinned repair source
+        run: |
+          node audit/p188/build-rc.js
+          node audit/p189/verify.js
+          node audit/p219/fixtures.js
+      - name: Firebase Auth and Firestore adversarial G02
+        run: |
+          npx --yes firebase-tools@14 emulators:exec --project demo-packtook-p184 --config audit/p211/firebase.json --only auth,firestore "node audit/p217/adversarial-g02.js"
+      - name: Callable HTTP Auth App Check local boundary
+        run: |
+          npx --yes firebase-tools@14 emulators:exec --project demo-packtook-p184 --config audit/p211/firebase.json --only auth,firestore "node audit/p212/http-integration.js"
+      - name: Enforce no-go
+        run: |
+          node audit/p215/fixtures.js
+          node audit/p180-fast-track-check.js
+          node audit/p172-release-gates.js
