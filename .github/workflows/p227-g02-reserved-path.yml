@@ -1,0 +1,31 @@
+name: P227 G02 Reserved Firestore Path Fix
+on:
+  push:
+    branches: [review/p227-g02-reserved-collection-id-fix]
+  pull_request:
+    branches: [review/p226-g02-firestore-request-shape]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      CI: "true"
+      GCLOUD_PROJECT: demo-packtook-p184
+      GOOGLE_CLOUD_PROJECT: demo-packtook-p184
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Exact source diff and safety tests
+        run: |
+          node audit/p188/build-rc.js
+          node audit/p189/verify.js
+          node audit/p227/build-patch.js
+          node audit/p227/fixtures.js
+          node --check audit/p227/probe/index.js
+          node audit/p180-fast-track-check.js
+          node audit/p172-release-gates.js
