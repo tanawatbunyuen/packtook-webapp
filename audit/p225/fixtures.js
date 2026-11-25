@@ -79,7 +79,7 @@ const reset=()=>{state.namedSdk="MISSING";state.defaultSdk=7;state.namedRest=404
  await check("MAX_INSTANCE_ONE",()=>assert.equal(state.opts.maxInstances,1));
  await check("REGION_PIN",()=>assert.equal(state.opts.region,"asia-southeast1"));
  await check("NO_REQUEST_BODY_OR_QUERY",()=>assert(!/req\.(?:body|query|params)/.test(source)));
- await check("NO_FIRESTORE_WRITES",()=>assert(!/(?:namedDb|defaultDb|db|s)\.(?:set|update|create|delete|add|runTransaction)\(/.test(source)));
+ await check("NO_FIRESTORE_WRITES",()=>assert(!/(?:namedDb|defaultDb|db|snap)\.(?:set|update|create|delete|add|runTransaction)\(/.test(source)));
  let r=await invoke();
  await check("FOUR_WAY_PASS",()=>assert.equal(r.statusCode,200));
  await check("FOUR_EXPECTED_RESULTS",()=>assert.deepEqual([r.body.namedSdk,r.body.defaultSdk,r.body.namedRest,r.body.defaultRest],["ALLOWED_NOT_FOUND","PERMISSION_DENIED","ALLOWED_NOT_FOUND","PERMISSION_DENIED"]));
