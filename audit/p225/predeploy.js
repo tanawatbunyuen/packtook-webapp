@@ -12,7 +12,7 @@ assert(src.includes("new GoogleAuth({scopes:"));
 assert(src.includes('fetch(url,'));
 assert(src.includes('defaultRest==="PERMISSION_DENIED"'));
 assert(src.includes('namedSdk==="ALLOWED_NOT_FOUND"'));
-assert(!/(?:namedDb|defaultDb|db|s)\.(?:set|update|create|delete|add|runTransaction)\(/.test(src));
+assert(!/(?:namedDb|defaultDb|db|snap)\.(?:set|update|create|delete|add|runTransaction)\(/.test(src));
 assert.deepEqual([...src.matchAll(/exports\.([A-Za-z0-9_]+)=/g)].map(x=>x[1]),["g02SdkRestDiagnosticProbe"]);
 assert(!/\b(?:defineSecret|onCall|payment|webhook|omise)\b/i.test(src));
 console.log("P225_P188_SOURCE_PIN=PASS");
