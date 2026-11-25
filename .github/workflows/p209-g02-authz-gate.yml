@@ -1,0 +1,36 @@
+name: P209 G02 Authentic Gate Reconciliation
+on:
+  push:
+    branches: [review/p209-g02-gate-evidence-final-reconciliation]
+  pull_request:
+    branches: [review/p208-g02-appcheck-runtime-evidence-readiness]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-real-gate-reconciliation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    env:
+      CI: "true"
+      GCLOUD_PROJECT: demo-packtook-p184
+      GOOGLE_CLOUD_PROJECT: demo-packtook-p184
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Generate pinned isolated P188 candidate and test real G02 gate
+        run: |
+          node audit/p188/build-rc.js
+          node --check audit/p209/reconcile.js
+          node audit/p209/fixtures.js
+          node audit/p189/verify.js
+      - name: Regression review and release NO_GO
+        run: |
+          node audit/p208/fixtures.js
+          node audit/p207/fixtures.js
+          node audit/p206/fixtures.js
+          node audit/p190/reconcile-fixtures.js
+          node audit/p180-fast-track-check.js
+          node audit/p172-release-gates.js
