@@ -73,7 +73,7 @@ def inspect_bytes(content, candidate):
                     mode = info.external_attr >> 16
                     if stat.S_ISLNK(mode):
                         return fail("SYMLINK_MEMBER_REJECTED")
-                    if mode and not (stat.S_ISREG(mode) or stat.S_ISDIR(mode)):
+                    if stat.S_IFMT(mode) and not (stat.S_ISREG(mode) or stat.S_ISDIR(mode)):
                         return fail("UNSAFE_ENTRY_TYPE")
                 if info.file_size < 0 or info.file_size > LIMIT_UNPACKED:
                     return fail("UNSAFE_MEMBER_SIZE")
