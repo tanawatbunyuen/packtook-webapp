@@ -76,7 +76,7 @@ async function t(name,fn){await fn();n++;console.log("P223_"+name+"=PASS")}
  state.calls=[];
  await t("NON_GET_REJECTED_BEFORE_DB_READ",async()=>{const r=await invoke("POST");assert.equal(r.statusCode,405);assert.equal(state.calls.length,0)});
  await t("NO_ERROR_TEXT_DISCLOSED",async()=>{state.default="OTHER_ERROR";const r=await invoke();assert(!JSON.stringify(r.body).includes("OPAQUE"))});
- await t("RELEASE_STILL_NO_GO",asyncasync()=>assert.equal((await invoke()).body.release,"NO_GO"));
+ await t("RELEASE_STILL_NO_GO",async()=>assert.equal((await invoke()).body.release,"NO_GO"));
  console.log("P223_RUNTIME_IAM_BOUNDARY_LOCAL_FIXTURES="+n+"/"+n+"_PASS");
  console.log("P223_STAGING_DEPLOYED=FALSE STAGING_IAM_TESTED=FALSE G02=NO_GO");
 })().catch(e=>{console.error("P223_BLOCK="+String(e.message).slice(0,160));process.exitCode=1});
