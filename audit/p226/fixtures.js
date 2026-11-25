@@ -1,0 +1,82 @@
+"use strict";
+const assert=require("node:assert/strict"),fs=require("node:fs"),path=require("node:path"),vm=require("node:vm");
+const source=fs.readFileSync(path.join(__dirname,"probe/index.js"),"utf8");
+const s={ns:3,ds:7,nr:400,dr:400,nm:"Invalid database id g02-security-test",dm:"Invalid database id %28default%29",token:"TEST_TOKEN",calls:[],metadata:null};
+const application={};let options;
+const admin={apps:[],initializeApp(o){assert.equal(o.projectId,"packtook-staging");this.apps.push(application)},app(){return application}};
+const getFirestore=(app,db)=>{assert.equal(app,application);return {collection(c){assert.equal(c,"__g02_iam_boundary_probe__");return {doc(id){assert.match(id,/^p226_missing_[a-f0-9]{32}$/);return {async get(){
+ s.calls.push("sdk:"+db);let code=db==="g02-security-test"?s.ns:s.ds;
+ if(code===0)return {exists:false};if(code===1)return {exists:true};
+ const err=new Error(db==="g02-security-test"?s.nm:s.dm);err.code=code;throw err;
+ }}}}}}};
+class GoogleAuth{constructor(a){assert.equal(a.scopes[0],"https://www.googleapis.com/auth/datastore")}async getClient(){return {getAccessToken:async()=>({token:s.token})}}}
+async function fakeFetch(url,o){
+ assert.equal(o.method,"GET");assert.equal(o.redirect,"error");
+ assert.equal(o.headers.Authorization,"Bearer TEST_TOKEN");
+ assert.match(url,/^https:\/\/firestore\.googleapis\.com\/v1\/projects\/packtook-staging\/databases\//);
+ assert.match(url,/\/documents\/__g02_iam_boundary_probe__\/p226_missing_[a-f0-9]{32}$/);
+ const db=url.includes("/databases/g02-security-test/")?"g02-security-test":"(default)";
+ s.calls.push("rest:"+db);
+ const code=db==="g02-security-test"?s.nr:s.dr;
+ const message=db==="g02-security-test"?s.nm:s.dm;
+ const body=JSON.stringify({error:{code,status:code===400?"INVALID_ARGUMENT":code===403?"PERMISSION_DENIED":"NOT_FOUND",message,details:[{secret:"DO_NOT_LEAK"}]}});
+ return {status:code,headers:{get:(key)=>key==="content-type"?"application/json":key==="content-length"?String(body.length):null},text:async()=>body};
+}
+const moduleMap=n=>{
+ if(n==="firebase-functions/v2/https")return {onRequest:(o,h)=>{options=o;return h}};
+ if(n==="firebase-admin")return admin;
+ if(n==="firebase-admin/firestore")return {getFirestore};
+ if(n==="google-auth-library")return {GoogleAuth};
+ if(n==="node:crypto")return {randomUUID:()=>"11111111-2222-4333-8444-555555555555"};
+ throw Error("UNEXPECTED_REQUIRE");
+};
+const exp={};
+vm.compileFunction(source,["exports","require"],{parsingContext:vm.createContext({fetch:fakeFetch,AbortSignal:{timeout:()=>({})}})})(exp,moduleMap);
+const call=exp.g02RequestShapeProbe;
+const invoke=async(method="GET")=>{
+ const res={statusCode:null,body:null,headers:{},set(k,v){this.headers[k]=v;return this},status(v){this.statusCode=v;return this},json(v){this.body=v;return this}};
+ await call({method},res);return res;
+};
+let n=0;const test=async(label,f)=>{await f();console.log("P226_"+label+"=PASS");n++};
+(async()=>{
+ await test("SINGLE_EXPORT",()=>assert.deepEqual(Object.keys(exp),["g02RequestShapeProbe"]));
+ await test("PRIVATE",()=>assert.equal(options.invoker,"private"));
+ await test("REGION",()=>assert.equal(options.region,"asia-southeast1"));
+ await test("SINGLE_INSTANCE",()=>assert.equal(options.maxInstances,1));
+ await test("SHORT_TIMEOUT",()=>assert.equal(options.timeoutSeconds,30));
+ await test("NO_MUTATION_METHODS",()=>assert(!/(?:dbNamed|dbDefault|db|snap)\.(?:set|update|delete|create|add|runTransaction)\(/.test(source)));
+ await test("NO_USER_REQUEST_TARGETS",()=>assert(!/req\.(?:body|query|params)/.test(source)));
+ let r=await invoke();
+ await test("BASELINE_BLOCKED",()=>assert.equal(r.statusCode,503));
+ await test("NAMED_INVALID_DATABASE_ID",()=>assert.equal(JSON.stringify(r.body.namedRest),JSON.stringify({code:"INVALID_ARGUMENT",reason:"INVALID_DATABASE_ID"})));
+ await test("DEFAULT_INVALID_DATABASE_ID",()=>assert.equal(JSON.stringify(r.body.defaultRest),JSON.stringify({code:"INVALID_ARGUMENT",reason:"INVALID_DATABASE_ID"})));
+ await test("SDK_NAMED_INVALID_DATABASE_ID",()=>assert.equal(JSON.stringify(r.body.namedSdk),JSON.stringify({code:"INVALID_ARGUMENT",reason:"INVALID_DATABASE_ID"})));
+ await test("SDK_DEFAULT_DENIED",()=>assert.equal(r.body.defaultSdk.code,"PERMISSION_DENIED"));
+ await test("NO_SECRET_DATA",()=>assert(!JSON.stringify(r.body).includes("DO_NOT_LEAK")&&!JSON.stringify(r.body).includes("TEST_TOKEN")));
+ await test("NO_RAW_MESSAGE",()=>assert(!JSON.stringify(r.body).includes("g02-security-test")&&!JSON.stringify(r.body).includes("%28default%29")));
+ await test("FOUR_READS",()=>assert.deepEqual(s.calls.sort(),["rest:(default)","rest:g02-security-test","sdk:(default)","sdk:g02-security-test"].sort()));
+ s.ns=0;s.nr=404;s.dr=403;r=await invoke();
+ await test("FOUR_WAY_SUCCESS",()=>assert.equal(r.statusCode,200));
+ await test("FAIL_CLOSED_RELEASE",()=>assert.equal(r.body.release,"NO_GO"));
+ s.ns=3;s.nr=400;s.nm="Invalid resource name";r=await invoke();
+ await test("INVALID_RESOURCE_NAME_REASON",()=>assert.equal(r.body.namedRest.reason,"INVALID_RESOURCE_NAME"));
+ s.nm="Invalid document path";r=await invoke();
+ await test("INVALID_DOCUMENT_PATH_REASON",()=>assert.equal(r.body.namedRest.reason,"INVALID_DOCUMENT_PATH"));
+ s.nm="random unexpected private diagnostic";r=await invoke();
+ await test("UNCLASSIFIED_REASON",()=>assert.equal(r.body.namedRest.reason,"UNCLASSIFIED"));
+ s.nm="Invalid database name";r=await invoke();
+ await test("INVALID_DATABASE_NAME_REASON",()=>assert.equal(r.body.namedRest.reason,"INVALID_DATABASE_NAME"));
+ s.nr=403;r=await invoke();
+ await test("NAMED_REST_DENIED_BLOCK",()=>assert.equal(r.statusCode,503));
+ s.ns=0;s.nr=404;s.dr=404;r=await invoke();
+ await test("DEFAULT_REST_ALLOW_BLOCK",()=>assert.equal(r.statusCode,503));
+ s.token=null;r=await invoke();
+ await test("MISSING_ACCESS_TOKEN",()=>assert.equal(r.body.namedRest.code,"AUTH_UNAVAILABLE"));
+ s.token="TEST_TOKEN";s.calls=[];r=await invoke("POST");
+ await test("POST_REJECTED",()=>assert.equal(r.statusCode,405));
+ await test("POST_BEFORE_FIRESTORE_READ",()=>assert.equal(s.calls.length,0));
+ await test("NO_CACHE",()=>assert.equal(r.headers["Cache-Control"],"no-store"));
+ await test("OFFLINE_ENVIRONMENT",()=>assert.equal(process.env.GCLOUD_PROJECT,"demo-packtook-p184"));
+ console.log("P226_OFFLINE_FIXTURES="+n+"/"+n+"_PASS");
+ console.log("P226_STAGING_DEPLOYED=FALSE P226_RUNTIME_VERIFIED=FALSE G02=NO_GO");
+})().catch(e=>{console.error("P226_TEST_FAILURE="+String(e.message).slice(0,120));process.exitCode=1});
