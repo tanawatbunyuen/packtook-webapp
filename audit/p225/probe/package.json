@@ -1,0 +1,12 @@
+{
+  "name":"packtook-p225-g02-sdk-rest-readonly-diagnostic",
+  "private":true,
+  "version":"0.0.1",
+  "main":"index.js",
+  "engines":{"node":"22"},
+  "dependencies":{
+    "firebase-admin":"^13.0.0",
+    "firebase-functions":"^6.0.0",
+    "google-auth-library":"^9.0.0"
+  }
+}
