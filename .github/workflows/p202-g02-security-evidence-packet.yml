@@ -1,0 +1,39 @@
+name: P202 G02 Staging Security Evidence Consolidation
+on:
+  push:
+    branches: [review/p202-g02-staging-security-evidence-consolidation]
+  pull_request:
+    branches: [review/p201-g02-artifact-cleanup-evidence]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-security-review-packet:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      CI: "true"
+      GCLOUD_PROJECT: demo-packtook-p184
+      GOOGLE_CLOUD_PROJECT: demo-packtook-p184
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Validate 9-track evidence packet and reject forged approvals
+        run: |
+          node --check audit/p202/reconcile.js
+          node --check audit/p202/cli.js
+          node audit/p202/fixtures.js
+          node audit/p202/cli.js
+      - name: Preserve pinned candidate, operator-read safety and release NO_GO
+        run: |
+          node audit/p201/fixtures.js
+          node audit/p200/fixtures.js
+          node audit/p199/fixtures.js
+          node audit/p198/fixtures.js
+          node audit/p188/build-rc.js
+          node audit/p189/verify.js
+          node audit/p190/reconcile-fixtures.js
+          node audit/p180-fast-track-check.js
+          node audit/p172-release-gates.js
