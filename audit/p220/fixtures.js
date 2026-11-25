@@ -4,9 +4,10 @@ const fs=require("node:fs"),path=require("node:path"),crypto=require("node:crypt
 const {EXPECTED_CANDIDATE}=require("../p190/reconcile");
 const source=fs.readFileSync(path.resolve(__dirname,"probe/index.js"),"utf8");
 const p188=fs.readFileSync(path.resolve(__dirname,"../p188/candidate-index.js"));
-const run=new Map(),state={get:0};
+const run=new Map(),state={get:0,firestoreDatabase:null};
 const snapshot={exists:true,data:()=>({ownerUid:"g02test_0123456789ABC"})};
-const firebase={apps:[],initializeApp(){this.apps.push({})},firestore(){return {
+const firebase={apps:[],initializeApp(){this.apps.push({})},app(){return this.apps[0]}};
+const firestore={getFirestore(app,databaseId){assert.equal(app,firebase.apps[0]);state.firestoreDatabase=databaseId;return {
  collection(name){assert.equal(name,"accounts");return{
  doc(id){return {get:async()=>{state.get++;return run.get(id)??{exists:false}}}}
  }}
@@ -18,6 +19,7 @@ const imp=n=>{
  HttpsError:class extends Error{constructor(code,message){super(message);this.code=code}}
  };
  if(n==="firebase-admin")return firebase;
+ if(n==="firebase-admin/firestore")return firestore;
  throw Error("UNEXPECTED_IMPORT");
 };
 const exported={};
@@ -30,6 +32,8 @@ let n=0;async function t(label,fn){await fn();n++;console.log("P220_"+label+"=PA
  await t("P188_SOURCE_EXACT_SHA_PIN",()=>assert.equal(crypto.createHash("sha256").update(p188).digest("hex"),EXPECTED_CANDIDATE));
  await t("P188_UNSAFE_BACKFILL_REMOVED",()=>assert(!p188.toString().includes('if(!a.ownerUid)tx.update(acc,{ownerUid:accountId});')));
  await t("P188_IMPLICIT_SELF_ADMIN_REMOVED",()=>assert(!p188.toString().includes('const role=ref.id===id?"admin":"operator";')));
+ await t("NAMED_DATABASE_ID",()=>assert.equal(state.firestoreDatabase,"g02-security-test"));
+ await t("DEFAULT_DATABASE_NEVER_OPENED",()=>assert.notEqual(state.firestoreDatabase,"(default)"));
  await t("ONLY_TEST_FUNCTION_EXPORT",()=>assert.deepEqual(Object.keys(exported),["g02AuthzProbe"]));
  await t("PRIVATE_IAM_INVOCATION",()=>assert.equal(config.invoker,"private"));
  await t("APPCHECK_ENFORCED",()=>assert.equal(config.enforceAppCheck,true));
