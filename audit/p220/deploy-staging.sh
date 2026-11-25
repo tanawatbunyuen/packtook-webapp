@@ -9,6 +9,27 @@ set -euo pipefail
 SA="${G02_PROBE_SERVICE_ACCOUNT:-}"
 [[ "$SA" == "g02-probe-runtime@packtook-staging.iam.gserviceaccount.com" ]] || { echo "P220_BLOCK: dedicated staging runtime SA required"; exit 2; }
 gcloud iam service-accounts describe "$SA" --project=packtook-staging --format="value(email)" >/dev/null
+# Named Firestore isolation is mandatory before creating any Cloud Run function.
+DB="g02-security-test"
+DB_NAME="$(gcloud firestore databases describe --database="$DB" --project=packtook-staging --format="value(name)")"
+[[ "$DB_NAME" == "projects/packtook-staging/databases/$DB" ]] || { echo "P221_BLOCK: named Firestore database absent"; exit 2; }
+# Requires conditional viewer grant limited to the named database, and rejects
+# any project-level unconditional grant to this service account.
+# This check does NOT establish that higher-level inherited/resource IAM is absent.
+gcloud projects get-iam-policy packtook-staging --format=json | \
+G02_RUNTIME_SA="$SA" python3 -c '
+import json,os,sys
+p=json.load(sys.stdin)
+member="serviceAccount:"+os.environ["G02_RUNTIME_SA"]
+want="resource.name==\"projects/packtook-staging/databases/g02-security-test\""
+bindings=[b for b in p.get("bindings",[]) if member in b.get("members",[])]
+matches=[b for b in bindings if b.get("role")=="roles/datastore.viewer" and
+ b.get("condition",{}).get("expression")==want]
+if len(bindings)!=1 or len(matches)!=1:
+ print("P221_BLOCK: expected exactly one conditional datastore.viewer role")
+ sys.exit(2)
+print("P221_DATABASE_CONDITIONAL_VIEWER=PASS")
+'
 HERE="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
 cd "$ROOT"
