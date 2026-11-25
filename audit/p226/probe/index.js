@@ -10,7 +10,7 @@ const crypto=require("node:crypto");
 const PROJECT="packtook-staging";
 const NAMED="g02-security-test";
 const DEFAULT="(default)";
-const COL="__g02_iam_boundary_probe__";
+const COL="g02_iam_boundary_probe";
 if(NAMED===DEFAULT)throw Error("P226_DATABASE_COLLISION");
 if(!admin.apps.length)admin.initializeApp({projectId:PROJECT});
 const app=admin.app();
