@@ -4,7 +4,7 @@ const source=fs.readFileSync(path.join(__dirname,"probe/index.js"),"utf8");
 const s={ns:3,ds:7,nr:400,dr:400,nm:"Invalid database id g02-security-test",dm:"Invalid database id %28default%29",token:"TEST_TOKEN",calls:[],metadata:null};
 const application={};let options;
 const admin={apps:[],initializeApp(o){assert.equal(o.projectId,"packtook-staging");this.apps.push(application)},app(){return application}};
-const getFirestore=(app,db)=>{assert.equal(app,application);return {collection(c){assert.equal(c,"__g02_iam_boundary_probe__");return {doc(id){assert.match(id,/^p226_missing_[a-f0-9]{32}$/);return {async get(){
+const getFirestore=(app,db)=>{assert.equal(app,application);return {collection(c){assert.equal(c,"g02_iam_boundary_probe");return {doc(id){assert.match(id,/^p226_missing_[a-f0-9]{32}$/);return {async get(){
  s.calls.push("sdk:"+db);let code=db==="g02-security-test"?s.ns:s.ds;
  if(code===0)return {exists:false};if(code===1)return {exists:true};
  const err=new Error(db==="g02-security-test"?s.nm:s.dm);err.code=code;throw err;
@@ -14,7 +14,7 @@ async function fakeFetch(url,o){
  assert.equal(o.method,"GET");assert.equal(o.redirect,"error");
  assert.equal(o.headers.Authorization,"Bearer TEST_TOKEN");
  assert.match(url,/^https:\/\/firestore\.googleapis\.com\/v1\/projects\/packtook-staging\/databases\//);
- assert.match(url,/\/documents\/__g02_iam_boundary_probe__\/p226_missing_[a-f0-9]{32}$/);
+ assert.match(url,/\/documents\/g02_iam_boundary_probe\/p226_missing_[a-f0-9]{32}$/);
  const db=url.includes("/databases/g02-security-test/")?"g02-security-test":"(default)";
  s.calls.push("rest:"+db);
  const code=db==="g02-security-test"?s.nr:s.dr;
@@ -45,6 +45,7 @@ let n=0;const test=async(label,f)=>{await f();console.log("P226_"+label+"=PASS")
  await test("SINGLE_INSTANCE",()=>assert.equal(options.maxInstances,1));
  await test("SHORT_TIMEOUT",()=>assert.equal(options.timeoutSeconds,30));
  await test("NO_MUTATION_METHODS",()=>assert(!/(?:dbNamed|dbDefault|db|snap)\.(?:set|update|delete|create|add|runTransaction)\(/.test(source)));
+ await test("VALID_COLLECTION_ID",()=>assert(!/^__.*__$/.test(source.match(/const COL="([^"]+)"/)[1])));
  await test("NO_USER_REQUEST_TARGETS",()=>assert(!/req\.(?:body|query|params)/.test(source)));
  let r=await invoke();
  await test("BASELINE_BLOCKED",()=>assert.equal(r.statusCode,503));
