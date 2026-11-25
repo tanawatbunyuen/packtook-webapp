@@ -1,0 +1,53 @@
+name: P215 G02 Final Security Review Preflight
+on:
+  push:
+    branches: [review/p215-g02-final-security-preflight]
+  pull_request:
+    branches: [review/p214-g02-security-coverage-review-packet]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  local-g02-final-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 19
+    env:
+      CI: "true"
+      GCLOUD_PROJECT: demo-packtook-p184
+      GOOGLE_CLOUD_PROJECT: demo-packtook-p184
+      FIREBASE_CONFIG: '{"projectId":"demo-packtook-p184"}'
+      FUNCTIONS_EMULATOR: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install demo-local SDK dependencies
+        run: |
+          npm install --prefix functions --no-package-lock --no-audit --no-fund
+      - name: Pin P188 and validate P214/P215 reviewer preflight
+        run: |
+          node audit/p188/build-rc.js
+          node audit/p189/verify.js
+          node --check audit/p215/preflight.js
+          node audit/p214/fixtures.js
+          node audit/p215/fixtures.js
+          node audit/p215/cli.js
+      - name: Re-test P211 real Auth and Firestore emulators
+        run: |
+          npx --yes firebase-tools@14 emulators:exec --project demo-packtook-p184 --config audit/p211/firebase.json --only auth,firestore "node audit/p211/emulator-integration.js"
+      - name: Re-test P212 real callable SDK local HTTP boundary
+        run: |
+          npx --yes firebase-tools@14 emulators:exec --project demo-packtook-p184 --config audit/p211/firebase.json --only auth,firestore "node audit/p212/http-integration.js"
+      - name: Re-test P213 Owner tenant negative authorization mutations
+        run: |
+          npx --yes firebase-tools@14 emulators:exec --project demo-packtook-p184 --config audit/p211/firebase.json --only auth,firestore "node audit/p213/authz-mutation-emulator.js"
+      - name: Confirm all eight release gates remain NO_GO
+        run: |
+          node audit/p209/fixtures.js
+          node audit/p180-fast-track-check.js
+          node audit/p172-release-gates.js
