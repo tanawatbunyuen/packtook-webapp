@@ -33,8 +33,8 @@ const mockRequire=(name)=>{
  if(name==="node:crypto")return crypto;
  throw Error("P211_UNEXPECTED_MODULE_"+name);
 };
-const exports={};
-vm.runInNewContext(generated,{exports,module:{exports},require:mockRequire,
+const handlers={};
+vm.runInNewContext(generated,{exports:handlers,module:{exports:handlers},require:mockRequire,
  process:{env:{GCLOUD_PROJECT:project,GOOGLE_CLOUD_PROJECT:project}},
  console:{log(){},error(){},warn(){}},Buffer,Promise,Date,URLSearchParams,
  fetch(){throw Error("P211_NETWORK_ACCESS_FORBIDDEN")}},
@@ -84,7 +84,7 @@ let passed=0;const test=async(name,fn)=>{await fn();passed++;console.log("P211_"
 (async()=>{
  await test("EXACT_P188_PINNED_CANDIDATE",async()=>assert.equal(crypto.createHash("sha256").update(generated).digest("hex"),EXPECTED_CANDIDATE));
  await test("REAL_FIREBASE_ADMIN_SDK_EMULATOR_ACTIVE",async()=>{const t=await db.collection("p211Probe").doc("readonlyscope").get();assert.equal(t.exists,false)});
- await test("ACTUAL_P188_HANDLERS_LOADED",async()=>{assert.equal(typeof exports.accountRole,"function");assert.equal(typeof exports.authorizeDuplicate,"function");assert.equal(typeof exports.usageStatus,"function")});
+ await test("ACTUAL_P188_HANDLERS_LOADED",async()=>{assert.equal(typeof handlers.accountRole,"function");assert.equal(typeof handlers.authorizeDuplicate,"function");assert.equal(typeof handlers.usageStatus,"function")});
  const owner=await emulatorToken("p211-owner");
  const foreign=await emulatorToken("p211-foreign");
  const legacy=await emulatorToken("p211-legacy");
@@ -95,25 +95,25 @@ let passed=0;const test=async(name,fn)=>{await fn();passed++;console.log("P211_"
  await seedAccount("p211-legacy",undefined);await seedLock("p211-legacy");
  await seedAccount("p211-foreign","p211-owner");await seedLock("p211-foreign");
  await seedAccount("p211-unverified","p211-unverified");
- await test("EXPLICIT_OWNER_ROLE_SUCCESS",async()=>{const x=await exports.accountRole(call(owner));assert.equal(x.role,"admin");assert.equal(x.accountId,"p211-owner")});
- await test("LEGACY_ROLE_DENIED",async()=>await deny(()=>exports.accountRole(call(legacy))));
+ await test("EXPLICIT_OWNER_ROLE_SUCCESS",async()=>{const x=await handlers.accountRole(call(owner));assert.equal(x.role,"admin");assert.equal(x.accountId,"p211-owner")});
+ await test("LEGACY_ROLE_DENIED",async()=>await deny(()=>handlers.accountRole(call(legacy))));
  await test("LEGACY_ROLE_NO_OWNER_BACKFILL",async()=>assert.equal((await noneWritten("p211-legacy")).ownerUid,undefined));
- await test("FOREIGN_OWNER_ROLE_DENIED",async()=>await deny(()=>exports.accountRole(call(foreign))));
- await test("UNVERIFIED_EMAIL_DENIED",async()=>await deny(()=>exports.accountRole(call(unverified)),"permission-denied"));
- await test("NO_AUTH_TOKEN_DENIED",async()=>await deny(()=>exports.accountRole({data:{}}),"unauthenticated"));
- await test("MISSING_ACCOUNT_ROLE_DENIED_NO_CREATE",async()=>{await deny(()=>exports.accountRole(call(fresh)));assert.equal((await account("p211-new").get()).exists,false)});
+ await test("FOREIGN_OWNER_ROLE_DENIED",async()=>await deny(()=>handlers.accountRole(call(foreign))));
+ await test("UNVERIFIED_EMAIL_DENIED",async()=>await deny(()=>handlers.accountRole(call(unverified)),"permission-denied"));
+ await test("NO_AUTH_TOKEN_DENIED",async()=>await deny(()=>handlers.accountRole({data:{}}),"unauthenticated"));
+ await test("MISSING_ACCOUNT_ROLE_DENIED_NO_CREATE",async()=>{await deny(()=>handlers.accountRole(call(fresh)));assert.equal((await account("p211-new").get()).exists,false)});
  const approval=()=>({barcode,reason:"Valid distinct reason for approval"});
- await test("DUPLICATE_OWNER_WRITES_REAL_EMULATOR",async()=>{const r=await exports.authorizeDuplicate(call(owner,approval()));assert.equal(typeof r.approvalId,"string");const a=await account("p211-owner").collection("duplicateApprovals").doc(r.approvalId).get();assert.equal(a.exists,true);assert.equal(a.data().approvedBy,"p211-owner")});
- await test("DUPLICATE_LEGACY_DENIED",async()=>await deny(()=>exports.authorizeDuplicate(call(legacy,approval()))));
+ await test("DUPLICATE_OWNER_WRITES_REAL_EMULATOR",async()=>{const r=await handlers.authorizeDuplicate(call(owner,approval()));assert.equal(typeof r.approvalId,"string");const a=await account("p211-owner").collection("duplicateApprovals").doc(r.approvalId).get();assert.equal(a.exists,true);assert.equal(a.data().approvedBy,"p211-owner")});
+ await test("DUPLICATE_LEGACY_DENIED",async()=>await deny(()=>handlers.authorizeDuplicate(call(legacy,approval()))));
  await test("DUPLICATE_LEGACY_NO_BACKFILL",async()=>{const a=await account("p211-legacy").get();assert.equal(a.data().ownerUid,undefined);const z=await account("p211-legacy").collection("duplicateApprovals").get();assert.equal(z.size,0)});
- await test("DUPLICATE_FOREIGN_OWNER_DENIED",async()=>await deny(()=>exports.authorizeDuplicate(call(foreign,approval()))));
+ await test("DUPLICATE_FOREIGN_OWNER_DENIED",async()=>await deny(()=>handlers.authorizeDuplicate(call(foreign,approval()))));
  await test("DUPLICATE_FOREIGN_OWNER_NO_APPROVAL",async()=>{const z=await account("p211-foreign").collection("duplicateApprovals").get();assert.equal(z.size,0)});
- await test("DUPLICATE_UNVERIFIED_EMAIL_DENIED",async()=>await deny(()=>exports.authorizeDuplicate(call(unverified,approval()))));
- await test("DUPLICATE_SHORT_REASON_DENIED",async()=>await deny(()=>exports.authorizeDuplicate(call(owner,{barcode,reason:"no"})),"invalid-argument"));
- await test("DUPLICATE_MISSING_AUTH_DENIED",async()=>await deny(()=>exports.authorizeDuplicate({data:approval()}),"unauthenticated"));
- await test("NEW_ACCOUNT_OWNER_UID_CREATED_ONCE",async()=>{const r=await exports.usageStatus(call(fresh));assert.equal(r.plan,"Free");assert.equal((await account("p211-new").get()).data().ownerUid,"p211-new")});
- await test("NEW_ACCOUNT_CREATE_IDEMPOTENT",async()=>{await exports.usageStatus(call(fresh));assert.equal((await account("p211-new").get()).data().ownerUid,"p211-new")});
- await test("LEGACY_USAGE_STATUS_NO_OWNER_BACKFILL",async()=>{await exports.usageStatus(call(legacy));assert.equal((await account("p211-legacy").get()).data().ownerUid,undefined)});
+ await test("DUPLICATE_UNVERIFIED_EMAIL_DENIED",async()=>await deny(()=>handlers.authorizeDuplicate(call(unverified,approval()))));
+ await test("DUPLICATE_SHORT_REASON_DENIED",async()=>await deny(()=>handlers.authorizeDuplicate(call(owner,{barcode,reason:"no"})),"invalid-argument"));
+ await test("DUPLICATE_MISSING_AUTH_DENIED",async()=>await deny(()=>handlers.authorizeDuplicate({data:approval()}),"unauthenticated"));
+ await test("NEW_ACCOUNT_OWNER_UID_CREATED_ONCE",async()=>{const r=await handlers.usageStatus(call(fresh));assert.equal(r.plan,"Free");assert.equal((await account("p211-new").get()).data().ownerUid,"p211-new")});
+ await test("NEW_ACCOUNT_CREATE_IDEMPOTENT",async()=>{await handlers.usageStatus(call(fresh));assert.equal((await account("p211-new").get()).data().ownerUid,"p211-new")});
+ await test("LEGACY_USAGE_STATUS_NO_OWNER_BACKFILL",async()=>{await handlers.usageStatus(call(legacy));assert.equal((await account("p211-legacy").get()).data().ownerUid,undefined)});
  await test("NO_CROSS_TENANT_OWNER_ESCALATION",async()=>{assert.equal((await account("p211-owner").get()).data().ownerUid,"p211-owner");assert.equal((await account("p211-foreign").get()).data().ownerUid,"p211-owner")});
  console.log("P211_REAL_AUTH_FIRESTORE_EMULATOR_HANDLER_TESTS="+passed+"/"+passed+"_PASS");
  console.log("P211_FIREBASE_AUTH=EMULATOR_VERIFIED_TOKEN FIRESTORE=REAL_EMULATOR");
