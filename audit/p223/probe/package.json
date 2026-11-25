@@ -1,0 +1,11 @@
+{
+  "name": "packtook-p223-g02-iam-boundary-probe",
+  "private": true,
+  "version": "0.0.1",
+  "main": "index.js",
+  "engines": {"node": "22"},
+  "dependencies": {
+    "firebase-admin": "^13.0.0",
+    "firebase-functions": "^6.0.0"
+  }
+}
