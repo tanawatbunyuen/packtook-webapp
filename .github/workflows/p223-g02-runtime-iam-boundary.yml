@@ -1,0 +1,36 @@
+name: P223 G02 IAM Boundary Offline Gate
+on:
+  push:
+    branches: [review/p223-g02-runtime-iam-verification]
+  pull_request:
+    branches: [review/p221-g02-named-database-isolation]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-g02-iam-boundary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    env:
+      CI: "true"
+      GCLOUD_PROJECT: demo-packtook-p184
+      GOOGLE_CLOUD_PROJECT: demo-packtook-p184
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify pinned P188 and offline boundary mocks
+        run: |
+          node audit/p188/build-rc.js
+          node audit/p189/verify.js
+          node audit/p223/predeploy.js
+          node audit/p223/fixtures.js
+          node --check audit/p223/probe/index.js
+          bash -n audit/p223/deploy-staging.sh
+      - name: Keep original G02 no-go gates
+        run: |
+          node audit/p220/predeploy.js
+          node audit/p219/fixtures.js
+          node audit/p180-fast-track-check.js
+          node audit/p172-release-gates.js
