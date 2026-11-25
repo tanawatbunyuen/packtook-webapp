@@ -1,0 +1,52 @@
+name: P214 G02 Reviewer Evidence Packet and Emulator Regressions
+on:
+  push:
+    branches: [review/p214-g02-security-coverage-review-packet]
+  pull_request:
+    branches: [review/p213-g02-authz-mutation-coverage]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  g02-review-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 19
+    env:
+      CI: "true"
+      GCLOUD_PROJECT: demo-packtook-p184
+      GOOGLE_CLOUD_PROJECT: demo-packtook-p184
+      FIREBASE_CONFIG: '{"projectId":"demo-packtook-p184"}'
+      FUNCTIONS_EMULATOR: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install Firebase local emulator dependencies
+        run: |
+          npm install --prefix functions --no-package-lock --no-audit --no-fund
+      - name: Build isolated P188 and verify exact six edits
+        run: |
+          node audit/p188/build-rc.js
+          node audit/p189/verify.js
+          node --check audit/p214/packet.js
+          node audit/p214/fixtures.js
+          node audit/p214/cli.js
+      - name: P211 real Firebase Auth Firestore Emulator integration
+        run: |
+          npx --yes firebase-tools@14 emulators:exec --project demo-packtook-p184 --config audit/p211/firebase.json --only auth,firestore "node audit/p211/emulator-integration.js"
+      - name: P212 actual SDK onCall local HTTP adapter
+        run: |
+          npx --yes firebase-tools@14 emulators:exec --project demo-packtook-p184 --config audit/p211/firebase.json --only auth,firestore "node audit/p212/http-integration.js"
+      - name: P213 source authorization mutation sensitivity
+        run: |
+          npx --yes firebase-tools@14 emulators:exec --project demo-packtook-p184 --config audit/p211/firebase.json --only auth,firestore "node audit/p213/authz-mutation-emulator.js"
+      - name: Confirm G02 and all release gates stay fail closed
+        run: |
+          node audit/p209/fixtures.js
+          node audit/p180-fast-track-check.js
+          node audit/p172-release-gates.js
