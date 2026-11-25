@@ -1,0 +1,37 @@
+name: P226 G02 Firestore Request Shape Diagnostics
+on:
+  push:
+    branches: [review/p226-g02-firestore-request-shape]
+  pull_request:
+    branches: [review/p225-g02-sdk-rest-differential]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  no-cloud-diagnostics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    env:
+      CI: "true"
+      GCLOUD_PROJECT: demo-packtook-p184
+      GOOGLE_CLOUD_PROJECT: demo-packtook-p184
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: P226 exact offline checks
+        run: |
+          node audit/p188/build-rc.js
+          node audit/p189/verify.js
+          node audit/p226/predeploy.js
+          node audit/p226/fixtures.js
+          node --check audit/p226/probe/index.js
+          node --check audit/p226/fixtures.js
+          bash -n audit/p226/deploy-staging.sh
+      - name: Preserve G02 no-go
+        run: |
+          node audit/p225/predeploy.js
+          node audit/p219/fixtures.js
+          node audit/p180-fast-track-check.js
+          node audit/p172-release-gates.js
