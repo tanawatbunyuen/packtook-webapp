@@ -1,0 +1,34 @@
+name: P220 G02 Staging Isolated Probe Safety
+on:
+  push:
+    branches: [review/p220-g02-isolated-staging-probe]
+  pull_request:
+    branches: [review/p219-g02-runtime-remediation-readiness]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  g02-probe-offline-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    env:
+      CI: "true"
+      GCLOUD_PROJECT: demo-packtook-p184
+      GOOGLE_CLOUD_PROJECT: demo-packtook-p184
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Generate exact P188 and validate source guard
+        run: |
+          node audit/p188/build-rc.js
+          node audit/p189/verify.js
+          node audit/p220/predeploy.js
+          node audit/p220/fixtures.js
+          node --check audit/p220/probe/index.js
+      - name: Verify unchanged no-go gates
+        run: |
+          node audit/p219/fixtures.js
+          node audit/p180-fast-track-check.js
+          node audit/p172-release-gates.js
