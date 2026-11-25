@@ -1,0 +1,48 @@
+name: P218 G02 Staging Candidate Repair Bundle Review
+on:
+  push:
+    branches: [review/p218-g02-staging-candidate-repair-bundle]
+  pull_request:
+    branches: [review/p217-g02-real-emulator-adversarial-execution]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  isolated-g02-repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 19
+    env:
+      CI: "true"
+      GCLOUD_PROJECT: demo-packtook-p184
+      GOOGLE_CLOUD_PROJECT: demo-packtook-p184
+      FIREBASE_CONFIG: '{"projectId":"demo-packtook-p184"}'
+      FUNCTIONS_EMULATOR: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install emulator dependencies locally
+        run: npm install --prefix functions --no-package-lock --no-audit --no-fund
+      - name: Pin protected G02 candidate and generate isolated patch bundle
+        run: |
+          node audit/p188/build-rc.js
+          node audit/p189/verify.js
+          node audit/p218/fixtures.js
+          node --check .p218-staging-candidate-build/index.js
+          node audit/p218/prepare.js --offline-only || test $? -eq 1
+      - name: Verify real G02 handlers with Auth and Firestore Emulators
+        run: |
+          npx --yes firebase-tools@14 emulators:exec --project demo-packtook-p184 --config audit/p211/firebase.json --only auth,firestore "node audit/p217/adversarial-g02.js"
+      - name: Verify callable HTTP with emulator auth
+        run: |
+          npx --yes firebase-tools@14 emulators:exec --project demo-packtook-p184 --config audit/p211/firebase.json --only auth,firestore "node audit/p212/http-integration.js"
+      - name: G02 gates remain fail closed
+        run: |
+          node audit/p215/fixtures.js
+          node audit/p180-fast-track-check.js
+          node audit/p172-release-gates.js
