@@ -113,8 +113,17 @@ async function main(){
  await test("FOREIGN_DUPLICATE_NO_APPROVAL",async()=>assert.equal((await account("foreign").collection("duplicateApprovals").get()).size,0));
  await test("INVALID_REASON_HTTP_DENIED",async()=>expectDenied(await call("authorizeDuplicate",tokens.owner,{barcode,reason:"no"})));
  await test("NO_BEARER_DUPLICATE_DENIED",async()=>expectDenied(await call("authorizeDuplicate",null,approve(),"NO_TOKEN")));
- await test("NEW_ACCOUNT_USAGE_STATUS_HTTP_ACCEPTED",async()=>{const x=await call("usageStatus",tokens.fresh);expectAllowed(x);assert.equal(x.data.plan,"Free");assert.equal((await account("fresh").get()).data().ownerUid,uid.fresh)});
- await test("LEGACY_USAGE_STATUS_CANNOT_BACKFILL_OWNER",async()=>{const x=await call("usageStatus",tokens.legacy);expectAllowed(x);assert.equal((await account("legacy").get()).data().ownerUid,undefined)});
+ // usageStatus is explicitly enforceAppCheck:true. This HTTP test intentionally has
+ // no real App Check token, so verified Firebase Auth token MUST NOT bypass App Check.
+ // Do NOT disable enforcement or misreport blocked positive as a functional pass.
+ await test("USAGE_STATUS_VALID_AUTH_NO_APPCHECK_DENIED",async()=>{
+  const x=await call("usageStatus",tokens.fresh,{},"MISSING_APPCHECK");
+  expectDenied(x);assert.equal((await account("fresh").get()).exists,false);
+ });
+ await test("USAGE_STATUS_LEGACY_NO_APPCHECK_NO_BACKFILL",async()=>{
+  const x=await call("usageStatus",tokens.legacy,{},"MISSING_APPCHECK");
+  expectDenied(x);assert.equal((await account("legacy").get()).data().ownerUid,undefined);
+ });
  await test("HTTP_MALFORMED_ENVELOPE_REJECTED",async()=>{
   const response=await fetch(base+"/accountRole",{method:"POST",
    headers:{"Content-Type":"application/json",Authorization:"Bearer "+tokens.owner},
@@ -127,6 +136,7 @@ async function main(){
  const noTokenStatuses=Object.entries(statusCounts).filter(([k])=>k.startsWith("NO_TOKEN:"));
  console.log("P212_INVALID_TOKEN_HTTP_STATUS_OBSERVED="+invalidStatuses.map(([k])=>k.split(":").at(-1)).join(","));
  console.log("P212_MISSING_TOKEN_HTTP_STATUS_OBSERVED="+noTokenStatuses.map(([k])=>k.split(":").at(-1)).join(","));
+ console.log("P212_VALID_AUTH_WITHOUT_APPCHECK=BLOCKED_NOT_BYPASSED");
  console.log("P212_STRICT_G03_401_EXPECTATION="+(invalidStatuses.every(([k])=>k.endsWith(":401"))?"PASS_FOR_THIS_LOCAL_TEST":"NOT_CONFIRMED_OR_MISMATCH"));
  console.log("P212_REAL_CALLABLE_HTTP_FIREBASE_EMULATOR_TESTS="+pass+"/"+pass+"_PASS");
  console.log("P212_FIREBASE_AUTH=EMULATOR FIRESTORE=EMULATOR FUNCTIONS_WRAPPER=SDK_ONCALL_LOCAL_EXPRESS");
