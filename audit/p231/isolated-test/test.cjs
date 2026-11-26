@@ -28,6 +28,10 @@ test('exports callable and enables App Check with bounded resources',()=>{
   assert.equal(observed.options.maxInstances,1);
   assert.equal(observed.options.concurrency,1);
 });
+test('private invoker and dedicated no-database runtime identity are pinned',()=>{
+  assert.equal(observed.options.invoker,'private');
+  assert.equal(observed.options.serviceAccount,'p231-appcheck-probe@packtook-staging.iam.gserviceaccount.com');
+});
 test('synthetic fully verified request returns fixed non-sensitive response',async()=>{
   assert.deepEqual(await observed.handler(req(app,auth)),{probe:'p231-isolated',result:'PASS'});
 });
