@@ -5,8 +5,9 @@
 (async () => {
   const report=(k,v)=>console.log("P231_"+k+"="+v);
   report("CHECK","CONTROLLED_E2E_STAGING_BROWSER_CREDENTIAL_HANDOFF");
-  report("SCRIPT_VERSION","P231134_CLIPBOARD_READBACK_V2");
+  report("SCRIPT_VERSION","P231136_STAGE_DIAGNOSTIC_V3");
   let tempApp=null;
+  let stage="START";
   try{
     if(location.origin!=="https://packtook-staging.web.app"){
       report("GATE","BLOCKED_WRONG_ORIGIN");return;
@@ -20,6 +21,7 @@
     if(self.FIREBASE_APPCHECK_DEBUG_TOKEN!==undefined){
       report("GATE","BLOCKED_DEBUG_TOKEN");return;
     }
+    stage="LOAD_SDK_AND_CONFIG";
     const sdk="https://www.gstatic.com/firebasejs/11.10.0/";
     const [apps,authSdk,appCheckSdk,config]=await Promise.all([
       import(sdk+"firebase-app.js"),
@@ -32,6 +34,7 @@
     }
     const existing=apps.getApps().find(a=>a.name==="[DEFAULT]"&&a.options?.projectId==="packtook-staging");
     if(!existing){report("GATE","BLOCKED_NO_DEFAULT_STAGING_APP");return;}
+    stage="FIREBASE_AUTH_STATE";
     const auth=authSdk.getAuth(existing);
     if(typeof auth.authStateReady==="function") await auth.authStateReady();
     const user=auth.currentUser;
@@ -39,6 +42,7 @@
       report("GATE","BLOCKED_TEST_USER_NOT_VERIFIED");return;
     }
     // Operator confirmed this logged-in staging user is a test-only account.
+    stage="READ_HOSTED_BRIDGE";
     const res=await fetch("/firebase-packing-bridge.js",{
       method:"GET",credentials:"omit",cache:"no-store",redirect:"error"
     });
@@ -46,12 +50,14 @@
     const bridge=await res.text();
     const m=bridge.match(/\bnew\s+ReCaptchaEnterpriseProvider\s*\(\s*(["\x27])([^"\x27\\]+)\1\s*\)/);
     if(!m?.[2]){report("GATE","BLOCKED_SITE_KEY_SOURCE");return;}
+    stage="INITIALIZE_TEMP_APPCHECK";
     tempApp=apps.initializeApp(config.firebaseConfig,"p231-e2e-"+crypto.randomUUID());
     const check=appCheckSdk.initializeAppCheck(tempApp,{
       provider:new appCheckSdk.ReCaptchaEnterpriseProvider(m[2]),
       isTokenAutoRefreshEnabled:false
     });
     // Both tokens stay only in local JS memory, then are placed in clipboard.
+    stage="ISSUE_AUTH_AND_APPCHECK_TOKENS";
     const [firebaseAuthToken,appcheckResult]=await Promise.all([
       authSdk.getIdToken(user,false),
       appCheckSdk.getToken(check,true)
@@ -63,10 +69,12 @@
     }
     const bundle=JSON.stringify({firebaseAuthToken,appCheckToken});
     // No token values appear in Console, browser URLs or any outgoing custom request.
+    stage="CLIPBOARD_WRITE";
     await navigator.clipboard.writeText(bundle);
     report("BUNDLE","COPIED_TO_LOCAL_CLIPBOARD_SENSITIVE");
     // Read back for structural validation WITHOUT ever printing clipboard contents.
     try {
+    stage="CLIPBOARD_READBACK";
       const pasted=await navigator.clipboard.readText();
       const roundtrip=JSON.parse(pasted);
       if(typeof roundtrip?.firebaseAuthToken!=="string"||
@@ -82,7 +90,10 @@
     report("FIREBASE_AUTH_ID_TOKEN","PRESENT_NOT_PRINTED");
     report("APPCHECK_TOKEN","PRESENT_NOT_PRINTED");
     report("NEXT","PASTE_ONCE_IN_MASKED_CLOUD_SHELL_PROMPT");
-  }catch{
+  }catch(e){
+    report("FAILED_STAGE",stage);
+    const safeName=["NotAllowedError","NotFoundError","NotSupportedError","SecurityError","AbortError","TypeError"].includes(e?.name)?e.name:"REDACTED";
+    report("ERROR_CLASS",safeName);
     report("GATE","BLOCKED_BROWSER_OR_CLIPBOARD_ERROR");
   }finally{
     if(tempApp)try{await (await import("https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js")).deleteApp(tempApp);}catch{}
