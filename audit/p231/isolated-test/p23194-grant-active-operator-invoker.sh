@@ -7,6 +7,10 @@ PROJECT=packtook-staging
 REGION=asia-southeast1
 SERVICE=p231appcheckisolatedprobe
 APPROVAL='APPROVE_P23194_ACTIVE_OPERATOR_SERVICE_INVOKER_ONLY'
+MODE="${1:-inspect}"
+if [ "$MODE" != inspect ] && [ "$MODE" != apply ];then
+ echo 'P231_GATE=BLOCKED_UNKNOWN_MODE';exit 2
+fi
 echo 'P231_CHECK=NEW_SERVICE_ACTIVE_OPERATOR_INVOKER'
 
 if [ "$(gcloud config get-value project 2>/dev/null)" != "$PROJECT" ];then
@@ -40,7 +44,7 @@ PUBLIC="$(printf '%s' "$POLICY" | jq '[.bindings[]?|select(any(.members[]?; .=="
 if [ "$PUBLIC" != 0 ];then echo 'P231_GATE=BLOCKED_PUBLIC_IAM';exit 2;fi
 echo 'P231_DIRECT_PRIVATE_IAM=PASS'
 echo 'P231_INVOKER_TARGET=NEW_SERVICE_ONLY'
-if [ "${1:-inspect}" != 'apply' ];then
+if [ "$MODE" = inspect ];then
  echo 'P231_INVOKER_GRANT=NOT_PERFORMED_INSPECT_MODE';exit 0
 fi
 if [ "${P231_INVOKER_CONFIRM:-}" != "$APPROVAL" ];then
@@ -54,10 +58,15 @@ RC=$?
 if [ "$RC" -ne 0 ];then echo 'P231_SERVICE_INVOKER_GRANT=ERROR';exit "$RC";fi
 NEW="$(gcloud run services get-iam-policy "$SERVICE" --project="$PROJECT" --region="$REGION" --format=json 2>/dev/null)"
 if [ "$?" -ne 0 ];then echo 'P231_GRANT_VERIFY=NOT_READABLE';exit 2;fi
-if printf '%s' "$NEW" | jq -e --arg m "user:$ACTIVE"  'any(.bindings[]?; .role=="roles/run.invoker" and (.members//[]|index($m)) and (.condition==null))' >/dev/null;then
+if printf '%s' "$NEW" | jq -e --arg m "user:$ACTIVE" 'any(.bindings[]?; .role=="roles/run.invoker" and ((.members//[])|index($m))!=null and (.condition==null)' >/dev/null;then
  echo 'P231_SERVICE_INVOKER_GRANT=PASS'
 else
  echo 'P231_SERVICE_INVOKER_GRANT=UNVERIFIED';exit 2
+fi
+POST_PUBLIC="$(printf '%s' "$NEW" | jq '[.bindings[]?| .members[]? | select(.=="allUsers" or .=="allAuthenticatedUsers")]|length')"
+echo "P231_POST_GRANT_PUBLIC_MEMBERS=$POST_PUBLIC"
+if [ "$POST_PUBLIC" != 0 ];then
+ echo 'P231_GATE=FAIL_POST_GRANT_PUBLIC';exit 2
 fi
 echo 'P231_IAM_SCOPE=NEW_SERVICE_ONLY'
 echo 'P231_INVOKE=NOT_PERFORMED'
