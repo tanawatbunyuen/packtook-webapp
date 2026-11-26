@@ -5,7 +5,7 @@
 (async () => {
   const report=(k,v)=>console.log("P231_"+k+"="+v);
   report("CHECK","CONTROLLED_E2E_STAGING_BROWSER_CREDENTIAL_HANDOFF");
-  report("SCRIPT_VERSION","P231132_CLIPBOARD_ONLY_V1");
+  report("SCRIPT_VERSION","P231134_CLIPBOARD_READBACK_V2");
   let tempApp=null;
   try{
     if(location.origin!=="https://packtook-staging.web.app"){
@@ -65,6 +65,20 @@
     // No token values appear in Console, browser URLs or any outgoing custom request.
     await navigator.clipboard.writeText(bundle);
     report("BUNDLE","COPIED_TO_LOCAL_CLIPBOARD_SENSITIVE");
+    // Read back for structural validation WITHOUT ever printing clipboard contents.
+    try {
+      const pasted=await navigator.clipboard.readText();
+      const roundtrip=JSON.parse(pasted);
+      if(typeof roundtrip?.firebaseAuthToken!=="string"||
+         typeof roundtrip?.appCheckToken!=="string"||
+         roundtrip.firebaseAuthToken!==firebaseAuthToken||
+         roundtrip.appCheckToken!==appCheckToken){
+        report("CLIPBOARD_READBACK","MISMATCH_DO_NOT_PASTE");return;
+      }
+      report("CLIPBOARD_READBACK","VALID_JSON_MATCH");
+    }catch{
+      report("CLIPBOARD_READBACK","NOT_VERIFIED_BROWSER_PERMISSION");
+    }
     report("FIREBASE_AUTH_ID_TOKEN","PRESENT_NOT_PRINTED");
     report("APPCHECK_TOKEN","PRESENT_NOT_PRINTED");
     report("NEXT","PASTE_ONCE_IN_MASKED_CLOUD_SHELL_PROMPT");
