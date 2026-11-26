@@ -77,7 +77,15 @@ try:
     try:
         bundle=json.loads(raw)
     except (ValueError,TypeError):
-        out("SECRET_INPUT_CLASS","INVALID_JSON")
+        # Only classify structural paste artifacts, never show input bytes.
+        if "\\x1b[200~" in raw or "\\x1b[201~" in raw:
+            out("SECRET_INPUT_CLASS","BRACKETED_PASTE_CONTROL_SEQUENCE")
+        elif raw.lstrip().startswith(("P231_","Promise","VM")):
+            out("SECRET_INPUT_CLASS","CONSOLE_STATUS_NOT_JSON")
+        elif raw.lstrip().startswith(("{","[")):
+            out("SECRET_INPUT_CLASS","JSON_CORRUPTED_DURING_PASTE")
+        else:
+            out("SECRET_INPUT_CLASS","CLIPBOARD_NOT_JSON_BUNDLE")
         sys.exit(2)
     if not isinstance(bundle,dict):
         out("SECRET_INPUT_CLASS","NOT_JSON_OBJECT")
