@@ -1,6 +1,7 @@
 // P231.123 — Paste into Chrome/Edge DevTools Console on https://packtook-staging.web.app.
 // This creates a temporary, separately named Firebase client instance in this tab.
 // It performs ONE real App Check token request; no backend business callable invoked.
+// Do not run beyond the approved 2026-11-26 Asia/Bangkok testing window.
 // No token, site key, Firebase config, or error message will be printed.
 (async () => {
   const report = (name, value) => console.log("P231_" + name + "=" + value);
@@ -43,10 +44,11 @@
       });
       // Force a real exchange rather than accepting a cached App Check token.
       const result = await checkSdk.getToken(check, true);
-      const valid = typeof result?.token === "string" && result.token.length > 0;
-      const expires = Number.isFinite(result?.expireTimeMillis) && result.expireTimeMillis > Date.now();
-      report("TOKEN_RESPONSE", valid && expires ? "ISSUED_NONEMPTY_NOT_EXPIRED" : "UNEXPECTED_RESPONSE");
-      report("REAL_BROWSER_ATTESTATION", valid && expires ? "TOKEN_ISSUANCE_OBSERVED" : "NOT_VERIFIED");
+      // getToken() returns AppCheckTokenResult { token }, not the provider-side
+      // AppCheckToken { token, expireTimeMillis }. Never print the token value.
+      const issued = typeof result?.token === "string" && result.token.length > 0;
+      report("TOKEN_RESPONSE", issued ? "ISSUED_NONEMPTY" : "NO_NONEMPTY_TOKEN");
+      report("REAL_BROWSER_ATTESTATION", issued ? "TOKEN_ISSUANCE_OBSERVED" : "NOT_VERIFIED");
     } catch (e) {
       const code = typeof e?.code === "string" && /^appCheck\/[a-z0-9-]+$/i.test(e.code)
         ? e.code : "ERROR_CLASS_REDACTED";
