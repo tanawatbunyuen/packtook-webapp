@@ -5,6 +5,7 @@
 // No token, site key, Firebase config, or error message will be printed.
 (async () => {
   const report = (name, value) => console.log("P231_" + name + "=" + value);
+  report("SCRIPT_VERSION", "P231126_TOKEN_ONLY_VALIDATOR_V2");
   report("CHECK", "REAL_BROWSER_ISOLATED_APPCHECK_ATTESTATION");
   try {
     if (location.origin !== "https://packtook-staging.web.app") {
