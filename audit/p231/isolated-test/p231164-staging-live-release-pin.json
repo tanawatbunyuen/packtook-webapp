@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "site": "packtook-staging",
+  "channel": "live",
+  "release": "sites/packtook-staging/channels/live/releases/1794125129869000",
+  "version": "sites/packtook-staging/versions/840e12c0c88d8c1c",
+  "release_time": "2026-11-08T08:05:29.869Z",
+  "provenance": "P231.162 and P231.163 owner-observed read-only Firebase Hosting API checks",
+  "verification": "CURRENT_LIVE_AND_FINALIZED_AS_OBSERVED",
+  "rollback_tested": false,
+  "artifact_backup_created": false,
+  "staging_deploy_authorized": false,
+  "production_release_authorized": false
+}
