@@ -9,7 +9,8 @@
     if (location.origin !== "https://packtook-staging.web.app") {
       report("GATE", "BLOCKED_WRONG_ORIGIN"); return;
     }
-    const today = new Intl.DateTimeFormat("en-CA", {timeZone:"Asia/Bangkok",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+    const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", {timeZone:"Asia/Bangkok",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date()).filter(x => x.type !== "literal").map(x => [x.type,x.value]));
+    const today = `${parts.year}-${parts.month}-${parts.day}`;
     if (today !== "2026-11-26") {
       report("GATE", "BLOCKED_APPROVED_DATE_EXPIRED"); return;
     }
