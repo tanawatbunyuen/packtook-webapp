@@ -58,7 +58,7 @@ RC=$?
 if [ "$RC" -ne 0 ];then echo 'P231_SERVICE_INVOKER_GRANT=ERROR';exit "$RC";fi
 NEW="$(gcloud run services get-iam-policy "$SERVICE" --project="$PROJECT" --region="$REGION" --format=json 2>/dev/null)"
 if [ "$?" -ne 0 ];then echo 'P231_GRANT_VERIFY=NOT_READABLE';exit 2;fi
-if printf '%s' "$NEW" | jq -e --arg m "user:$ACTIVE" 'any(.bindings[]?; .role=="roles/run.invoker" and ((.members//[])|index($m))!=null and (.condition==null)' >/dev/null;then
+if printf '%s' "$NEW" | jq -e --arg m "user:$ACTIVE" '[.bindings[]? | select(.role=="roles/run.invoker" and .condition==null) | .members[]? | select(.==$m)] | length == 1' >/dev/null;then
  echo 'P231_SERVICE_INVOKER_GRANT=PASS'
 else
  echo 'P231_SERVICE_INVOKER_GRANT=UNVERIFIED';exit 2
