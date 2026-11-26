@@ -60,18 +60,50 @@ try:
 except Exception:
     out("GATE","BLOCKED_AUDIENCE_ID_TOKEN_UNAVAILABLE")
     sys.exit(2)
+# Distinguish input failure classes without echoing credentials or exception details.
+# NEVER run this with shell tracing or paste credentials into a command argument.
 try:
-    raw=getpass.getpass("Paste sensitive P231.132 JSON bundle (hidden input): ")
-    bundle=json.loads(raw)
+    if not sys.stdin.isatty():
+        out("SECRET_INPUT_CLASS","NO_INTERACTIVE_TTY")
+        sys.exit(2)
+    try:
+        raw=getpass.getpass("Paste sensitive P231.132 JSON bundle (hidden input): ")
+    except (EOFError,KeyboardInterrupt,OSError):
+        out("SECRET_INPUT_CLASS","HIDDEN_PROMPT_UNAVAILABLE_OR_CANCELLED")
+        sys.exit(2)
+    if not raw:
+        out("SECRET_INPUT_CLASS","EMPTY_INPUT")
+        sys.exit(2)
+    try:
+        bundle=json.loads(raw)
+    except (ValueError,TypeError):
+        out("SECRET_INPUT_CLASS","INVALID_JSON")
+        sys.exit(2)
+    if not isinstance(bundle,dict):
+        out("SECRET_INPUT_CLASS","NOT_JSON_OBJECT")
+        sys.exit(2)
     auth=bundle.get("firebaseAuthToken")
     appcheck=bundle.get("appCheckToken")
-    if not isinstance(auth,str) or not auth or not isinstance(appcheck,str) or not appcheck:
-        raise ValueError("credential input invalid")
-    if auth.count(".")!=2 or appcheck.count(".")!=2:
-        raise ValueError("not JWT-shaped")
+    if not isinstance(auth,str) or not auth:
+        out("SECRET_INPUT_CLASS","FIREBASE_AUTH_TOKEN_FIELD_MISSING")
+        sys.exit(2)
+    if not isinstance(appcheck,str) or not appcheck:
+        out("SECRET_INPUT_CLASS","APPCHECK_TOKEN_FIELD_MISSING")
+        sys.exit(2)
+    if auth.count(".")!=2:
+        out("SECRET_INPUT_CLASS","FIREBASE_AUTH_TOKEN_FORMAT_UNEXPECTED")
+        sys.exit(2)
+    if appcheck.count(".")!=2:
+        out("SECRET_INPUT_CLASS","APPCHECK_TOKEN_FORMAT_UNEXPECTED")
+        sys.exit(2)
     del raw,bundle
+    out("SECRET_INPUT_CLASS","VALIDATED_IN_MEMORY")
     out("FIREBASE_AUTH_AND_APPCHECK","PRESENT_NOT_PRINTED")
+except SystemExit:
+    out("GATE","BLOCKED_SECRET_INPUT")
+    sys.exit(2)
 except Exception:
+    out("SECRET_INPUT_CLASS","UNEXPECTED_INPUT_ERROR")
     out("GATE","BLOCKED_SECRET_INPUT")
     sys.exit(2)
 # Callable protocol: IAM id token, Firebase Auth and App Check in separate headers.
