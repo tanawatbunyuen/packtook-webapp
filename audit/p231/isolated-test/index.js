@@ -5,6 +5,8 @@ const {onCall,HttpsError}=require('firebase-functions/v2/https');
 
 exports.p231AppCheckIsolatedProbe=onCall({
   region:'asia-southeast1',
+  invoker:'private',
+  serviceAccount:'p231-appcheck-probe@packtook-staging.iam.gserviceaccount.com',
   enforceAppCheck:true,
   maxInstances:1,
   concurrency:1,
