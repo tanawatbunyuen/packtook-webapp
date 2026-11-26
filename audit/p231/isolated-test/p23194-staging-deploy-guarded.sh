@@ -22,6 +22,9 @@ echo "P231_PROJECT=$PROJECT"
 echo "P231_FUNCTION=$FUNCTION"
 echo "P231_CODEBASE=$CODEBASE"
 
+if [ "$(TZ=Asia/Bangkok date +%F)" != '2026-11-26' ]; then
+  echo 'P231_GATE=BLOCKED_OUTSIDE_APPROVED_TEST_DATE'; exit 2
+fi
 if [ "$MODE" != 'inspect' ] && [ "$MODE" != 'deploy' ]; then
   echo 'P231_GATE=BLOCKED_MODE'; exit 2
 fi
