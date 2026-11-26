@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "previous_hosting_release_id": "",
+  "candidate_manifest_sha256": "",
+  "rollback_procedure_reviewed": false,
+  "candidate_runtime_smoke_passed": false,
+  "staging_hosting_deploy_authorized": false,
+  "requested_deploy_target": "staging-hosting-only"
+}
