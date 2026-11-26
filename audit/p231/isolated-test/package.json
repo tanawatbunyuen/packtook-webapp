@@ -1,0 +1,9 @@
+{
+  "name": "packtook-p231-isolated-appcheck-probe",
+  "version": "0.0.1",
+  "private": true,
+  "main": "index.js",
+  "engines": {"node": "22"},
+  "dependencies": {"firebase-functions": "^6.0.0"},
+  "scripts": {"test": "node --test test.cjs"}
+}
