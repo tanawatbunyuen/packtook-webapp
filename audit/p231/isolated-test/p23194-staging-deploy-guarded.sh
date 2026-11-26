@@ -52,7 +52,13 @@ const cfg=JSON.parse(fs.readFileSync(path.join(d,'firebase.json'),'utf8'));
 if(Object.keys(cfg).join(',')!=='functions'||!Array.isArray(cfg.functions)||cfg.functions.length!==1||
   cfg.functions[0].source!=='p231-function'||cfg.functions[0].codebase!=='p231-isolated')process.exit(2);
 const sourceDir=path.join(d,'p231-function');
-if(fs.readdirSync(sourceDir).sort().join(',')!=='index.js,package-lock.json,package.json')process.exit(2);
+const entries=fs.readdirSync(sourceDir).sort();
+if(entries.join(',')!=='index.js,node_modules,package-lock.json,package.json')process.exit(2);
+if(!fs.statSync(path.join(sourceDir,'node_modules')).isDirectory())process.exit(2);
+try {
+  const resolved=require.resolve('firebase-functions/v2/https',{paths:[sourceDir]});
+  if(!resolved.startsWith(path.join(sourceDir,'node_modules')+path.sep))process.exit(2);
+} catch {process.exit(2);}
 const src=fs.readFileSync(path.join(sourceDir,'index.js'),'utf8');
 const exports=[...src.matchAll(/exports\.([a-zA-Z_$][\w$]*)\s*=/g)].map(m=>m[1]);
 const p=JSON.parse(fs.readFileSync(path.join(sourceDir,'package.json'),'utf8'));
@@ -61,6 +67,7 @@ if(exports.length!==1||exports[0]!=='p231AppCheckIsolatedProbe'||
 !src.includes("serviceAccount:'p231-appcheck-probe@packtook-staging.iam.gserviceaccount.com'")||
 p.private!==true||p.engines?.node!=='22')process.exit(2);
 console.log('P231_EXACT_SOURCE_SCOPE=PASS');
+console.log('P231_PREVIEW_FIREBASE_FUNCTIONS_RESOLUTION=PASS');
 NODE
 then
   echo 'P231_GATE=BLOCKED_SOURCE_SCOPE'; exit 2
@@ -72,7 +79,12 @@ if [ "$?" -ne 0 ]; then echo 'P231_GATE=BLOCKED_FUNCTION_INVENTORY'; exit 2; fi
 if printf '%s\n' "$INVENTORY" | awk -F/ '{print tolower($NF)}' | grep -Fxq 'p231appcheckisolatedprobe'; then
  echo 'P231_GATE=BLOCKED_FUNCTION_ALREADY_EXISTS'; exit 2
 fi
-if gcloud run services describe "$SERVICE" --region="$REGION" --project="$PROJECT" --format='value(metadata.name)' >/dev/null 2>&1; then
+# Explicit inventory errors are blockers; not-visible is not equivalent to absent.
+RUN_LIST="$(gcloud run services list --project="$PROJECT" --region="$REGION" --format='value(metadata.name)' 2>/dev/null)"
+if [ "$?" -ne 0 ]; then
+ echo 'P231_GATE=BLOCKED_RUN_SERVICE_INVENTORY_UNREADABLE'; exit 2
+fi
+if printf '%s\n' "$RUN_LIST" | tr '[:upper:]' '[:lower:]' | grep -Fxq "$SERVICE"; then
  echo 'P231_GATE=BLOCKED_SERVICE_ALREADY_EXISTS'; exit 2
 fi
 echo 'P231_NEW_FUNCTION_COLLISION=NO'
