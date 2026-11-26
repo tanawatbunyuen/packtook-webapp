@@ -11,6 +11,11 @@ if [ ! -f package.json ] || [ ! -f index.js ] || [ ! -f test.cjs ]; then
 fi
 node --version
 npm --version
+if [ "$(node -p 'process.versions.node.split(".")[0]')" != '22' ]; then
+  echo 'P231_NODE_RUNTIME_MATCH=FAIL_EXPECTED_22'
+  exit 2
+fi
+
 if ! node -e 'const p=require("./package.json");if(p.name!=="packtook-p231-isolated-appcheck-probe"||p.private!==true||p.dependencies?.["firebase-functions"]!=="^6.0.0")process.exit(2)'; then
   echo 'P231_GATE=BLOCKED_MANIFEST_UNEXPECTED'
   exit 2
@@ -28,10 +33,20 @@ if ! npm ci --ignore-scripts --no-audit --no-fund; then
   echo 'P231_NPM_CI=FAIL'
   exit 2
 fi
-if ! node --check index.js && node --test test.cjs && node p23172-package-preflight.cjs; then
-  echo 'P231_VALIDATION=FAIL'
+# Run each step separately. The prior compound negation skipped tests.
+if ! node --check index.js; then
+  echo 'P231_SYNTAX_CHECK=FAIL'
   exit 2
 fi
+if ! node --test test.cjs; then
+  echo 'P231_UNIT_TESTS=FAIL'
+  exit 2
+fi
+if ! node p23172-package-preflight.cjs; then
+  echo 'P231_STATIC_PREFLIGHT=FAIL'
+  exit 2
+fi
+echo 'P231_VALIDATION=PASS'
 node - <<'NODE'
 const fs=require('fs'),crypto=require('crypto');
 const f=fs.readFileSync('package-lock.json');
