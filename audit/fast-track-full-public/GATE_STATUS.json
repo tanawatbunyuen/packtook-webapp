@@ -14,22 +14,22 @@
       {
         "id": "A1",
         "status": "OPEN",
-        "evidence": "Reviewed source reconciliation commit required"
+        "evidence": "Static semantic inventory PASS; 28 callable mappings same; hosted Bridge has 4 changed blocks, human A1 signoff outstanding."
       },
       {
         "id": "A2",
-        "status": "OPEN",
-        "evidence": "Persistent deployable artifact and complete manifest required"
+        "status": "PARTIAL",
+        "evidence": "Pinned review-only 12-file ZIP SHA256 ab61130b84609ef96583766f72d891bc44b1a4e3fa016cf9ea137347c18ba0f2; independent 12/12 PASS; Firebase CLI packaging and approval still open."
       },
       {
         "id": "A3",
-        "status": "OPEN",
-        "evidence": "Browser mocked smoke on exact candidate required"
+        "status": "PASS_OFFLINE_MOCK",
+        "evidence": "Owner Cloud Shell 2026-11-27; Playwright 1.65.1 Chromium headless; candidate index HTTP200; initialized; mock AppCheck 1; mock status calls 2; gstatic modules mocked 4; real Firebase requests 0; page errors 0; exit 0. Not real Firebase E2E."
       },
       {
         "id": "A4",
         "status": "OPEN",
-        "evidence": "Testable rollback runbook and evidence required"
+        "evidence": "Review rollback runbook and separately authorized restoration rehearsal required."
       }
     ]
   },
@@ -124,6 +124,10 @@
     {
       "ref": "P231.175",
       "scope": "review-only snapshot integrity; nondeployable"
+    },
+    {
+      "ref": "Gate A3 operator 2026-11-27",
+      "scope": "Exact pinned candidate local Playwright browser mock PASS_OFFLINE_ONLY; no real Firebase requests; exit 0"
     }
   ]
 }
