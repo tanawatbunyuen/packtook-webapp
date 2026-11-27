@@ -14,7 +14,7 @@
       {
         "id": "A1",
         "status": "OPEN",
-        "evidence": "Static semantic inventory PASS; 28 callable mappings same; hosted Bridge has 4 changed blocks, human A1 signoff outstanding."
+        "evidence": "GitHub source review confirms backend source defines statusOptions enforceAppCheck:true and usageStatus uses it; reserveCredit uses default options without explicit enforceAppCheck. Four hosted Bridge diff blocks still require semantic owner/reviewer sign-off; redacted delta inspector prepared."
       },
       {
         "id": "A2",
