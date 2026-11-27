@@ -42,7 +42,8 @@
       },
       {
         "id": "B2",
-        "status": "OPEN"
+        "status": "OPEN",
+        "evidence": "Offline backend policy inventory operator 2026-11-27: 23 handlers: 2 statusOptions with explicit enforceAppCheck true; 13 base options without explicit enforcement; 7 other callable options; 1 onRequest webhook. Source only, not deployed runtime. Real request-correlated tests still required."
       },
       {
         "id": "B3",
@@ -55,7 +56,7 @@
       {
         "id": "B5",
         "status": "OPEN",
-        "note": "Omise staging 404 historical blocker; Full Public paid plan requires full sandbox verification"
+        "note": "Omise Test Mode source: paymentSecrets includes region, timeout, omiseKey but no explicit enforceAppCheck; test key guard skey_test_; signature/timestamp verification in public webhook source; historical staging probe 404 unresolved. Requires real sandbox E2E review."
       },
       {
         "id": "B6",
@@ -136,6 +137,10 @@
     {
       "ref": "Gate A1 callable contract operator 2026-11-27",
       "scope": "30 methods and 28 bindings each, 0 extracted callable method contract differences, source semantic changes still open"
+    },
+    {
+      "ref": "Gate B offline backend policy operator 2026-11-27",
+      "scope": "Syntax PASS, 23 handlers (2 statusOptions / 13 base / 7 other onCall / 1 webhook), no network/writes, exit 0. Not Gate B E2E PASS."
     }
   ]
 }
