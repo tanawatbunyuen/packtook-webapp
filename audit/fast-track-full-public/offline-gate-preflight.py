@@ -22,7 +22,12 @@ try:
   g=d[key]
   assert g["status"] in ("BLOCKED","BLOCKED_NOT_EXECUTED")
   assert [v["id"] for v in g["checks"]]==expected_ids
-  assert all(item["status"]=="OPEN" for item in g["checks"])
+  allowed={"OPEN","PARTIAL","PASS_OFFLINE_MOCK"}
+  assert all(item["status"] in allowed for item in g["checks"])
+  if key!="gate_a":assert all(item["status"]=="OPEN" for item in g["checks"])
+  if key=="gate_a":
+   assert next(x for x in g["checks"] if x["id"]=="A3")["status"]=="PASS_OFFLINE_MOCK"
+   assert next(x for x in g["checks"] if x["id"]=="A2")["status"]=="PARTIAL"
  assert len(d["reusable_evidence"])>=7
 except Exception:
  show("LEDGER_VALIDATION","FAIL_CLOSED")
@@ -33,8 +38,11 @@ show("REUSED_HISTORICAL_EVIDENCE_REFERENCES",len(d["reusable_evidence"]))
 for id in "abc":
  g=d["gate_"+id]
  show("GATE_"+id.upper(),g["status"])
- show("GATE_"+id.upper()+"_OPEN_CHECKS",len(g["checks"]))
-show("ACTUAL_DEPLOYABLE_CANDIDATE","NOT_CREATED")
+ show("GATE_"+id.upper()+"_OPEN_CHECKS",sum(item["status"]=="OPEN" for item in g["checks"]))
+ show("GATE_"+id.upper()+"_PARTIAL_CHECKS",sum(item["status"]=="PARTIAL" for item in g["checks"]))
+ show("GATE_"+id.upper()+"_MOCK_ONLY_CHECKS",sum(item["status"]=="PASS_OFFLINE_MOCK" for item in g["checks"]))
+show("REVIEW_ONLY_CANDIDATE","PINNED_IN_OPERATOR_TEMP_WORKSPACE")
+show("ACTUAL_DEPLOYABLE_CANDIDATE","NOT_APPROVED")
 show("REAL_CANDIDATE_E2E","NOT_EXECUTED")
 show("RELEASE_APPROVAL","NOT_GRANTED")
 show("STAGING_DEPLOY","NOT_AUTHORIZED")
