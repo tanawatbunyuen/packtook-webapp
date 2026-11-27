@@ -14,7 +14,7 @@ const limits={Free:20,Starter:50,Basic:300,Growth:1500,Business:5000,Pro:null};
 const pricesTHB={Free:0,Starter:199,Basic:299,Growth:599,Business:1290,Pro:1990};
 const deviceLimits={Free:1,Starter:1,Basic:1,Growth:3,Business:5,Pro:10};
 const region="asia-southeast1";
-const options={region,maxInstances:20,timeoutSeconds:30}; // Legacy callable options unchanged; P111 status-only App Check candidate.
+const options={region,maxInstances:20,timeoutSeconds:30,enforceAppCheck:true}; // Legacy callable options unchanged; P111 status-only App Check candidate.
 const statusOptions={...options,enforceAppCheck:true};
 function uid(req){if(!req.auth)throw new HttpsError("unauthenticated","Please sign in");if(req.auth.token.email_verified!==true)throw new HttpsError("permission-denied","Verify your email");return req.auth.uid}
 function data(req){return req.data&&typeof req.data==="object"?req.data:{}}
@@ -346,7 +346,7 @@ exports.cancelUnpaidPlanRequest=onCall(options,async req=>{
  });
 });
 
-const paymentSecrets={region,timeoutSeconds:30,secrets:[omiseKey]};
+const paymentSecrets={region,timeoutSeconds:30,secrets:[omiseKey],enforceAppCheck:true};
 async function omiseAPI(path,method="GET",params=null){
  const key=omiseKey.value();
  if(!key||!key.startsWith("skey_test_"))throw new HttpsError("failed-precondition","Omise TEST secret key is required on Staging");
@@ -403,7 +403,7 @@ async function reconcileCharge(accountId,requestId,chargeId){
   return {status:charge.status};
  });
 }
-exports.omisePaymentConfig=onCall({region,secrets:[omisePublicKey]},async req=>{
+exports.omisePaymentConfig=onCall({region,secrets:[omisePublicKey],enforceAppCheck:true},async req=>{
  uid(req);const key=omisePublicKey.value();
  if(!key?.startsWith("pkey_test_"))throw new HttpsError("failed-precondition","Omise test public key missing");
  return {publicKey:key,testMode:true};
@@ -547,7 +547,7 @@ function ownerTimestamp(value){
  if(typeof value==="string"){const ms=Date.parse(value);return Number.isFinite(ms)?ms:null}
  return null;
 }
-const ownerOptions={region,maxInstances:2,timeoutSeconds:180,memory:"512MiB"};
+const ownerOptions={region,maxInstances:2,timeoutSeconds:180,memory:"512MiB",enforceAppCheck:true};
 const OWNER_MAX_ACCOUNTS=1200,OWNER_BATCH=100,OWNER_CONCURRENCY=12;
 exports.ownerAnalyticsSummary=onCall(ownerOptions,async req=>{
  requirePlatformOwner(req);
