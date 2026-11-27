@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "project": "PACKTOOK",
+  "plan": "FAST_TRACK_FULL_PUBLIC",
+  "created_date": "2026-11-27",
+  "branch": "review/p231-appcheck-runtime-readiness",
+  "decision": "NO_GO_FULL_PUBLIC",
+  "public_signup_enabled_by_this_plan": false,
+  "deploy_authorized": false,
+  "production_writes_authorized": false,
+  "gate_a": {
+    "status": "BLOCKED",
+    "checks": [
+      {
+        "id": "A1",
+        "status": "OPEN",
+        "evidence": "Reviewed source reconciliation commit required"
+      },
+      {
+        "id": "A2",
+        "status": "OPEN",
+        "evidence": "Persistent deployable artifact and complete manifest required"
+      },
+      {
+        "id": "A3",
+        "status": "OPEN",
+        "evidence": "Browser mocked smoke on exact candidate required"
+      },
+      {
+        "id": "A4",
+        "status": "OPEN",
+        "evidence": "Testable rollback runbook and evidence required"
+      }
+    ]
+  },
+  "gate_b": {
+    "status": "BLOCKED_NOT_EXECUTED",
+    "checks": [
+      {
+        "id": "B1",
+        "status": "OPEN"
+      },
+      {
+        "id": "B2",
+        "status": "OPEN"
+      },
+      {
+        "id": "B3",
+        "status": "OPEN"
+      },
+      {
+        "id": "B4",
+        "status": "OPEN"
+      },
+      {
+        "id": "B5",
+        "status": "OPEN",
+        "note": "Omise staging 404 historical blocker; Full Public paid plan requires full sandbox verification"
+      },
+      {
+        "id": "B6",
+        "status": "OPEN"
+      }
+    ]
+  },
+  "gate_c": {
+    "status": "BLOCKED_NOT_EXECUTED",
+    "checks": [
+      {
+        "id": "C1",
+        "status": "OPEN"
+      },
+      {
+        "id": "C2",
+        "status": "OPEN"
+      },
+      {
+        "id": "C3",
+        "status": "OPEN"
+      },
+      {
+        "id": "C4",
+        "status": "OPEN"
+      },
+      {
+        "id": "C5",
+        "status": "OPEN"
+      },
+      {
+        "id": "C6",
+        "status": "OPEN"
+      },
+      {
+        "id": "C7",
+        "status": "OPEN"
+      }
+    ]
+  },
+  "reusable_evidence": [
+    {
+      "ref": "P231.132",
+      "scope": "isolated App Check callable 3/3"
+    },
+    {
+      "ref": "P231.168",
+      "scope": "12 public static assets 9 match, 3 drift"
+    },
+    {
+      "ref": "P231.169",
+      "scope": "10/10 temporary static candidate"
+    },
+    {
+      "ref": "P231.170",
+      "scope": "two transient builds identical; JS syntax 6/6"
+    },
+    {
+      "ref": "P231.171",
+      "scope": "loopback HTTP 12/12"
+    },
+    {
+      "ref": "P231.172",
+      "scope": "10/10 offline mock guards"
+    },
+    {
+      "ref": "P231.175",
+      "scope": "review-only snapshot integrity; nondeployable"
+    }
+  ]
+}
