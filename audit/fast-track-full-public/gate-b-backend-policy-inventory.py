@@ -16,9 +16,14 @@ try:
  for i,m in enumerate(defs):
   body=s[m.end():min(m.end()+180,len(s))]
   # Extract first argument of the wrapper to a bracket, comma or brace.
-  argument=re.match(r"\s*([A-Za-z_][\w]*|\{[^\n}]*\})\s*,",body)
-  if not argument: raise ValueError("unparseable options")
-  policies[m.group(1)]=(m.group(2),argument.group(1))
+  argument=re.match(r"\\s*([A-Za-z_][\\w]*)\\s*,",body)
+  if argument:
+   option=argument.group(1)
+  elif body.lstrip().startswith("{"):
+   option="inlineObject_NOT_SEMANTICALLY_CLASSIFIED"
+  else:
+   raise ValueError("unparseable options")
+  policies[m.group(1)]=(m.group(2),option)
  if len(policies)<20:raise ValueError("missing handlers")
  if 'const statusOptions={...options,enforceAppCheck:true};' not in s:
   raise ValueError("expected statusOptions declaration missing")
