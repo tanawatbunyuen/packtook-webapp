@@ -19,7 +19,7 @@
       {
         "id": "A2",
         "status": "PARTIAL",
-        "evidence": "Pinned review-only 12-file ZIP SHA256 ab61130b84609ef96583766f72d891bc44b1a4e3fa016cf9ea137347c18ba0f2; independent 12/12 PASS; Firebase CLI packaging and approval still open."
+        "evidence": "Operator 2026-11-27 local Hosting packaging preflight PASS_SCOPE_AND_MANIFEST, 12/12 ZIP file hashes, 5/5 index scripts, hosting-only scope and source ancestry PASS, exit 0; official Firebase CLI manifest parity NOT_PROVEN; Candidate review-only."
       },
       {
         "id": "A3",
@@ -128,6 +128,10 @@
     {
       "ref": "Gate A3 operator 2026-11-27",
       "scope": "Exact pinned candidate local Playwright browser mock PASS_OFFLINE_ONLY; no real Firebase requests; exit 0"
+    },
+    {
+      "ref": "Gate A2 operator 2026-11-27",
+      "scope": "Offline Hosting packaging preflight PASS, 12/12 digests and 5/5 script graph; Firebase CLI upload parity not proven"
     }
   ]
 }
