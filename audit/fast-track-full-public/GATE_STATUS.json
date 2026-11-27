@@ -14,7 +14,7 @@
       {
         "id": "A1",
         "status": "OPEN",
-        "evidence": "GitHub source review confirms backend source defines statusOptions enforceAppCheck:true and usageStatus uses it; reserveCredit uses default options without explicit enforceAppCheck. Four hosted Bridge diff blocks still require semantic owner/reviewer sign-off; redacted delta inspector prepared."
+        "evidence": "Operator 2026-11-27: candidate and hosted 30 async methods each, 28 static callable bindings each, 0 differing method contracts, candidate guarded status calls YES, diagnostic exit 0. Existing four Bridge source differences (App Check init/guards) still require substantive sign-off. Backend source statusOptions enforceAppCheck true while reserveCredit default options."
       },
       {
         "id": "A2",
@@ -132,6 +132,10 @@
     {
       "ref": "Gate A2 operator 2026-11-27",
       "scope": "Offline Hosting packaging preflight PASS, 12/12 digests and 5/5 script graph; Firebase CLI upload parity not proven"
+    },
+    {
+      "ref": "Gate A1 callable contract operator 2026-11-27",
+      "scope": "30 methods and 28 bindings each, 0 extracted callable method contract differences, source semantic changes still open"
     }
   ]
 }
