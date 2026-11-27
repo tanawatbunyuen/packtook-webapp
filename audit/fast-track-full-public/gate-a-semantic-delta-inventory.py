@@ -7,7 +7,7 @@ from pathlib import Path
 from zipfile import ZipFile
 from urllib.request import Request,urlopen
 from html.parser import HTMLParser
-import hashlib,re,sys,json,difflib
+import hashlib,re,sys,json,difflib,urllib.error,zipfile
 
 DIR=Path("/tmp/packtook-fast-track-gate-a-review")
 ZIP=DIR/"gate-a-staging-REVIEW-NO-DEPLOY.zip"
@@ -31,14 +31,24 @@ def index_normalized(s):
  return pat.sub(lambda m:m.group(1)+m.group(2)+m.group(3).split("?")[0]+"?v=MASKED"+m.group(2)
   if re.fullmatch(r'[A-Za-z0-9._/-]+\.js\?v=[A-Za-z0-9._-]+',m.group(3)) else m.group(0),s)
 show("CHECK","GATE_A_SOURCE_SEMANTIC_DELTA_INVENTORY")
+stage="START"
+public_gets=0
 try:
+ stage="LOCAL_ARCHIVE"
  if hashlib.sha256(ZIP.read_bytes()).hexdigest()!=PIN:raise ValueError("wrong candidate")
+ stage="LOCAL_MANIFEST"
  metadata=json.loads(META.read_text("utf8"))
  if metadata.get("sha256_zip")!=PIN or metadata.get("classification")!="REVIEW_CANDIDATE_NOT_AUTHORIZED_FOR_DEPLOY":
   raise ValueError("metadata")
+ stage="LOCAL_ZIP_ENTRIES"
  with ZipFile(ZIP,"r") as z:
   candidate={n:z.read(n).decode("utf8") for n in EXPECTED}
- hosted={n:fetch(n) for n in EXPECTED}
+ hosted={}
+ for n in EXPECTED:
+  stage="PUBLIC_INDEX_GET" if n=="index.html" else ("PUBLIC_CONFIG_GET" if n=="firebase-v4-config.js" else "PUBLIC_BRIDGE_GET")
+  hosted[n]=fetch(n)
+  public_gets+=1
+ stage="SOURCE_SEMANTIC_COMPARISON"
  local_bridge=candidate["firebase-packing-bridge.js"]
  hosted_bridge=hosted["firebase-packing-bridge.js"]
  source_bridge=Path("firebase-staging/firebase-packing-bridge.js").read_text("utf8")
@@ -73,13 +83,28 @@ try:
  show("GATE_A3","NOT_EXECUTED")
  show("GATE_A4","NOT_EXECUTED")
  show("EXTERNAL_REQUESTS","THREE_PUBLIC_STATIC_GET_ONLY")
+ show("PUBLIC_GET_COMPLETED_COUNT",public_gets)
  show("FILE_WRITES","0")
  show("CLOUD_WRITES","0")
  show("DEPLOY","NOT_PERFORMED")
  show("FULL_PUBLIC","NO_GO")
  sys.exit(0 if only_index_versions and guard_status and init_before_guard and same_app else 3)
-except Exception:
+except Exception as error:
+ # Only predefined safe stage and error category are emitted; no URLs,
+ # HTTP bodies, public keys, source snippets or credentials.
+ category=("HTTP_ERROR" if isinstance(error,urllib.error.HTTPError)
+           else "URL_ERROR" if isinstance(error,urllib.error.URLError)
+           else "TIMEOUT" if isinstance(error,TimeoutError)
+           else "MISSING_LOCAL_FILE" if isinstance(error,FileNotFoundError)
+           else "ZIP_INVALID" if isinstance(error,zipfile.BadZipFile)
+           else "JSON_INVALID" if isinstance(error,json.JSONDecodeError)
+           else "ASSERTION" if isinstance(error,AssertionError)
+           else "VALIDATION_ERROR" if isinstance(error,ValueError)
+           else "UNEXPECTED_ERROR")
  show("GATE_A_SEMANTIC_DELTA","BLOCKED_INPUT_OR_REQUEST")
+ show("BLOCKER_STAGE",stage)
+ show("BLOCKER_CATEGORY",category)
+ show("PUBLIC_GET_COMPLETED_COUNT",public_gets)
  show("DETAILS","REDACTED")
  show("CLOUD_WRITES","0")
  show("DEPLOY","NOT_PERFORMED")
