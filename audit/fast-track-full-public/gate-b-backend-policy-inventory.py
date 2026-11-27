@@ -16,7 +16,7 @@ try:
  for i,m in enumerate(defs):
   body=s[m.end():min(m.end()+180,len(s))]
   # Extract first argument of the wrapper to a bracket, comma or brace.
-  argument=re.match(r"\\s*([A-Za-z_][\\w]*)\\s*,",body)
+  argument=re.match(r"\s*([A-Za-z_][\w]*)\s*,",body)
   if argument:
    option=argument.group(1)
   elif body.lstrip().startswith("{"):
@@ -52,7 +52,11 @@ try:
  out("CLOUD_WRITES","0");out("NETWORK_REQUESTS","0")
  out("DEPLOY","NOT_PERFORMED");out("FULL_PUBLIC","NO_GO")
  sys.exit(0)
-except Exception:
+except Exception as e:
+ category=("MISSING_FILE" if isinstance(e,FileNotFoundError) else
+           "SOURCE_PATTERN_OR_DRIFT" if isinstance(e,ValueError) else
+           "UNEXPECTED_ERROR")
  out("INVENTORY","BLOCKED_UNEXPECTED_SOURCE")
+ out("BLOCKER_CATEGORY",category)
  out("CLOUD_WRITES","0");out("DEPLOY","NOT_PERFORMED");out("FULL_PUBLIC","NO_GO")
  sys.exit(2)
