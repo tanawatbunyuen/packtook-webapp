@@ -75,9 +75,11 @@ try:
  assert all(needle in bridge for needle in ('protectedApi("usageStatus")',
    'protectedApi("recordingStatus")',"initializeAppCheck(app,"))
  assert b"packtook-staging" in payload["firebase-v4-config.js"]
- # Exact local source commit still present in checkout when independently verified.
- head=subprocess.run(["git","rev-parse","HEAD"],capture_output=True,text=True,timeout=10)
- assert head.returncode==0 and head.stdout.strip()==m["source_commit"]
+ # The builder pinned its own commit; Git pull to run the verifier advances HEAD.
+ # Require the source commit is an ancestor, never falsely demand HEAD equality.
+ lineage=subprocess.run(["git","merge-base","--is-ancestor",m["source_commit"],"HEAD"],
+                        capture_output=True,text=True,timeout=10)
+ assert lineage.returncode==0
  assert sha(arc)==ARCHIVE_SHA and sha(metabytes)==MANIFEST_SHA
 except Exception:
  out("INDEPENDENT_ARTIFACT_EVIDENCE","BLOCKED_OR_CHANGED")
@@ -91,7 +93,7 @@ except Exception:
 out("INDEPENDENT_ARTIFACT_EVIDENCE","PASS_REVIEW_ONLY")
 out("CANDIDATE_FILE_HASHES","12/12_PASS")
 out("OPERATOR_OBSERVED_PINS","MATCH")
-out("SOURCE_COMMIT","MATCH")
+out("SOURCE_COMMIT","PIN_IS_ANCESTOR_OF_CURRENT_HEAD")
 out("BRIDGE_BYTES","SAME_AS_REPOSITORY")
 out("CONFIG_ONLY_PUBLIC_SITE_KEY_CHANGE","VERIFIED")
 out("SOURCE_KEY_EXPORT","STILL_EMPTY")
