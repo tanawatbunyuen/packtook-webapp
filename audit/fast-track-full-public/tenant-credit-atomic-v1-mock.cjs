@@ -100,8 +100,8 @@ async function denied(call,code){const before=writes;await assert.rejects(call()
  assert.deepEqual(balances().slice(0,2),[0,1]);pass++;
  base();store.set(membershipPath,{...membership,accountId:"other"});
  await denied(()=>service.reserve(reservation(11,"BAR11")),"permission-denied");
- assert.equal(pass,17);
- console.log("PACKTOOK_ATOMIC_CREDIT_MOCK_CASES=17/17_PASS");
+ assert.equal(pass,19);
+ console.log("PACKTOOK_ATOMIC_CREDIT_MOCK_CASES=19/19_PASS");
  console.log("PACKTOOK_ATOMIC_CREDIT_INMEMORY_TRANSACTIONS="+transactions);
  console.log("PACKTOOK_TX_READ_AFTER_WRITE=GUARDED");
  console.log("PACKTOOK_TX_DENIED_WRITES=0");
