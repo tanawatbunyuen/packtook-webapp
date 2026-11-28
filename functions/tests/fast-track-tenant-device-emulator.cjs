@@ -63,11 +63,11 @@ async function main(){
  const [ownerToken,opToken,otherToken]=await Promise.all([user(owner),user(operator),user(other)]);
  const otherAccount=db.collection("accounts").doc(other);
  const otherDevice="otherdevice"+rnd, ownDevice="opdevice"+rnd;
- const fixture=(id,devices)=>({ownerUid:id,plan:"Growth",period:new Date().toISOString().slice(0,7),used:0,reserved:0,creditWalletV1:true,creditWalletRemaining:3,devices});
+ const fixture=(id,devices)=>({ownerUid:id,plan:"Growth",planExpiresAt:new Date(Date.now()+86400000).toISOString(),period:new Date().toISOString().slice(0,7),used:0,reserved:0,creditWalletV1:true,creditWalletRemaining:3,devices});
  await account.set(fixture(owner,[{id:device,name:"Owner",registeredBy:owner}]));
  await otherAccount.set(fixture(other,[{id:otherDevice,name:"Other",registeredBy:other}]));
  await db.collection("operatorMemberships").doc(operator).set({uid:operator,accountId:owner,role:"operator",status:"active",emailHash:emailDigest(email(operator))});
- async function reject(r,label,status="PERMISSION_DENIED"){assert.equal(r.body.error?.status,status,label+" "+JSON.stringify(r));assert.equal(r.status,status==="RESOURCE_EXHAUSTED"?429:403);checks++}
+ async function reject(r,label,message){assert.equal(r.body.error?.status,"PERMISSION_DENIED",label+" "+JSON.stringify(r));assert.equal(r.status,403);assert.equal(r.body.error.message,message,label);checks++}
  async function rest(token,path,method="GET",body){
   const res=await fetch("http://"+process.env.FIRESTORE_EMULATOR_HOST+"/v1/projects/"+PROJECT+"/databases/(default)/documents/"+path,{method,headers:{"content-type":"application/json","Authorization":"Bearer "+token},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(15000)});
   return res.status;
@@ -79,21 +79,21 @@ async function main(){
  await code(rest(ownerToken,"accounts/"+owner,"PATCH",{fields:{creditWalletRemaining:{integerValue:"999"}}}),403,"owner direct write denied");
  await code(rest(opToken,"operatorMemberships/"+operator),403,"membership direct read denied");
  await code(rest(opToken,"operatorMemberships/"+operator,"PATCH",{fields:{role:{stringValue:"admin"}}}),403,"membership escalation denied");
- await reject(await call("registerDevice",opToken,{deviceId:device}),"operator cannot claim owner device");
- await reject(await call("reserveCredit",opToken,{operationId:op1,barcode:"TEST-A",deviceId:device}),"operator cannot spend with owner device");
- await reject(await call("reserveCredit",opToken,{operationId:op1,barcode:"TEST-A",deviceId:otherDevice}),"operator cannot spend with other tenant device");
+ await reject(await call("registerDevice",opToken,{deviceId:device}),"operator cannot claim owner device","Device belongs to another user");
+ await reject(await call("reserveCredit",opToken,{operationId:op1,barcode:"TEST-A",deviceId:device}),"operator cannot spend with owner device","Operator device ownership required");
+ await reject(await call("reserveCredit",opToken,{operationId:op1,barcode:"TEST-A",deviceId:otherDevice}),"operator cannot spend with other tenant device","Device not registered for tenant");
  ok(await call("registerDevice",opToken,{deviceId:ownDevice}),"operator registers own device");
  const status=ok(await call("deviceStatus",opToken,{deviceId:ownDevice}),"operator status");
  assert.equal(status.registered,true);assert.deepEqual(status.devices.map(x=>x.id),[ownDevice]);
- await reject(await call("removeDevice",opToken,{deviceId:ownDevice,targetId:device}),"operator cannot remove owner device");
- await reject(await call("removeDevice",opToken,{deviceId:ownDevice,targetId:otherDevice}),"operator cannot remove other tenant device");
+ await reject(await call("removeDevice",opToken,{deviceId:ownDevice,targetId:device}),"operator cannot remove owner device","Device not owned by operator");
+ await reject(await call("removeDevice",opToken,{deviceId:ownDevice,targetId:otherDevice}),"operator cannot remove other tenant device","Device not owned by operator");
  ok(await call("reserveCredit",opToken,{operationId:op1,barcode:"TEST-A",deviceId:ownDevice,accountId:other}),"caller accountId cannot redirect credit");
  await wallet(2,1,0);
  assert.equal((await otherAccount.get()).data().creditWalletRemaining,3);checks++;
  ok(await call("finalizeCredit",opToken,{operationId:op1,success:false}),"refund");
  await wallet(3,0,0);
  ok(await call("removeDevice",opToken,{deviceId:ownDevice,targetId:ownDevice}),"operator removes own device");
- await reject(await call("reserveCredit",opToken,{operationId:op2,barcode:"TEST-B",deviceId:ownDevice}),"removed device denied");
+ await reject(await call("reserveCredit",opToken,{operationId:op2,barcode:"TEST-B",deviceId:ownDevice}),"removed device denied","Device not registered for tenant");
  assert.deepEqual((await account.get()).data().devices.map(x=>x.id),[device]);checks++;
  assert.deepEqual((await otherAccount.get()).data().devices.map(x=>x.id),[otherDevice]);checks++;
  assert.equal(checks,22);
