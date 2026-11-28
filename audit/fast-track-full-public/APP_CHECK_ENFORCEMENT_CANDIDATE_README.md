@@ -33,3 +33,21 @@ Tests are **static policy checks**. They do not validate actual deployed endpoin
 
 ## Scope and decision
 This isolated branch is a **concrete security improvement proposal** and not the approved Full Public release. Do not merge to the reviewed release branch until the security owner reviews the App Check policy and a compatible deployment order. `FULL_PUBLIC=NO_GO`.
+
+## 2026-11-28 Client compatibility hardening (feature branch only)
+- Changed `firebase-staging/firebase-packing-bridge.js` to **fail closed for ALL client callable dispatch** if the staging public reCAPTCHA Enterprise site key is blank. Previously only the two status wrappers had a local guard, even though the proposed backend candidate requires App Check on 22 callables.
+- The public site key is still intentionally **blank in the checked-in staging config**; this feature branch cannot be used as a working deployed client without an owner-reviewed staging site key and verified registered origin. Do not inject private credentials or promote the test branch automatically.
+- Added `gate-b-client-backend-compatibility.cjs` which uses a Node VM and **mock Firebase SDK** to ensure the 30 async methods / 28 static callable mappings remain, seven representative calls fail closed without a key (zero dispatch) and six dispatch with an artificial key. These checks prove *client wiring behavior*, **not real reCAPTCHA token issuance**, backend acceptance, or any deployed compatibility.
+- The existing PINNED review-only Hosting ZIP on the release branch remains unchanged. A combined client/backend release would require a **new Candidate pin**, immutable Hosting package, source diff review and Gate A tests for the new artifact.
+
+Offline operator commands on a detached feature worktree:
+```bash
+node --check functions/index.js
+node --check firebase-staging/firebase-packing-bridge.js
+node --check audit/fast-track-full-public/gate-b-appcheck-candidate-regression.cjs
+node --check audit/fast-track-full-public/gate-b-client-backend-compatibility.cjs
+node audit/fast-track-full-public/gate-b-appcheck-candidate-regression.cjs
+node audit/fast-track-full-public/gate-b-client-backend-compatibility.cjs
+```
+
+A regression exit zero does not change Gate A/B/C or Full Public NO_GO. No IAM, Firebase, Omise or signup writes are authorized.
