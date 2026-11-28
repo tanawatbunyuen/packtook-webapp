@@ -48,7 +48,7 @@
       {
         "id": "B3",
         "status": "OPEN",
-        "evidence": "Operator 2026-11-28, explicitly approved read-only `gcloud functions list` project=packtook-staging: all eight browser callable names ABSENT_FROM_LIST across returned regions, MATCHED_NAMES_ALL_REGIONS=0, target region=asia-southeast1 matched 0, exit 0, zero cloud writes. This strengthens source export gap; not runtime 404 proof, does not examine separate services/endpoints outside Functions metadata. Tenant authorization remains unverified. Names: acceptOperatorInvite, approveDuplicateRequest, inviteOperator, listDuplicateRequests, listOperators, myDuplicateRequests, operatorApprovalStatus, requestDuplicate. Isolated branch feature/fast-track-operator-workflow-candidate now contains a non-wired eight-handler implementation proposal and offline Auth/tenant policy unit test scripts; not executed by owner yet. Integration remains blocked on shared-tenant credit/device/recording routing and invited-operator account bootstrap."
+        "evidence": "Operator 2026-11-28, explicitly approved read-only `gcloud functions list` project=packtook-staging: all eight browser callable names ABSENT_FROM_LIST across returned regions, MATCHED_NAMES_ALL_REGIONS=0, target region=asia-southeast1 matched 0, exit 0, zero cloud writes. This strengthens source export gap; not runtime 404 proof, does not examine separate services/endpoints outside Functions metadata. Tenant authorization remains unverified. Names: acceptOperatorInvite, approveDuplicateRequest, inviteOperator, listDuplicateRequests, listOperators, myDuplicateRequests, operatorApprovalStatus, requestDuplicate. Isolated branch feature/fast-track-operator-workflow-candidate now contains a non-wired eight-handler implementation proposal and offline Auth/tenant policy unit test scripts; not executed by owner yet. Integration remains blocked on shared-tenant credit/device/recording routing and invited-operator account bootstrap. Owner Cloud Shell 2026-11-28 isolated operator-workflow candidate 600e1eb: 9/9 policy unit cases PASS, 8/8 isolated callable handlers, 16/16 Auth-negative PASS, exit 0, 0 real Firebase requests. Modules are NOT wired to functions/index.js; multiuser tenant/credit routing unimplemented."
       },
       {
         "id": "B4",
@@ -158,6 +158,10 @@
     {
       "ref": "Owner read-only Staging eight-Function metadata inventory 2026-11-28",
       "scope": "Approved metadata-only list in packtook-staging: eight browser-required Functions absent from list across returned regions (0/8), exit 0, no cloud mutations; no HTTP probe or runtime security verification."
+    },
+    {
+      "ref": "Operator candidate offline tests 2026-11-28",
+      "scope": "Isolated feature branch 600e1eb: 9/9 policy and 16/16 unauthenticated/unverified caller negative checks pass; 8 handler candidate functions, not wired or deployed, multi-user routing not implemented."
     }
   ]
 }
