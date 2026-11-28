@@ -48,7 +48,7 @@
       {
         "id": "B3",
         "status": "OPEN",
-        "evidence": "2026-11-28 feature-branch source inspection: 28 browser callable references, 22 local onCall exports. Eight operator/duplicate approval callable names absent from functions/index.js named exports (inviteOperator, acceptOperatorInvite, listOperators, requestDuplicate, myDuplicateRequests, listDuplicateRequests, approveDuplicateRequest, operatorApprovalStatus). Live staging deploy inventory not checked; source contract blocker before unified release."
+        "evidence": "2026-11-28 feature-branch source inspection: 28 browser callable call sites (27 distinct names, subscriptionOverview referenced twice), 22 local onCall exports. Eight operator/duplicate approval callable names absent from functions/index.js named exports (inviteOperator, acceptOperatorInvite, listOperators, requestDuplicate, myDuplicateRequests, listDuplicateRequests, approveDuplicateRequest, operatorApprovalStatus). Live staging deploy inventory not checked; source contract blocker before unified release."
       },
       {
         "id": "B4",
@@ -153,7 +153,7 @@
     },
     {
       "ref": "Feature branch API contract inventory 2026-11-28",
-      "scope": "Source-only 28 Bridge callable refs vs 22 local onCall exports; 8 operator and duplicate approval handler names missing in reviewed functions/index.js, live deployed inventory not proven; fail-closed tool in feature branch."
+      "scope": "Source-only 28 Bridge callable call sites / 27 distinct names vs 22 local onCall exports; 8 operator and duplicate approval handler names missing in reviewed functions/index.js, live deployed inventory not proven; fail-closed tool in feature branch."
     }
   ]
 }
