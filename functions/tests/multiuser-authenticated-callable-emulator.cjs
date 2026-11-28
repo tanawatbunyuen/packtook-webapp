@@ -92,7 +92,8 @@ async function main(){
  assert.equal((await db.collection("accounts").doc(outsider).get()).exists,false,
   "Pending invite must not silently create standalone Free account");
  cases++;
- console.log("PACKTOOK_AUTHENTICATED_EMULATOR_E2E="+cases+"/13_PASS");
+ assert.equal(cases,15,"Unexpected E2E assertion count");
+ console.log("PACKTOOK_AUTHENTICATED_EMULATOR_E2E="+cases+"/15_PASS");
  console.log("PACKTOOK_OPERATOR_TENANT_ISOLATION=PASS");
  console.log("PACKTOOK_OWNER_BILLING_GUARD=PASS");
  console.log("PACKTOOK_REVOKED_OPERATOR_GUARD=PASS");
