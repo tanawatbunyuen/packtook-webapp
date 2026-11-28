@@ -126,9 +126,9 @@ async function ensureAccount(id){
  return ref;
 }
 exports.usageStatus=onCall(statusOptions,async req=>{
- const a=await creditActor(req);
- if(a.operator){
-  const snap=await a.ctx.accountRef.get();
+ const creditContext=await creditActor(req);
+ if(creditContext.operator){
+  const snap=await creditContext.ctx.accountRef.get();
   if(!snap.exists)throw new HttpsError("failed-precondition","Tenant account unavailable");
   const x=snap.data(),limit=limits[x.plan],now=Date.now(),current=periodId(now);
   if(limit===undefined)throw new HttpsError("failed-precondition","Unknown tenant plan");
@@ -150,11 +150,11 @@ exports.usageStatus=onCall(statusOptions,async req=>{
 exports.reserveCredit=onCall(options,async req=>{
  // Operator path uses transaction-verified owner credits; original single-owner
  // path below remains untouched for legacy users.
- const a=await creditActor(req);
- if(a.operator){
+ const creditContext=await creditActor(req);
+ if(creditContext.operator){
   const body=data(req);
-  return atomicCredit.reserve({ctx:{actorUid:a.ctx.actorUid,accountId:a.ctx.accountId,role:a.ctx.role},
-    verifiedEmail:a.email,operationId:body.operationId,barcode:body.barcode,
+  return atomicCredit.reserve({ctx:{actorUid:creditContext.ctx.actorUid,accountId:creditContext.ctx.accountId,role:creditContext.ctx.role},
+    verifiedEmail:creditContext.email,operationId:body.operationId,barcode:body.barcode,
     deviceId:body.deviceId,...(body.approvalId?{approvalId:body.approvalId}:{})});
  }
 
@@ -185,11 +185,11 @@ exports.reserveCredit=onCall(options,async req=>{
  })
 });
 exports.finalizeCredit=onCall(options,async req=>{
- const a=await creditActor(req);
- if(a.operator){
+ const creditContext=await creditActor(req);
+ if(creditContext.operator){
   const body=data(req);
-  return atomicCredit.finalize({ctx:{actorUid:a.ctx.actorUid,accountId:a.ctx.accountId,role:a.ctx.role},
-    verifiedEmail:a.email,operationId:body.operationId,success:body.success,
+  return atomicCredit.finalize({ctx:{actorUid:creditContext.ctx.actorUid,accountId:creditContext.ctx.accountId,role:creditContext.ctx.role},
+    verifiedEmail:creditContext.email,operationId:body.operationId,success:body.success,
     filename:body.filename,bytes:body.bytes});
  }
 
@@ -263,14 +263,14 @@ exports.recoverStaleVideoReservation=onCall(options,async req=>{
  });
 });
 exports.recordingStatus=onCall(statusOptions,async req=>{
- const a=await creditActor(req);
- if(a.operator){
+ const creditContext=await creditActor(req);
+ if(creditContext.operator){
   const op=data(req).operationId;
   if(!validOp(op))throw new HttpsError("invalid-argument","Invalid operation ID");
-  const snap=await a.ctx.accountRef.collection("recordings").doc(op).get();
+  const snap=await creditContext.ctx.accountRef.collection("recordings").doc(op).get();
   if(!snap.exists)throw new HttpsError("not-found","Recording not found");
   const r=snap.data();
-  if(r.accountId!==a.ctx.accountId||r.recordedBy!==a.ctx.actorUid)
+  if(r.accountId!==creditContext.ctx.accountId||r.recordedBy!==creditContext.ctx.actorUid)
    throw new HttpsError("permission-denied","Recording belongs to another user");
   return {recordingId:op,status:r.status,barcode:r.barcode,period:r.period,file:r.file||null};
  }
@@ -285,16 +285,16 @@ exports.recordingStatus=onCall(statusOptions,async req=>{
 
 function validDevice(id){return typeof id==="string"&&/^[a-zA-Z0-9_-]{16,100}$/.test(id)}
 exports.registerDevice=onCall(options,async req=>{
- const a=await creditActor(req);
- if(a.operator){
+ const creditContext=await creditActor(req);
+ if(creditContext.operator){
   const d=data(req),id=d.deviceId;
   if(!validDevice(id))throw new HttpsError("invalid-argument","Invalid device ID");
   const name=typeof d.name==="string"?d.name.trim().slice(0,60):"Browser device";
-  const ctx=a.ctx,ref=ctx.accountRef,member=db.collection("operatorMemberships").doc(ctx.actorUid);
+  const ctx=creditContext.ctx,ref=ctx.accountRef,member=db.collection("operatorMemberships").doc(ctx.actorUid);
   return db.runTransaction(async tx=>{
    const [accSnap,memberSnap]=await Promise.all([tx.get(ref),tx.get(member)]);
    requireTransactionMembership({actorUid:ctx.actorUid,accountId:ctx.accountId,role:"operator"},
-     memberSnap.exists?memberSnap.data():null,a.email);
+     memberSnap.exists?memberSnap.data():null,creditContext.email);
    if(!accSnap.exists)throw new HttpsError("failed-precondition","Tenant account missing");
    const acc=accSnap.data(),max=deviceLimits[acc.plan],list=Array.isArray(acc.devices)?acc.devices:[];
    if(!max)throw new HttpsError("failed-precondition","Unknown plan device limit");
@@ -327,9 +327,9 @@ exports.registerDevice=onCall(options,async req=>{
  });
 });
 exports.deviceStatus=onCall(options,async req=>{
- const a=await creditActor(req);
- if(a.operator){
-  const ctx=a.ctx,deviceId=data(req).deviceId,snap=await ctx.accountRef.get();
+ const creditContext=await creditActor(req);
+ if(creditContext.operator){
+  const ctx=creditContext.ctx,deviceId=data(req).deviceId,snap=await ctx.accountRef.get();
   if(!snap.exists)throw new HttpsError("failed-precondition","Tenant account missing");
   const acc=snap.data(),all=Array.isArray(acc.devices)?acc.devices:[],
     list=all.filter(x=>x.registeredBy===ctx.actorUid);
@@ -342,16 +342,16 @@ exports.deviceStatus=onCall(options,async req=>{
  return {limit:deviceLimits[a.plan],registered:devices.some(x=>x.id===d.deviceId),devices:devices.map(x=>({id:x.id,name:x.name,isCurrent:x.id===d.deviceId,addedAt:x.addedAt}))};
 });
 exports.removeDevice=onCall(options,async req=>{
- const a=await creditActor(req);
- if(a.operator){
+ const creditContext=await creditActor(req);
+ if(creditContext.operator){
   const d=data(req);
   if(!validDevice(d.deviceId)||!validDevice(d.targetId))
    throw new HttpsError("invalid-argument","Invalid device ID");
-  const ctx=a.ctx,ref=ctx.accountRef,member=db.collection("operatorMemberships").doc(ctx.actorUid);
+  const ctx=creditContext.ctx,ref=ctx.accountRef,member=db.collection("operatorMemberships").doc(ctx.actorUid);
   return db.runTransaction(async tx=>{
    const [accSnap,memberSnap]=await Promise.all([tx.get(ref),tx.get(member)]);
    requireTransactionMembership({actorUid:ctx.actorUid,accountId:ctx.accountId,role:"operator"},
-    memberSnap.exists?memberSnap.data():null,a.email);
+    memberSnap.exists?memberSnap.data():null,creditContext.email);
    if(!accSnap.exists)throw new HttpsError("not-found","Tenant account unavailable");
    const devices=Array.isArray(accSnap.data().devices)?accSnap.data().devices:[];
    const target=devices.find(x=>x.id===d.targetId);
@@ -394,8 +394,8 @@ exports.authorizeDuplicate=onCall(options,async req=>{
 });
 
 exports.accountRole=onCall(options,async req=>{
- const a=await creditActor(req);
- if(a.operator)return {role:"operator",accountId:a.ctx.accountId,
+ const creditContext=await creditActor(req);
+ if(creditContext.operator)return {role:"operator",accountId:creditContext.ctx.accountId,
   canApproveDuplicates:false,multiUserEnabled:true};
 
  const id=uid(req),ref=await ensureAccount(id),snap=await ref.get(),a=snap.data();
