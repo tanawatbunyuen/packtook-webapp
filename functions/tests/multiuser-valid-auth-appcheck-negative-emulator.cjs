@@ -1,7 +1,8 @@
 "use strict";
 /**
  * Local-only App Check enforcement negative tests WITH VALID synthetic Firebase
- * Auth Emulator ID token. Does not bypass, spoof, or disable App Check.
+ * Auth Emulator ID token. Documents emulator placeholder-token acceptance,
+ * which is NOT evidence of production App Check verification.
  */
 const assert=require("node:assert/strict");
 const crypto=require("node:crypto");
@@ -32,7 +33,7 @@ async function main(){
  const decoded=await auth.verifyIdToken(token);
  assert.equal(decoded.uid,uid);
  console.log("PACKTOOK_AUTH_EMULATOR_TOKEN_VERIFIED=PASS");
- let passed=0;
+ let missingRejected=false,invalidPlaceholderAccepted=false;
  for(const [label,extra] of [
   ["MISSING_APP_CHECK",{}],
   ["INVALID_APP_CHECK",{"X-Firebase-AppCheck":"definitely-not-a-real-app-check-token"}]
@@ -43,14 +44,24 @@ async function main(){
   const body=await response.text();let data;
   try{data=JSON.parse(body)}catch{throw Error(label+" returned non-JSON "+response.status)}
   console.log("PACKTOOK_VALID_AUTH_"+label+"_HTTP="+response.status);
-  assert.equal(response.status,401,label+": App Check was not enforced: "+body.slice(0,300));
-  assert.equal(data.error?.status,"UNAUTHENTICATED");
-  passed++;
+  if(label==="MISSING_APP_CHECK"){
+   assert.equal(response.status,401,"Missing App Check must be rejected");
+   assert.equal(data.error?.status,"UNAUTHENTICATED");
+   missingRejected=true;
+  }else{
+   // The local Firebase emulator may treat any nonempty App Check header as
+   // valid. Never interpret that as production integrity verification.
+   invalidPlaceholderAccepted=response.status===200&&!!data.result;
+   assert.equal(invalidPlaceholderAccepted,true,
+    "Emulator App Check behavior changed: review before continuing");
+  }
  }
- const standalone=await app.firestore().collection("accounts").doc(uid).get();
- assert.equal(standalone.exists,false,"Rejected requests unexpectedly created an account");
- console.log("PACKTOOK_VALID_AUTH_APPCHECK_NEGATIVE="+passed+"/2_PASS");
- console.log("PACKTOOK_REJECTED_REQUEST_SIDE_EFFECTS=NONE");
+ assert.equal(missingRejected,true);
+ console.log("PACKTOOK_VALID_AUTH_MISSING_APPCHECK_REJECTION=1/1_PASS");
+ console.log("PACKTOOK_INVALID_APPCHECK_EMULATOR_ACCEPTED="+invalidPlaceholderAccepted);
+ console.log("PACKTOOK_EMULATOR_APPCHECK_CRYPTOGRAPHIC_VERIFICATION=NOT_PROVEN");
+ console.log("PACKTOOK_STAGING_APPCHECK_NEGATIVE=NOT_TESTED");
+ console.log("PACKTOOK_APP_CHECK_PRODUCTION_GATE=OPEN");
  console.log("PACKTOOK_AUTHENTICATED_OWNER_OPERATOR_POSITIVE=NOT_TESTED");
  console.log("PACKTOOK_VALID_APPCHECK_TOKEN=NOT_TESTED");
  console.log("PACKTOOK_LOCAL_AUTH_FIXTURE_WRITES=YES");
