@@ -11,8 +11,17 @@ const p=require("./operator-domain-v1.cjs");
 const crypto=require("node:crypto");
 const MAX_REQUEST_AGE_MS=10*60*1000;
 function createOperatorCallables({db,FieldValue,HttpsError,onCall,options}){
- if(!db||!FieldValue||!HttpsError||!onCall||!options?.enforceAppCheck)
-  throw Error("Operator callables require reviewed dependencies and enforceAppCheck:true");
+ const missing=[
+  !db?"db":null,
+  !FieldValue?"FieldValue":null,
+  typeof HttpsError!=="function"?"HttpsError":null,
+  typeof onCall!=="function"?"onCall":null,
+  !options?"options":null,
+  options?.enforceAppCheck!==true?"enforceAppCheck":null
+ ].filter(Boolean);
+ if(missing.length)
+  throw Error("Operator callables startup dependencies unavailable: "+missing.join(","));
+
  function fail(error){
   const messages={
    UNAUTHENTICATED:["unauthenticated","Sign in required"],
