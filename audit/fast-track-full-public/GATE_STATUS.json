@@ -43,7 +43,7 @@
       {
         "id": "B2",
         "status": "OPEN",
-        "evidence": "Offline backend policy inventory operator 2026-11-27: 23 handlers: 2 statusOptions with explicit enforceAppCheck true; 13 base options without explicit enforcement; 7 other callable options; 1 onRequest webhook. Source only, not deployed runtime. Real request-correlated tests still required. Offline feature-branch security candidate source regression PASS 22/22 on 2026-11-28, no deploy; staging request-correlated enforcement still unverified."
+        "evidence": "Offline backend policy inventory operator 2026-11-27: 23 handlers: 2 statusOptions with explicit enforceAppCheck true; 13 base options without explicit enforcement; 7 other callable options; 1 onRequest webhook. Source only, not deployed runtime. Real request-correlated tests still required. Offline feature-branch security candidate source regression PASS 22/22 on 2026-11-28, no deploy; staging request-correlated enforcement still unverified. 2026-11-28 operator feature worktree 39fcdb8 client/backend offline mock compatibility PASS 7/7 no-key, 6/6 mock-key, zero real Firebase calls; not staging enforcement proof."
       },
       {
         "id": "B3",
@@ -145,6 +145,10 @@
     {
       "ref": "Security candidate operator 2026-11-28",
       "scope": "Isolated feature branch edd5f91 (App Check enforcement candidate): node --check source and test PASS; 22/22 callable source policy PASS; signed HTTP webhook exception; Omise Test Mode unchanged; no Cloud writes or deploy. Not runtime verification and not approved release artifact."
+    },
+    {
+      "ref": "Feature client+backend compatibility operator 2026-11-28",
+      "scope": "Detached feature worktree 39fcdb8: 22/22 source App Check policy, 30 Bridge async methods, 28 static bindings, 7/7 no-key fail-closed, zero unconfigured dispatch, 6/6 configured synthetic-key mock dispatch; exit 0, real Firebase calls 0, not deployed. The pinned Hosting ZIP on release branch remains unchanged."
     }
   ]
 }
