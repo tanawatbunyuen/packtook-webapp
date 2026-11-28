@@ -117,6 +117,21 @@ async function ensureAccount(id){
  return ref;
 }
 exports.usageStatus=onCall(statusOptions,async req=>{
+ const a=await creditActor(req);
+ if(a.operator){
+  const snap=await a.ctx.accountRef.get();
+  if(!snap.exists)throw new HttpsError("failed-precondition","Tenant account unavailable");
+  const x=snap.data(),limit=limits[x.plan],now=Date.now(),current=periodId(now);
+  if(limit===undefined)throw new HttpsError("failed-precondition","Unknown tenant plan");
+  const used=x.period===current?x.used||0:0;
+  return {plan:x.plan,limit,used,reserved:pendingReservations(x),
+   remaining:creditAvailable(x),walletEnabled:walletEnabled(x),
+   walletStartingCredits:null,period:current,
+   openBillingRequestId:null,canBuyMore:false,purchaseReason:null,
+   planExpiresAt:typeof x.planExpiresAt==="string"?x.planExpiresAt:null,
+   subscriptionStatus:subscriptionState(x)};
+ }
+
  const id=uid(req),ref=await ensureAccount(id),snap=await ref.get();
  if(!snap.exists)throw new HttpsError("failed-precondition","Account not provisioned");
  const a=snap.data(),limit=limits[a.plan];if(limit===undefined)throw new HttpsError("failed-precondition","Invalid plan");
@@ -239,6 +254,18 @@ exports.recoverStaleVideoReservation=onCall(options,async req=>{
  });
 });
 exports.recordingStatus=onCall(statusOptions,async req=>{
+ const a=await creditActor(req);
+ if(a.operator){
+  const op=data(req).operationId;
+  if(!validOp(op))throw new HttpsError("invalid-argument","Invalid operation ID");
+  const snap=await a.ctx.accountRef.collection("recordings").doc(op).get();
+  if(!snap.exists)throw new HttpsError("not-found","Recording not found");
+  const r=snap.data();
+  if(r.accountId!==a.ctx.accountId||r.recordedBy!==a.ctx.actorUid)
+   throw new HttpsError("permission-denied","Recording belongs to another user");
+  return {recordingId:op,status:r.status,barcode:r.barcode,period:r.period,file:r.file||null};
+ }
+
  const id=uid(req),op=data(req).operationId;
  if(!validOp(op))throw new HttpsError("invalid-argument","Invalid operation ID");
  const snap=await (await ownerRef(id)).collection("recordings").doc(op).get();
@@ -249,6 +276,32 @@ exports.recordingStatus=onCall(statusOptions,async req=>{
 
 function validDevice(id){return typeof id==="string"&&/^[a-zA-Z0-9_-]{16,100}$/.test(id)}
 exports.registerDevice=onCall(options,async req=>{
+ const a=await creditActor(req);
+ if(a.operator){
+  const d=data(req),id=d.deviceId;
+  if(!validDevice(id))throw new HttpsError("invalid-argument","Invalid device ID");
+  const name=typeof d.name==="string"?d.name.trim().slice(0,60):"Browser device";
+  const ctx=a.ctx,ref=ctx.accountRef,member=db.collection("operatorMemberships").doc(ctx.actorUid);
+  return db.runTransaction(async tx=>{
+   const [accSnap,memberSnap]=await Promise.all([tx.get(ref),tx.get(member)]);
+   requireTransactionMembership({actorUid:ctx.actorUid,accountId:ctx.accountId,role:"operator"},
+     memberSnap.exists?memberSnap.data():null,a.email);
+   if(!accSnap.exists)throw new HttpsError("failed-precondition","Tenant account missing");
+   const acc=accSnap.data(),max=deviceLimits[acc.plan],list=Array.isArray(acc.devices)?acc.devices:[];
+   if(!max)throw new HttpsError("failed-precondition","Unknown plan device limit");
+   const existing=list.find(x=>x.id===id);
+   if(existing&&existing.registeredBy!==ctx.actorUid)
+    throw new HttpsError("permission-denied","Device belongs to another user");
+   if(existing)return {registered:true,devices:list.filter(x=>x.registeredBy===ctx.actorUid)
+     .map(x=>({name:x.name,isCurrent:x.id===id})),limit:max};
+   if(list.length>=max)throw new HttpsError("resource-exhausted","Tenant device limit reached");
+   const next=[...list,{id,name,registeredBy:ctx.actorUid,addedAt:new Date().toISOString()}];
+   tx.update(ref,{devices:next,updatedAt:FieldValue.serverTimestamp()});
+   return {registered:true,devices:next.filter(x=>x.registeredBy===ctx.actorUid)
+     .map(x=>({name:x.name,isCurrent:x.id===id})),limit:max};
+  });
+ }
+
  const user=uid(req),d=data(req),id=d.deviceId;
  if(!validDevice(id))throw new HttpsError("invalid-argument","Invalid device identifier");
  const name=typeof d.name==="string"?d.name.trim().slice(0,60):"Browser device";
@@ -265,11 +318,42 @@ exports.registerDevice=onCall(options,async req=>{
  });
 });
 exports.deviceStatus=onCall(options,async req=>{
+ const a=await creditActor(req);
+ if(a.operator){
+  const ctx=a.ctx,deviceId=data(req).deviceId,snap=await ctx.accountRef.get();
+  if(!snap.exists)throw new HttpsError("failed-precondition","Tenant account missing");
+  const acc=snap.data(),all=Array.isArray(acc.devices)?acc.devices:[],
+    list=all.filter(x=>x.registeredBy===ctx.actorUid);
+  return {limit:deviceLimits[acc.plan],registered:list.some(x=>x.id===deviceId),
+   devices:list.map(x=>({id:x.id,name:x.name,isCurrent:x.id===deviceId,addedAt:x.addedAt}))};
+ }
+
  const user=uid(req),d=data(req),ref=await ensureAccount(user),snap=await ref.get(),a=snap.data();
  const devices=Array.isArray(a.devices)?a.devices:[];
  return {limit:deviceLimits[a.plan],registered:devices.some(x=>x.id===d.deviceId),devices:devices.map(x=>({id:x.id,name:x.name,isCurrent:x.id===d.deviceId,addedAt:x.addedAt}))};
 });
 exports.removeDevice=onCall(options,async req=>{
+ const a=await creditActor(req);
+ if(a.operator){
+  const d=data(req);
+  if(!validDevice(d.deviceId)||!validDevice(d.targetId))
+   throw new HttpsError("invalid-argument","Invalid device ID");
+  const ctx=a.ctx,ref=ctx.accountRef,member=db.collection("operatorMemberships").doc(ctx.actorUid);
+  return db.runTransaction(async tx=>{
+   const [accSnap,memberSnap]=await Promise.all([tx.get(ref),tx.get(member)]);
+   requireTransactionMembership({actorUid:ctx.actorUid,accountId:ctx.accountId,role:"operator"},
+    memberSnap.exists?memberSnap.data():null,a.email);
+   if(!accSnap.exists)throw new HttpsError("not-found","Tenant account unavailable");
+   const devices=Array.isArray(accSnap.data().devices)?accSnap.data().devices:[];
+   const target=devices.find(x=>x.id===d.targetId);
+   if(!target||target.registeredBy!==ctx.actorUid)
+    throw new HttpsError("permission-denied","Device not owned by operator");
+   tx.update(ref,{devices:devices.filter(x=>x.id!==d.targetId),
+    updatedAt:FieldValue.serverTimestamp()});
+   return {removed:true};
+  });
+ }
+
  const user=uid(req),d=data(req);if(!validDevice(d.deviceId)||!validDevice(d.targetId))throw new HttpsError("invalid-argument","Invalid device");
  const ref=await ownerRef(user);
  return db.runTransaction(async tx=>{
@@ -301,6 +385,10 @@ exports.authorizeDuplicate=onCall(options,async req=>{
 });
 
 exports.accountRole=onCall(options,async req=>{
+ const a=await creditActor(req);
+ if(a.operator)return {role:"operator",accountId:a.ctx.accountId,
+  canApproveDuplicates:false,multiUserEnabled:true};
+
  const id=uid(req),ref=await ensureAccount(id),snap=await ref.get(),a=snap.data();
  const role=ref.id===id?"admin":"operator";
  return {role:"admin",accountId:id,canApproveDuplicates:true,multiUserEnabled:false};
