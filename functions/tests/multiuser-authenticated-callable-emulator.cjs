@@ -52,6 +52,22 @@ function expectDenied(r,name){assert.ok([400,401,403,404,412].includes(r.status)
 async function main(){
  const [ownerToken,operatorToken,outsiderToken]=await Promise.all([
   createUser(owner,emails.owner),createUser(operator,emails.operator),createUser(outsider,emails.outsider)]);
+ // Non-secret local token diagnostics; never print an ID token or password.
+ for(const [label,token] of [["owner",ownerToken],["operator",operatorToken],["outsider",outsiderToken]]){
+  const segments=token.split(".");
+  let payload={};
+  try{payload=JSON.parse(Buffer.from(segments[1]||"","base64url").toString("utf8"))}
+  catch(e){throw Error("Invalid local emulator JWT encoding for "+label)}
+  console.log("PACKTOOK_AUTH_DIAG_"+label.toUpperCase()+"_TOKEN="+JSON.stringify({
+   segments:segments.length,alg:(()=>{try{return JSON.parse(Buffer.from(segments[0]||"","base64url").toString("utf8")).alg}catch{return "invalid"}})(),
+   project:payload.aud,issuerProject:typeof payload.iss==="string"?payload.iss.split("/").at(-1):null,
+   uidMatches:payload.user_id===({owner,operator,outsider})[label]||payload.sub===({owner,operator,outsider})[label],
+   emailVerified:payload.email_verified,expiresAfterIssued:payload.exp>payload.iat
+  }));
+  const verified=await auth.verifyIdToken(token);
+  assert.equal(verified.uid,({owner,operator,outsider})[label],"Admin SDK token verification UID mismatch");
+  console.log("PACKTOOK_AUTH_DIAG_"+label.toUpperCase()+"_ADMIN_VERIFY=PASS");
+ }
  const period=new Date().toISOString().slice(0,7);
  await ownerAccount().set({ownerUid:owner,plan:"Free",period,used:0,reserved:0,
   creditWalletV1:true,creditWalletRemaining:5,
