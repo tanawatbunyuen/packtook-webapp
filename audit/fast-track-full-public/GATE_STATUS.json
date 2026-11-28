@@ -48,7 +48,7 @@
       {
         "id": "B3",
         "status": "OPEN",
-        "evidence": "2026-11-28 feature-branch source inspection: 28 browser callable call sites (27 distinct names, subscriptionOverview referenced twice), 22 local onCall exports. Eight operator/duplicate approval callable names absent from functions/index.js named exports (inviteOperator, acceptOperatorInvite, listOperators, requestDuplicate, myDuplicateRequests, listDuplicateRequests, approveDuplicateRequest, operatorApprovalStatus). Live staging deploy inventory not checked; source contract blocker before unified release."
+        "evidence": "Operator 2026-11-28, explicitly approved read-only `gcloud functions list` project=packtook-staging: all eight browser callable names ABSENT_FROM_LIST across returned regions, MATCHED_NAMES_ALL_REGIONS=0, target region=asia-southeast1 matched 0, exit 0, zero cloud writes. This strengthens source export gap; not runtime 404 proof, does not examine separate services/endpoints outside Functions metadata. Tenant authorization remains unverified. Names: acceptOperatorInvite, approveDuplicateRequest, inviteOperator, listDuplicateRequests, listOperators, myDuplicateRequests, operatorApprovalStatus, requestDuplicate."
       },
       {
         "id": "B4",
@@ -154,6 +154,10 @@
     {
       "ref": "Feature branch API contract inventory 2026-11-28",
       "scope": "Source-only 28 Bridge callable call sites / 27 distinct names vs 22 local onCall exports; 8 operator and duplicate approval handler names missing in reviewed functions/index.js, live deployed inventory not proven; fail-closed tool in feature branch."
+    },
+    {
+      "ref": "Owner read-only Staging eight-Function metadata inventory 2026-11-28",
+      "scope": "Approved metadata-only list in packtook-staging: eight browser-required Functions absent from list across returned regions (0/8), exit 0, no cloud mutations; no HTTP probe or runtime security verification."
     }
   ]
 }
