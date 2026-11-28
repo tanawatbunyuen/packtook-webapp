@@ -157,11 +157,13 @@ function createOperatorCallables({db,FieldValue,HttpsError,onCall,options}){
    if(!snap.exists)throw new HttpsError("not-found","Request not found");
    const item=snap.data(),lock=ctx.ownerRef.collection("barcodeLocks").doc(crypto.createHash("sha256").update(item.barcode).digest("hex"));
    const [lSnap,mSnap]=await Promise.all([tx.get(lock),tx.get(member(item.requestedBy))]);
-   try{p.requireMembership({uid:item.requestedBy,email:"NOT_SUPPLIED"},mSnap.exists?{...mSnap.data(),emailHash:p.emailDigest("NOT_SUPPLIED")}:null,ctx.ownerId)}catch(e){
-    // Membership status/account/UID are validated without inventing verified email.
-    if(!mSnap.exists||mSnap.data().uid!==item.requestedBy||mSnap.data().accountId!==ctx.ownerId||mSnap.data().status!=="active")
-     throw new HttpsError("permission-denied","Requesting operator no longer active");
-   }
+   // Approval is owner-authorized. Reject revoked or transferred requesters.
+   // The verified-email check happens when that operator next calls the API.
+   const requester=mSnap.exists?mSnap.data():null;
+   if(!requester||requester.uid!==item.requestedBy||
+      requester.accountId!==ctx.ownerId||requester.status!=="active"||
+      requester.role!=="operator")
+    throw new HttpsError("permission-denied","Requesting operator no longer active");
    try{p.assertApprover(ctx.actor,item,now,lSnap.exists?lSnap.data():null)}catch(e){fail(e)}
    tx.create(approval,{accountId:ctx.ownerId,requestId:id,barcode:item.barcode,reason:item.reason,
      requestedBy:item.requestedBy,approvedBy:ctx.actor.uid,status:"approved",
