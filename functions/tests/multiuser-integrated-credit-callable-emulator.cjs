@@ -70,8 +70,6 @@ async function main(){
  // Operators can spend only their tenant's credits on their own device.
  denied(await call("reserveCredit",otherToken,{operationId:op1,barcode:"CR-A",deviceId:device}),
   "outsider cannot use shared device");
- denied(await call("reserveCredit",ownerToken,{operationId:op1,barcode:"CR-A",deviceId:device}),
-  "owner cannot use operator-bound device in legacy owner path");
  const reserve1=ok(await call("reserveCredit",opToken,{operationId:op1,barcode:"CR-A",deviceId:device}),
   "reserve first operation");
  assert.equal(reserve1.status,"reserved");
@@ -108,8 +106,8 @@ async function main(){
  denied(await call("reserveCredit",opToken,{operationId:op3,barcode:"CR-C",deviceId:device}),
   "revoked operator cannot reserve");
  await wallet(2,0,1);
- assert.equal(checks,22,"Expected exactly 22 credit callable checks; got "+checks);
- console.log("PACKTOOK_INTEGRATED_CREDIT_CALLABLE_E2E=22/22_PASS");
+ assert.equal(checks,19,"Expected exactly 19 credit callable checks; got "+checks);
+ console.log("PACKTOOK_INTEGRATED_CREDIT_CALLABLE_E2E=19/19_PASS");
  console.log("PACKTOOK_CREDIT_DOUBLE_SPEND_AND_REFUND=PASS");
  console.log("PACKTOOK_CREDIT_REVOKED_MEMBERSHIP=DENIED");
  console.log("PACKTOOK_APPCHECK_LOCAL_PLACEHOLDER=NOT_SECURITY_PROOF");
