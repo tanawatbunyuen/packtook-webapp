@@ -28,8 +28,8 @@ for(const name of ["reserveCredit","finalizeCredit","usageStatus","recordingStat
  const end=source.indexOf("\nexports.",start+10);
  assert.ok(start>=0,name+" missing");
  const body=source.slice(start,end<0?undefined:end);
- assert.match(body,/const a=await creditActor\(req\)/,name+" tenant branch missing");
- assert.match(body,/if\(a\.operator\)/,name+" operator branch missing");
+ assert.match(body,/const creditContext=await creditActor\(req\)/,name+" tenant branch missing");
+ assert.match(body,/if\(creditContext\.operator\)/,name+" operator branch missing");
 }
 assert.match(source,/const existingMembership=await db\.collection\("operatorMemberships"\)\.doc\(id\)\.get\(\)/);
 assert.match(source,/if\(existingMembership\.exists\)[\s\S]*?Operator must use shared tenant account/);
