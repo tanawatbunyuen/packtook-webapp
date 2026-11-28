@@ -418,6 +418,20 @@ exports.authorizeDuplicate=onCall(options,async req=>{
 });
 
 exports.accountRole=onCall(options,async req=>{
+ // Local-only diagnostic of Callable wrapper auth hand-off; never log tokens,
+ // emails, UIDs, headers or any user-provided content.
+ if(process.env.GCLOUD_PROJECT==="demo-packtook-integrated-01"&&
+    typeof process.env.FIREBASE_AUTH_EMULATOR_HOST==="string"&&
+    typeof process.env.FIRESTORE_EMULATOR_HOST==="string"){
+  console.info("PACKTOOK_AUTH_HANDOFF_DIAG",JSON.stringify({
+   reqPresent:!!req,authPresent:!!req?.auth,
+   tokenPresent:!!req?.auth?.token,
+   uidIsString:typeof req?.auth?.uid==="string",
+   verifiedClaimType:typeof req?.auth?.token?.email_verified,
+   verifiedClaimTrue:req?.auth?.token?.email_verified===true,
+   appPresent:!!req?.app
+  }));
+ }
  const creditContext=await creditActor(req);
  if(creditContext.operator)return {role:"operator",accountId:creditContext.ctx.accountId,
   canApproveDuplicates:false,multiUserEnabled:true};
