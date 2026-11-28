@@ -24,6 +24,11 @@ const {createAtomicCreditCandidate}=require("./tenant-credit-atomic-v1.cjs");
 const {emailDigest}=require("./operator-domain-v1.cjs");
 const {assertTransactionMembership,PolicyDenied}=require("./tenant-credit-transaction-policy-v1.cjs");
 const tenantResolver=createTenantResolver({db,HttpsError});
+// Eight missing browser APIs are attached ONLY in this non-deployable feature
+// branch. Complete tenant/account/billing audit and emulator E2E required.
+const {createOperatorCallables}=require("./operator-callables-v1.cjs");
+Object.assign(exports,createOperatorCallables({db,FieldValue,HttpsError,onCall,options}));
+
 const atomicCredit=createAtomicCreditCandidate({db,FieldValue,HttpsError});
 async function creditActor(req){
  const actor=uid(req),email=req.auth.token.email;
