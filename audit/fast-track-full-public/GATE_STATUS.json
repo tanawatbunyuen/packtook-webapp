@@ -47,7 +47,8 @@
       },
       {
         "id": "B3",
-        "status": "OPEN"
+        "status": "OPEN",
+        "evidence": "2026-11-28 feature-branch source inspection: 28 browser callable references, 22 local onCall exports. Eight operator/duplicate approval callable names absent from functions/index.js named exports (inviteOperator, acceptOperatorInvite, listOperators, requestDuplicate, myDuplicateRequests, listDuplicateRequests, approveDuplicateRequest, operatorApprovalStatus). Live staging deploy inventory not checked; source contract blocker before unified release."
       },
       {
         "id": "B4",
@@ -149,6 +150,10 @@
     {
       "ref": "Feature client+backend compatibility operator 2026-11-28",
       "scope": "Detached feature worktree 39fcdb8: 22/22 source App Check policy, 30 Bridge async methods, 28 static bindings, 7/7 no-key fail-closed, zero unconfigured dispatch, 6/6 configured synthetic-key mock dispatch; exit 0, real Firebase calls 0, not deployed. The pinned Hosting ZIP on release branch remains unchanged."
+    },
+    {
+      "ref": "Feature branch API contract inventory 2026-11-28",
+      "scope": "Source-only 28 Bridge callable refs vs 22 local onCall exports; 8 operator and duplicate approval handler names missing in reviewed functions/index.js, live deployed inventory not proven; fail-closed tool in feature branch."
     }
   ]
 }
