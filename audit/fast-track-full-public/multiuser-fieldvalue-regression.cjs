@@ -7,7 +7,10 @@ assert.match(source,/const \{FieldValue\}=require\("firebase-admin\/firestore"\)
 assert.doesNotMatch(source,/const \{FieldValue\}=admin\.firestore/);
 assert.match(source,/typeof FieldValue\.serverTimestamp!=="function"/);
 assert.match(source,/typeof FieldValue\.increment!=="function"/);
-const sdk=require("./../../functions/node_modules/firebase-admin/firestore");
+const {createRequire}=require("node:module");
+const path=require("node:path");
+const fromFunctions=createRequire(path.resolve("functions/package.json"));
+const sdk=fromFunctions("firebase-admin/firestore");
 assert.equal(typeof sdk.FieldValue.serverTimestamp,"function");
 assert.equal(typeof sdk.FieldValue.increment,"function");
 console.log("PACKTOOK_FIELDVALUE_MODULAR_IMPORT_REGRESSION=PASS");
