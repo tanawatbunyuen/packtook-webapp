@@ -8,7 +8,10 @@ const app=initializeApp(firebaseConfig),auth=getAuth(app),functions=getFunctions
 // Missing staging site key blocks only the protected status endpoints; never bypasses App Check.
 const appCheckReady=typeof recaptchaEnterpriseSiteKey==="string"&&recaptchaEnterpriseSiteKey.trim().length>0;
 if(appCheckReady)initializeAppCheck(app,{provider:new ReCaptchaEnterpriseProvider(recaptchaEnterpriseSiteKey.trim()),isTokenAutoRefreshEnabled:true});
-const api=name=>httpsCallable(functions,name);
+const api=name=>{
+ if(!appCheckReady)throw Error("PACKTOOK Staging App Check is not configured");
+ return httpsCallable(functions,name);
+};
 const protectedApi=name=>{
  if(!appCheckReady)throw Error("PACKTOOK Staging App Check is not configured");
  return api(name);
