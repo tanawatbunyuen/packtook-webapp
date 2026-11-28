@@ -7,8 +7,17 @@ const omisePublicKey=defineSecret("OMISE_PUBLIC_KEY");
 const omiseWebhookKey=defineSecret("OMISE_WEBHOOK_SECRET");
 const admin=require("firebase-admin");
 const crypto=require("node:crypto");
-admin.initializeApp();
-const db=admin.firestore();
+const app=admin.initializeApp();
+const {createDatabase}=require("./database-routing-v1.cjs");
+
+const db=createDatabase(app,{
+ projectId:app.options.projectId||
+   process.env.GCLOUD_PROJECT||
+   process.env.GOOGLE_CLOUD_PROJECT,
+ mode:process.env.PACKTOOK_RUNTIME_MODE,
+ databaseId:process.env.PACKTOOK_DATABASE_ID,
+ emulatorHost:process.env.FIRESTORE_EMULATOR_HOST
+});
 // Import Firestore sentinels from the supported modular Admin SDK entrypoint.
 const {FieldValue}=require("firebase-admin/firestore");
 if(!FieldValue||typeof FieldValue.serverTimestamp!=="function"||typeof FieldValue.increment!=="function")
@@ -862,3 +871,11 @@ exports.ownerAnalyticsCustomers=onCall(ownerOptions,async req=>{
  });
  return {customers,nextCursor:snap.docs.length>25&&items.length?items[items.length-1].id:null};
 });
+
+// FT05 unified owner management candidate.
+const {createOwnerManagement}=require('./owner-management-v59');
+const ownerManagement=createOwnerManagement(db);
+for(const name of Object.keys(ownerManagement)){
+ if(Object.prototype.hasOwnProperty.call(module.exports,name))throw new Error('Duplicate export: '+name);
+}
+Object.assign(module.exports,ownerManagement);
