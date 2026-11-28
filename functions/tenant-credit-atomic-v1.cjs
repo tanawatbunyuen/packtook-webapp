@@ -150,7 +150,7 @@ function createAtomicCreditCandidate({db,FieldValue,HttpsError,clock=()=>Date.no
     bad("failed-precondition","Already finalized");
    }
    try{assertFinalization(ctx,membership(ctx,mSnap),verifiedEmail,{
-    accountOwnerUid:ctx.accountId,recording,operationId})}catch(e){asErr(e)}
+    accountOwnerUid:ctx.accountId,recording:record,operationId})}catch(e){asErr(e)}
    const lock=account.collection("barcodeLocks").doc(barcodeKey(record.barcode));
    const lockSnap=await tx.get(lock);
    const lockValue=lockSnap.exists?lockSnap.data():null;
