@@ -49,6 +49,24 @@ async function creditActor(req){
  const ctx=await tenantResolver.resolve(req,{ownerOnly:true});
  return {ctx,operator:false,email};
 }
+// Legacy owner-only boundary for billing, account recovery and duplicate approval.
+// Non-deployed source candidate; no customer data migration.
+async function requireLegacyOwnerAccess(req){
+ const actor=uid(req);
+ const membership=await db.collection("operatorMemberships").doc(actor).get();
+ if(membership.exists)
+  throw new HttpsError("permission-denied","Account owner endpoint; operator access forbidden");
+ const email=req.auth?.token?.email;
+ if(typeof email==="string"&&email){
+  const invitation=await db.collection("operatorInviteIndex").doc(emailDigest(email)).get();
+  if(invitation.exists){
+   const v=invitation.data();
+   if(v.status==="pending"&&v.expiresAtMs>Date.now())
+    throw new HttpsError("failed-precondition","Accept operator invitation before using owner account");
+  }
+ }
+ return actor;
+}
 function requireTransactionMembership(ctx,membership,verifiedEmail){
  try{return assertTransactionMembership(ctx,membership,verifiedEmail)}
  catch(e){if(e instanceof PolicyDenied)throw new HttpsError("permission-denied",e.message);throw e}
@@ -222,6 +240,7 @@ exports.finalizeCredit=onCall(options,async req=>{
 // V5.2.1: account-owned reservation review across devices (no automatic refunds).
 const STALE_RESERVATION_MS=30*60*1000;
 exports.pendingVideoReservations=onCall(options,async req=>{
+ await requireLegacyOwnerAccess(req);
  const id=uid(req),acc=await ensureAccount(id),a=(await acc.get()).data();
  const snapshot=await acc.collection("recordings").where("status","==","reserved").limit(100).get();
  const now=Date.now();
@@ -234,6 +253,7 @@ exports.pendingVideoReservations=onCall(options,async req=>{
  return {reservedCount:pendingReservations(a),items,minimumAgeMinutes:30,truncated:snapshot.size===100};
 });
 exports.recoverStaleVideoReservation=onCall(options,async req=>{
+ await requireLegacyOwnerAccess(req);
  const user=uid(req),d=data(req),id=d.operationId;
  if(!validOp(id)||d.confirmNoVideo!==true)throw new HttpsError("invalid-argument","Confirm that no usable recording exists and that no device is actively recording.");
  const acc=await ensureAccount(user),rec=acc.collection("recordings").doc(id);
@@ -376,6 +396,7 @@ exports.removeDevice=onCall(options,async req=>{
 });
 
 exports.authorizeDuplicate=onCall(options,async req=>{
+ await requireLegacyOwnerAccess(req);
  const accountId=uid(req),d=data(req),barcode=typeof d.barcode==="string"?d.barcode.trim():"",reason=typeof d.reason==="string"?d.reason.trim():"";
  if(!barcode||barcode.length>160||reason.length<10||reason.length>500)throw new HttpsError("invalid-argument","Barcode and reason (10-500 characters) required");
  const acc=await ensureAccount(accountId),lock=acc.collection("barcodeLocks").doc(barcodeKey(barcode));
@@ -413,6 +434,7 @@ function publicBillingRequest(doc){
   createdAt:x.createdAt?.toDate?.()?.toISOString()||null};
 }
 exports.subscriptionOverview=onCall(options,async req=>{
+ await requireLegacyOwnerAccess(req);
  const id=uid(req),ref=await ensureAccount(id),input=data(req);
  // V5.3.1: reuse the established, callable subscriptionOverview endpoint for
  // paginated read-only billing history. New billingHistory may lack Cloud Run invoker IAM.
@@ -453,6 +475,7 @@ exports.subscriptionOverview=onCall(options,async req=>{
   openBillingRequestId:a.openBillingRequestId||null,requests:docs.map(publicBillingRequest)};
 });
 exports.billingHistory=onCall(options,async req=>{
+ await requireLegacyOwnerAccess(req);
  const id=uid(req),d=data(req),ref=await ensureAccount(id);
  if(d.afterId!==undefined&&d.afterId!==null&&!validOp(d.afterId))
   throw new HttpsError("invalid-argument","Invalid history cursor");
@@ -469,6 +492,7 @@ exports.billingHistory=onCall(options,async req=>{
   nextCursor:snap.docs.length>12&&items.length?items[items.length-1].id:null};
 });
 exports.requestPlanChange=onCall(options,async req=>{
+ await requireLegacyOwnerAccess(req);
  const id=uid(req),plan=data(req).plan;
  const acc=await ensureAccount(id),ticket=acc.collection("billingRequests").doc();
  return db.runTransaction(async tx=>{
@@ -481,6 +505,7 @@ exports.requestPlanChange=onCall(options,async req=>{
  });
 });
 exports.cancelUnpaidPlanRequest=onCall(options,async req=>{
+ await requireLegacyOwnerAccess(req);
  const uidValue=uid(req),id=data(req).requestId;
  if(!validOp(id))throw new HttpsError("invalid-argument","Invalid request ID");
  const acc=own(uidValue),ticket=acc.collection("billingRequests").doc(id);
@@ -552,11 +577,13 @@ async function reconcileCharge(accountId,requestId,chargeId){
  });
 }
 exports.omisePaymentConfig=onCall({region,secrets:[omisePublicKey],enforceAppCheck:true},async req=>{
+ await requireLegacyOwnerAccess(req);
  uid(req);const key=omisePublicKey.value();
  if(!key?.startsWith("pkey_test_"))throw new HttpsError("failed-precondition","Omise test public key missing");
  return {publicKey:key,testMode:true};
 });
 exports.createOmisePayment=onCall(paymentSecrets,async req=>{
+ await requireLegacyOwnerAccess(req);
  const user=uid(req),d=data(req),id=d.requestId,method=d.method;
  // V4.8.9: PromptPay-only launch. Re-enable cards in a future reviewed release.
  if(!validOp(id)||method!=="promptpay")throw new HttpsError("invalid-argument","Only PromptPay QR payment is currently supported");
@@ -596,6 +623,7 @@ exports.createOmisePayment=onCall(paymentSecrets,async req=>{
  return {status:status.status,chargeId:charge.id,authorizeUri:charge.authorize_uri||null,qrImage:charge.source?.scannable_code?.image?.download_uri||null};
 });
 exports.recoverOmiseCharge=onCall(paymentSecrets,async req=>{
+ await requireLegacyOwnerAccess(req);
  const user=uid(req),requestId=data(req).requestId;
  if(!validOp(requestId))throw new HttpsError("invalid-argument","Invalid request ID");
  const ref=own(user).collection("billingRequests").doc(requestId),snap=await ref.get();
@@ -628,6 +656,7 @@ exports.recoverOmiseCharge=onCall(paymentSecrets,async req=>{
  return {...verified,found:true,chargeId:charge.id,qrImage:charge.source?.scannable_code?.image?.download_uri||null};
 });
 exports.omisePaymentStatus=onCall(paymentSecrets,async req=>{
+ await requireLegacyOwnerAccess(req);
  const user=uid(req),id=data(req).requestId;
  if(!validOp(id))throw new HttpsError("invalid-argument","Invalid request");
  const snap=await own(user).collection("billingRequests").doc(id).get();
@@ -658,6 +687,7 @@ exports.omisePaymentWebhook=onRequest({region,secrets:[omiseKey,omiseWebhookKey]
 });
 
 exports.paymentAudit=onCall(paymentSecrets,async req=>{
+ await requireLegacyOwnerAccess(req);
  const user=uid(req),id=data(req).requestId;
  if(!validOp(id))throw new HttpsError("invalid-argument","Invalid billing request ID");
  const acc=own(user),ticket=acc.collection("billingRequests").doc(id),snap=await ticket.get();
