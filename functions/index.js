@@ -115,6 +115,10 @@ function purchaseDecision(a,target,now=Date.now()){
 function billingOpen(a){return typeof a.openBillingRequestId==="string"&&a.openBillingRequestId.length>0}
 
 async function ensureAccount(id){
+ // An accepted operator must not silently acquire a separate Free account.
+ const existingMembership=await db.collection("operatorMemberships").doc(id).get();
+ if(existingMembership.exists)
+  throw new HttpsError("permission-denied","Operator must use shared tenant account");
  const ref=await ownerRef(id);
  if(ref.id!==id)return ref;
  try{await ref.create({plan:"Free",period:periodId(Date.now()),used:0,reserved:0,createdAt:FieldValue.serverTimestamp()})}
