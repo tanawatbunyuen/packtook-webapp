@@ -76,8 +76,8 @@ async function main(){
  ok(role,"accepted operator role");
  assert.equal(role.body.result.role,"operator");passed++;
  assert.equal((await db.collection("accounts").doc(operator).get()).exists,false);passed++;
- assert.equal(passed,12,"Expected 12 invitation lifecycle assertions");
- console.log("PACKTOOK_INVITATION_ACCEPTANCE_E2E=12/12_PASS");
+ assert.equal(passed,13,"Expected 13 invitation lifecycle checks; observed "+passed);
+ console.log("PACKTOOK_INVITATION_ACCEPTANCE_E2E=13/13_PASS");
  console.log("PACKTOOK_LOCAL_PLACEHOLDER_APPCHECK=NOT_SECURITY_PROOF");
  console.log("PACKTOOK_STAGING_APPCHECK=NOT_VERIFIED");
  console.log("PACKTOOK_LOCAL_AUTH_FIRESTORE_FIXTURE_WRITES=YES");
