@@ -3,9 +3,9 @@
 Date: 2026-11-28. Compared **feature-branch** `firebase-staging/firebase-packing-bridge.js` against `functions/index.js`. Both files inspected directly from GitHub.
 
 ## Finding: blocking for a unified source deploy
-- Browser Bridge contains **28 distinct referenced callable names**.
+- Browser Bridge contains **28 callable call sites representing 27 distinct callable names**.
 - Local `functions/index.js` has **23 named exports total**: 22 `onCall`, 1 `onRequest`.
-- **Eight browser callables lack a matching `onCall` export in the reviewed source**:
+- **Eight distinct browser callables lack a matching `onCall` export in the reviewed source**:
   - `inviteOperator`
   - `acceptOperatorInvite`
   - `listOperators`
@@ -35,6 +35,9 @@ node --check audit/fast-track-full-public/gate-b-frontend-backend-contract.cjs
 node audit/fast-track-full-public/gate-b-frontend-backend-contract.cjs
 echo "PACKTOOK_API_CONTRACT_EXIT=$?"
 ```
-Expected `PACKTOOK_BROWSER_MISSING_LOCAL_EXPORTS=8`, `PACKTOOK_API_CONTRACT=BLOCKED_SOURCE_EXPORT_GAP`, exit 3. A zero exit is possible only when all 28 frontend names are satisfied by the inspected local exports and unchanged scanner assumptions.
+Expected `PACKTOOK_BROWSER_CALLABLE_REFERENCES=28`, `PACKTOOK_BROWSER_UNIQUE_CALLABLE_NAMES=27`, `PACKTOOK_DUPLICATE_CALLABLE_BINDING_NAMES=subscriptionOverview`, and `PACKTOOK_BROWSER_MISSING_LOCAL_EXPORTS=8`, `PACKTOOK_API_CONTRACT=BLOCKED_SOURCE_EXPORT_GAP`, exit 3. A zero exit is possible only when all 28 frontend names are satisfied by the inspected local exports and unchanged scanner assumptions.
 
 **Gate B = OPEN; Full Public = NO_GO. No deploy/cloud writes/signup change.**
+
+## Scanner correction — 2026-11-28
+The original assertion expected 28 **unique** names and failed before printing the actual API gaps. Independent Source reinspection confirmed 28 call sites but 27 unique names: `subscriptionOverview` appears in two bridge methods (subscription view plus history access). The separate `billingHistory` backend export is not invoked by this Bridge. The 8 actual locally missing export names above are unaffected. The fixed scanner records both counts and preserves fail-closed exit 3. No deployment is implied.
