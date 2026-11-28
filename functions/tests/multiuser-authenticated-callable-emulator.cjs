@@ -41,7 +41,10 @@ async function createUser(id,email){
 }
 async function call(name,token,data={}){
  const r=await fetch(apiBase+name,{method:"POST",headers:{
-  "content-type":"application/json","authorization":"Bearer "+token},
+  "content-type":"application/json","authorization":"Bearer "+token,
+  // LOCAL Firebase Emulator accepts an arbitrary nonempty header as App Check.
+  // This is a test harness placeholder ONLY; never a valid security token.
+  "X-Firebase-AppCheck":"local-emulator-placeholder-not-a-real-token"},
   body:JSON.stringify({data}),signal:AbortSignal.timeout(20000)});
  let json;const response=await r.text();
  try{json=JSON.parse(response)}catch{throw Error(name+" non-JSON HTTP "+r.status+" "+response.slice(0,250))}
@@ -118,6 +121,8 @@ async function main(){
  console.log("PACKTOOK_REVOKED_OPERATOR_GUARD=PASS");
  console.log("PACKTOOK_PENDING_INVITATION_BOOTSTRAP=BLOCKED");
  console.log("PACKTOOK_APP_CHECK_VALID_TOKEN=NOT_TESTED");
+ console.log("PACKTOOK_APP_CHECK_PLACEHOLDER=LOCAL_EMULATOR_ONLY");
+ console.log("PACKTOOK_APP_CHECK_CRYPTOGRAPHIC_INTEGRITY=NOT_PROVEN");
  console.log("PACKTOOK_LOCAL_DEMO_FIXTURE_WRITES=YES");
  console.log("PACKTOOK_CLOUD_WRITES=0");
  console.log("PACKTOOK_DEPLOY=NOT_PERFORMED");
