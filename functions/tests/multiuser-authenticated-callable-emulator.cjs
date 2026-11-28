@@ -78,7 +78,10 @@ async function main(){
  await ownerAccount().collection("recordings").doc(opId).set({
   operationId:opId,barcode:"LOCAL-PRIVATE-BARCODE",accountId:owner,
   recordedBy:owner,period,status:"completed",file:{filename:"owner.mp4",bytes:4000}});
- expectOk(await call("accountRole",ownerToken),"owner accountRole");
+ const ownerRoleResponse=await call("accountRole",ownerToken);
+ console.log("PACKTOOK_AUTH_DIAG_OWNER_CALLABLE_HTTP="+ownerRoleResponse.status);
+ console.log("PACKTOOK_AUTH_DIAG_OWNER_CALLABLE_RESULT="+JSON.stringify(ownerRoleResponse.json).slice(0,300));
+ expectOk(ownerRoleResponse,"owner accountRole");
  const opRole=await call("accountRole",operatorToken);
  expectOk(opRole,"operator accountRole");
  assert.equal(opRole.json.result.role,"operator");
