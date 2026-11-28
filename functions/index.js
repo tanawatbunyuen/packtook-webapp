@@ -10,10 +10,19 @@ const crypto=require("node:crypto");
 const app=admin.initializeApp();
 const {createDatabase}=require("./database-routing-v1.cjs");
 
+const projectIds=[
+ app.options.projectId,
+ process.env.GCLOUD_PROJECT,
+ process.env.GOOGLE_CLOUD_PROJECT,
+ process.env.PACKTOOK_PROJECT_ID
+].filter(Boolean);
+
+if(new Set(projectIds).size!==1){
+ throw new Error("PACKTOOK_PROJECT_ID_MISSING_OR_CONFLICT");
+}
+
 const db=createDatabase(app,{
- projectId:app.options.projectId||
-   process.env.GCLOUD_PROJECT||
-   process.env.GOOGLE_CLOUD_PROJECT,
+ projectId:projectIds[0],
  mode:process.env.PACKTOOK_RUNTIME_MODE,
  databaseId:process.env.PACKTOOK_DATABASE_ID,
  emulatorHost:process.env.FIRESTORE_EMULATOR_HOST
