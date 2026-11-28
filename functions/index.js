@@ -16,6 +16,39 @@ const deviceLimits={Free:1,Starter:1,Basic:1,Growth:3,Business:5,Pro:10};
 const region="asia-southeast1";
 const options={region,maxInstances:20,timeoutSeconds:30,enforceAppCheck:true}; // Legacy callable options unchanged; P111 status-only App Check candidate.
 const statusOptions={...options,enforceAppCheck:true};
+// REVIEW-ONLY integrated multiuser slice. NOT approved for deployment.
+// Old owner billing and recordings stay on their original paths; operator credit
+// paths route to the same verified owner's account via the non-deployed candidate.
+const {createTenantResolver}=require("./tenant-routing-v1.cjs");
+const {createAtomicCreditCandidate}=require("./tenant-credit-atomic-v1.cjs");
+const {emailDigest}=require("./operator-domain-v1.cjs");
+const {assertTransactionMembership,PolicyDenied}=require("./tenant-credit-transaction-policy-v1.cjs");
+const tenantResolver=createTenantResolver({db,HttpsError});
+const atomicCredit=createAtomicCreditCandidate({db,FieldValue,HttpsError});
+async function creditActor(req){
+ const actor=uid(req),email=req.auth.token.email;
+ const membership=await db.collection("operatorMemberships").doc(actor).get();
+ if(membership.exists){
+  const ctx=await tenantResolver.resolve(req);
+  return {ctx,operator:true,email};
+ }
+ // Do not bootstrap a separate Free account when a verified email has a
+ // still-pending operator invitation. Accept invite first via separate API.
+ if(typeof email==="string"){
+  const index=await db.collection("operatorInviteIndex").doc(emailDigest(email)).get();
+  const inv=index.exists?index.data():null;
+  if(inv&&inv.status==="pending"&&inv.expiresAtMs>Date.now())
+   throw new HttpsError("failed-precondition","Accept your pending operator invitation before opening an account");
+ }
+ await ensureAccount(actor);
+ const ctx=await tenantResolver.resolve(req,{ownerOnly:true});
+ return {ctx,operator:false,email};
+}
+function requireTransactionMembership(ctx,membership,verifiedEmail){
+ try{return assertTransactionMembership(ctx,membership,verifiedEmail)}
+ catch(e){if(e instanceof PolicyDenied)throw new HttpsError("permission-denied",e.message);throw e}
+}
+
 function uid(req){if(!req.auth)throw new HttpsError("unauthenticated","Please sign in");if(req.auth.token.email_verified!==true)throw new HttpsError("permission-denied","Verify your email");return req.auth.uid}
 function data(req){return req.data&&typeof req.data==="object"?req.data:{}}
 function validOp(id){return typeof id==="string"&&/^[a-zA-Z0-9_-]{16,100}$/.test(id)}
@@ -91,6 +124,16 @@ exports.usageStatus=onCall(statusOptions,async req=>{
  return {plan:a.plan,limit,used,reserved,remaining:creditAvailable(a),walletEnabled:walletEnabled(a),walletStartingCredits:walletEnabled(a)?a.walletStartingCredits??null:null,period:current,openBillingRequestId:a.openBillingRequestId||null,canBuyMore:purchaseDecision(a,a.plan).allowed,purchaseReason:purchaseDecision(a,a.plan).kind||null,planExpiresAt:typeof a.planExpiresAt==="string"?a.planExpiresAt:null,subscriptionStatus:subscriptionState(a)};
 });
 exports.reserveCredit=onCall(options,async req=>{
+ // Operator path uses transaction-verified owner credits; original single-owner
+ // path below remains untouched for legacy users.
+ const a=await creditActor(req);
+ if(a.operator){
+  const body=data(req);
+  return atomicCredit.reserve({ctx:{actorUid:a.ctx.actorUid,accountId:a.ctx.accountId,role:a.ctx.role},
+    verifiedEmail:a.email,operationId:body.operationId,barcode:body.barcode,
+    deviceId:body.deviceId,...(body.approvalId?{approvalId:body.approvalId}:{})});
+ }
+
  const id=uid(req),body=data(req),op=body.operationId,barcode=body.barcode;
  if(!validDevice(body.deviceId))throw new HttpsError("permission-denied","Device registration required");
  if(!validOp(op)||typeof barcode!=="string"||!barcode.trim()||barcode.length>160)throw new HttpsError("invalid-argument","Invalid operation or barcode");
@@ -118,6 +161,14 @@ exports.reserveCredit=onCall(options,async req=>{
  })
 });
 exports.finalizeCredit=onCall(options,async req=>{
+ const a=await creditActor(req);
+ if(a.operator){
+  const body=data(req);
+  return atomicCredit.finalize({ctx:{actorUid:a.ctx.actorUid,accountId:a.ctx.accountId,role:a.ctx.role},
+    verifiedEmail:a.email,operationId:body.operationId,success:body.success,
+    filename:body.filename,bytes:body.bytes});
+ }
+
  const id=uid(req),d=data(req),op=d.operationId,success=d.success;
  if(!validOp(op)||typeof success!=="boolean")throw new HttpsError("invalid-argument","Invalid finalization");
  if(success&&(!Number.isSafeInteger(d.bytes)||d.bytes<1000||typeof d.filename!=="string"||d.filename.length>255||!d.filename.trim()))throw new HttpsError("invalid-argument","Invalid file metadata");
