@@ -9,7 +9,10 @@ const admin=require("firebase-admin");
 const crypto=require("node:crypto");
 admin.initializeApp();
 const db=admin.firestore();
-// Import Firestore sentinels from the supported modular Admin SDK entrypoint.\nconst {FieldValue}=require("firebase-admin/firestore");\nif(!FieldValue||typeof FieldValue.serverTimestamp!=="function"||typeof FieldValue.increment!=="function")\n throw Error("Firestore FieldValue SDK unavailable");
+// Import Firestore sentinels from the supported modular Admin SDK entrypoint.
+const {FieldValue}=require("firebase-admin/firestore");
+if(!FieldValue||typeof FieldValue.serverTimestamp!=="function"||typeof FieldValue.increment!=="function")
+ throw Error("Firestore FieldValue SDK unavailable");
 const limits={Free:20,Starter:50,Basic:300,Growth:1500,Business:5000,Pro:null};
 const pricesTHB={Free:0,Starter:199,Basic:299,Growth:599,Business:1290,Pro:1990};
 const deviceLimits={Free:1,Starter:1,Basic:1,Growth:3,Business:5,Pro:10};
